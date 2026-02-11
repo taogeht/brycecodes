@@ -1,12 +1,33 @@
 // Initial list of names
-let names = ["Pinpin", "Eva", "Andrew", "Alston", "Emma L", "Emma H", "Una L", "Jason", "Yoona W", "Anson", "Mona", "Zoey", "Yumi", "Mia", "Eason","Ocean","Bernie","Kyson","Ruby J", "Charles", "Eugene", "Felix", "Ruby T"];
+const START_NAMES = ["Pinpin", "Eva", "Andrew", "Alston", "Emma L", "Emma H", "Una L", "Jason", "Yoona W", "Anson", "Mona", "Zoey", "Yumi", "Mia", "Eason", "Ocean", "Bernie", "Kyson", "Ruby J", "Charles", "Eugene", "Felix", "Ruby T"];
+let names = [...START_NAMES];
+let englishAngels = [];
 
-// Get saved English Angels from localStorage or initialize empty array
-let englishAngels = JSON.parse(localStorage.getItem('englishAngels')) || [];
+// Load data from server
+fetch('/api/angels')
+    .then(response => response.json())
+    .then(data => {
+        if (data.names) {
+            names = data.names;
+        }
+        if (data.englishAngels) {
+            englishAngels = data.englishAngels;
+        }
+        displayNames();
+        displayEnglishAngels();
+    })
+    .catch(err => console.error('Error loading data:', err));
 
-// Function to save English Angels to localStorage
-function saveEnglishAngels() {
-    localStorage.setItem('englishAngels', JSON.stringify(englishAngels));
+// Function to save data to server
+function saveData() {
+    fetch('/api/angels', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ names, englishAngels }),
+    })
+        .catch(err => console.error('Error saving data:', err));
 }
 
 // Function to display names in the list
@@ -40,9 +61,9 @@ function selectEnglishAngel() {
 
     const randomIndex = Math.floor(Math.random() * names.length);
     const selectedName = names.splice(randomIndex, 1)[0]; // Remove the selected name from the list
-    
+
     englishAngels.push(selectedName);
-    saveEnglishAngels();
+    saveData();
 
     displayNames();
     displayEnglishAngels();
@@ -56,11 +77,13 @@ function resetLists() {
     if (confirm("Are you sure you want to reset the lists? This will clear all English Angels.")) {
         // Reset English Angels
         englishAngels = [];
-        localStorage.removeItem('englishAngels');
-        
+
         // Reset names to original list
-        names = ["Pinpin", "Andrew", "Alston", "Emma L", "Emma H", "Una L", "Yoona W", "Anson", "Mona", "Zoey", "Yumi", "Mia", "Eason","Ocean","Bernie","Kyson","Ruby J", "Charles", "Eugene", "Felix", "Ruby T"];
-        
+        names = [...START_NAMES];
+
+        // Save to server
+        saveData();
+
         // Update displays
         displayNames();
         displayEnglishAngels();

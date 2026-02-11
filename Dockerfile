@@ -1,13 +1,21 @@
-FROM nginx:alpine
+FROM node:18-alpine
 
-# Copy the invoice directory contents to the default Nginx public folder
-COPY invoice/ /usr/share/nginx/html/invoice
+WORKDIR /usr/src/app
 
-# Copy mainpage directory contents to /mainpage subpath
-COPY mainpage/ /usr/share/nginx/html/mainpage
+# Copy package files and install dependencies
+COPY package.json ./
+RUN npm install
 
-# Copy custom nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Copy server code
+COPY server.js ./
+
+# Copy static assets
+COPY invoice/ ./invoice/
+COPY mainpage/ ./mainpage/
+COPY englishangel/ ./englishangel/
 
 # Expose port 80
 EXPOSE 80
+
+# Start the server
+CMD [ "npm", "start" ]
