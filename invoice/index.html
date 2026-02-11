@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classroom Scheduler</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header-actions">
+            <h1>Classroom Scheduler for Ryan</h1>
+            <button id="manageStudentsBtn" class="action-btn">Manage Students</button>
+        </div>
+        <div class="main-grid">
+            <div class="calendar-section">
+                <div class="calendar">
+                    <div class="calendar-header">
+                        <div class="month-nav">
+                            <button id="prevMonth" class="month-nav-btn">←</button>
+                            <h2 id="currentMonth"></h2>
+                            <button id="nextMonth" class="month-nav-btn">→</button>
+                        </div>
+                    </div>
+
+                    <div class="weekdays">
+                        <div>Sun</div>
+                        <div>Mon</div>
+                        <div>Tue</div>
+                        <div>Wed</div>
+                        <div>Thu</div>
+                        <div>Fri</div>
+                        <div>Sat</div>
+                    </div>
+
+                    <div id="calendarDays" class="days"></div>
+                </div>
+            </div>
+
+            <div id="daySchedule" class="day-schedule">
+                <div class="schedule-header">
+                    <h2 id="selectedDate">Select a Day</h2>
+                </div>
+
+                <div class="schedule-content">
+                    <div class="booking-form">
+                        <h3>Add New Booking</h3>
+                    
+                        <div class="form-group">
+                            <select id="studentSelect">
+                                <option value="">Select student</option>
+                            </select>
+                        </div>
+                    
+                        <div class="form-group">
+                            <select id="startTimeSelect">
+                                <option value="">Select start time</option>
+                            </select>
+                        </div>
+                    
+                        <div class="form-group">
+                            <select id="endTimeSelect">
+                                <option value="">Select end time</option>
+                            </select>
+                        </div>
+                    
+                        <button id="bookButton">Book Class</button>
+                    
+                        <div class="recurring-booking">
+                            <div class="recurring-checkbox">
+                                <input type="checkbox" id="recurringBooking" />
+                                <label for="recurringBooking">Make this a recurring booking</label>
+                            </div>
+                            
+                            <div id="recurringOptions" class="recurring-options" style="display: none;">
+                                <div class="date-range">
+                                    <label>Until:</label>
+                                    <input type="date" id="recurringUntil" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="existing-bookings">
+                        <h3>Day's Schedule</h3>
+                        <div id="dayBookings" class="day-bookings">
+                            Select a day to view schedule
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="invoice-section">
+            <h2>Invoices</h2>
+            <button id="showAllInvoices">Show All Invoices</button>
+            <button id="downloadAllInvoices">Download All Invoices</button>
+            <button id="mergeInvoices">Merge Invoices</button>
+
+            <div id="studentInvoices" class="student-invoices"></div>
+
+            <div id="invoiceDisplay" class="invoice-display"></div>
+        </div>
+    </div>
+
+<!-- Student Management Modal -->
+<div id="studentModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Student Management</h2>
+            <span class="close">&times;</span>    
+        </div>
+
+        <form id="studentForm" class="modal-form">
+            <div class="form-group">
+                <input 
+                    type="text" 
+                    id="studentName" 
+                    placeholder="Enter student name"
+                    required
+                />
+            </div>
+            <button type="submit">Add Student</button>
+        </form>
+
+        <div id="studentsList" class="students-list">
+            <!-- Students will be loaded here -->
+        </div>
+    </div>
+</div>
+
+<!-- Merge Invoices Modal -->
+<div id="mergeInvoicesModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Merge Invoices</h2>
+            <span class="close">&times;</span>    
+        </div>
+
+        <div class="modal-form">
+            <p>Select two months to merge into a single invoice:</p>
+            
+            <div class="form-group">
+                <label for="firstMonth">First Month:</label>
+                <select id="firstMonth" class="month-select">
+                    <!-- Will be populated dynamically -->
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="secondMonth">Second Month:</label>
+                <select id="secondMonth" class="month-select">
+                    <!-- Will be populated dynamically -->
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="mergeStudentSelect">Student:</label>
+                <select id="mergeStudentSelect">
+                    <option value="">All Students (generates individual invoices)</option>
+                    <!-- Will be populated dynamically -->
+                </select>
+                <p class="help-text">Selecting "All Students" will create separate merged invoices for each student.</p>
+            </div>
+            
+            <button id="generateMergedInvoice" class="primary-btn">Generate Merged Invoice</button>
+        </div>
+    </div>
+</div>
+
+    <script src="script.js"></script>
+</body>
+</html>

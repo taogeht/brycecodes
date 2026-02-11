@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LEGO Part Number Converter</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>LEGO Part Number Converter</h1>
+        <p>Convert MOC part numbers (like M50357) to LEGO part numbers by reversing the digits</p>
+        
+        <div class="input-section">
+            <h2>Input MOC Part Numbers</h2>
+            <p>Enter each MOC part number on a new line (with or without the "MOC" prefix)</p>
+            <textarea id="inputText" rows="10" placeholder="MOC M09201 Parts Kit
+MOC M09201 Parts Kit
+MOC M55301 Parts Kit
+MOC M55301 Parts Kit
+MOC M50357 Parts Kit
+MOC M50357 Parts Kit"></textarea>
+            <button id="convertBtn">Convert Part Numbers</button>
+        </div>
+        
+        <div class="results-section" id="resultsSection">
+            <h2>Results</h2>
+            <div id="resultsList"></div>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html> 

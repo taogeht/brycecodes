@@ -1,0 +1,98 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+    background-color: #f8f9fa;
+    color: #333;
+    padding: 20px;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    background-color: white;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+h1 {
+    color: #006CB7;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+h2 {
+    margin: 20px 0 10px;
+    color: #006CB7;
+}
+
+p {
+    margin-bottom: 15px;
+}
+
+.input-section, .results-section {
+    margin-bottom: 30px;
+}
+
+textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-family: monospace;
+    resize: vertical;
+}
+
+button {
+    background-color: #006CB7;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    margin-top: 10px;
+    transition: background-color 0.3s;
+}
+
+button:hover {
+    background-color: #004C87;
+}
+
+/* Styles for the link list */
+.link-list {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+
+.link-list li {
+    margin: 10px 0;
+    padding: 12px 20px;
+    background-color: #f1f8fe;
+    border-radius: 4px;
+    border-left: 4px solid #006CB7;
+    transition: background-color 0.2s;
+}
+
+.link-list li:hover {
+    background-color: #e3f0fd;
+}
+
+.search-link {
+    color: #006CB7;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 16px;
+    display: block;
+}
+
+.search-link:hover {
+    text-decoration: underline;
+} 

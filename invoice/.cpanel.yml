@@ -1,0 +1,5 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/bryce603/brycecodes.com/ryan
+    - /bin/cp -R images $DEPLOYPATH
