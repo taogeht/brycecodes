@@ -14,6 +14,36 @@ let bookings = [];
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('DOM Content Loaded');
 
+    // Access Code Logic
+    const accessOverlay = document.getElementById('accessOverlay');
+    const mainContainer = document.getElementById('mainContainer');
+    const accessCodeInput = document.getElementById('accessCodeInput');
+    const submitAccessCode = document.getElementById('submitAccessCode');
+    const accessError = document.getElementById('accessError');
+
+    // Check if already authenticated
+    if (localStorage.getItem('access_granted') === 'true') {
+        accessOverlay.style.display = 'none';
+        mainContainer.style.display = 'block';
+    }
+
+    function checkAccessCode() {
+        if (accessCodeInput.value === '18') {
+            localStorage.setItem('access_granted', 'true');
+            accessOverlay.style.display = 'none';
+            mainContainer.style.display = 'block';
+        } else {
+            accessError.style.display = 'block';
+            accessCodeInput.value = '';
+        }
+    }
+
+    submitAccessCode.addEventListener('click', checkAccessCode);
+
+    accessCodeInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') checkAccessCode();
+    });
+
     try {
         // Initialize Supabase Client
         window.supabaseClient = window.supabase.createClient(
