@@ -13,19 +13,19 @@ let bookings = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('DOM Content Loaded');
-    
+
     try {
         // Initialize Supabase Client
         window.supabaseClient = window.supabase.createClient(
-            'https://kgkhogskywnuravqxibs.supabase.co',
-            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtna2hvZ3NreXdudXJhdnF4aWJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA4NDQ3MTksImV4cCI6MjA0NjQyMDcxOX0._6U0cDHTGAYiyMsIw7mOpIYmC2n_7-Z88Jr4WLV6mfA'
+            window.config.supabaseUrl,
+            window.config.supabaseKey
         );
 
         console.log('Supabase client initialized');
 
         // Initialize the application
         await init();
-        
+
         console.log('Application initialized successfully');
     } catch (error) {
         console.error('Fatal error during application startup:', error);
@@ -62,8 +62,8 @@ function formatDateForDatabase(date) {
 function generateCalendar() {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
-    
-    document.getElementById('currentMonth').textContent = 
+
+    document.getElementById('currentMonth').textContent =
         new Date(year, month).toLocaleString('default', { month: 'long', year: 'numeric' });
 
     const firstDay = new Date(year, month, 1);
@@ -83,14 +83,14 @@ function generateCalendar() {
         const dayElement = document.createElement('div');
         dayElement.className = 'day';
         dayElement.textContent = day;
-        
+
         const currentDateToCheck = new Date(year, month, day);
         const dateStr = formatDateForDatabase(currentDateToCheck);
-        
+
         if (bookings.some(booking => booking.booking_date === dateStr)) {
             dayElement.classList.add('has-booking');
         }
-        
+
         if (selectedDate && currentDateToCheck.toDateString() === selectedDate.toDateString()) {
             dayElement.classList.add('selected');
         }
@@ -103,19 +103,19 @@ function generateCalendar() {
 // Modified day click handler
 function handleDayClick(date, event) {
     selectedDate = date;
-    
+
     document.querySelectorAll('.day').forEach(day => {
         day.classList.remove('selected');
     });
     event.target.classList.add('selected');
-    
-    document.getElementById('selectedDate').textContent = date.toLocaleDateString('en-US', { 
-        weekday: 'long', 
-        month: 'long', 
-        day: 'numeric', 
-        year: 'numeric' 
+
+    document.getElementById('selectedDate').textContent = date.toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric'
     });
-    
+
     displayDayBookings();
     updateAvailableTimeSlots();
 }
@@ -151,7 +151,7 @@ async function fetchBookings() {
 
 function displayDayBookings() {
     const dayBookingsDiv = document.getElementById('dayBookings');
-    
+
     if (!selectedDate) {
         document.getElementById('selectedDate').textContent = 'Select a Day';
         dayBookingsDiv.innerHTML = '<p class="no-bookings">Select a day to view schedule</p>';
@@ -171,13 +171,13 @@ function displayDayBookings() {
     }, 0);
 
     // Update header with date and total hours
-    const formattedDate = selectedDate.toLocaleDateString('en-US', { 
-        weekday: 'long', 
-        month: 'long', 
-        day: 'numeric', 
-        year: 'numeric' 
+    const formattedDate = selectedDate.toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric'
     });
-    
+
     const scheduleHeader = document.querySelector('.schedule-header');
     scheduleHeader.innerHTML = `
         <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -217,9 +217,9 @@ function attachBookingEventListeners() {
 function handleBookingAction(event) {
     const target = event.target;
     if (!target.matches('.edit-btn, .delete-btn')) return;
-    
+
     const bookingId = target.dataset.bookingId;
-    
+
     if (target.matches('.edit-btn')) {
         editBooking(bookingId);
     } else if (target.matches('.delete-btn')) {
@@ -268,7 +268,7 @@ async function deleteBooking(bookingId) {
                 if (error) throw error;
 
                 // Update local bookings array to remove all related bookings
-                bookings = bookings.filter(booking => 
+                bookings = bookings.filter(booking =>
                     booking.student_name !== bookingToDelete.student_name ||
                     booking.start_time !== bookingToDelete.start_time ||
                     booking.end_time !== bookingToDelete.end_time
@@ -337,7 +337,7 @@ async function editBooking(bookingId) {
 
     // Check if this is part of a recurring series
     const isRecurring = await checkIfRecurring(booking);
-    
+
     // Set selected date to booking's date if not already selected
     const bookingDate = new Date(booking.booking_date);
     if (!selectedDate || selectedDate.toDateString() !== bookingDate.toDateString()) {
@@ -355,7 +355,7 @@ async function editBooking(bookingId) {
     // Show recurring checkbox if it's a recurring booking
     const recurringCheckbox = document.getElementById('recurringBooking');
     const recurringOptions = document.getElementById('recurringOptions');
-    
+
     if (isRecurring) {
         recurringCheckbox.checked = true;
         recurringOptions.style.display = 'block';
@@ -406,10 +406,10 @@ async function checkIfRecurring(booking) {
     if (data.length > 1) {
         const dates = data.map(b => new Date(b.booking_date));
         dates.sort((a, b) => a - b);
-        
+
         // Check if bookings are weekly
         for (let i = 1; i < dates.length; i++) {
-            const diffDays = (dates[i] - dates[i-1]) / (1000 * 60 * 60 * 24);
+            const diffDays = (dates[i] - dates[i - 1]) / (1000 * 60 * 60 * 24);
             if (diffDays !== 7) return false;
         }
         return true;
@@ -446,7 +446,7 @@ function updateAvailableTimeSlots() {
 
     const startTimeSelect = document.getElementById('startTimeSelect');
     const selectedStartTime = startTimeSelect.value;
-    
+
     startTimeSelect.innerHTML = '<option value="">Select start time</option>';
     timeOptions.forEach(time => {
         const option = document.createElement('option');
@@ -467,11 +467,11 @@ function updateEndTimeOptions(startTime) {
 
     const endTimeSelect = document.getElementById('endTimeSelect');
     endTimeSelect.innerHTML = '<option value="">Select end time</option>';
-    
+
     if (startTime) {
         const startIndex = timeOptions.indexOf(startTime);
         const availableEndTimes = timeOptions.slice(startIndex + 1);
-        
+
         availableEndTimes.forEach(time => {
             const option = document.createElement('option');
             option.value = time;
@@ -485,10 +485,10 @@ function updateEndTimeOptions(startTime) {
 async function createRecurringBookings(bookingData, selectedDate) {
     const untilDate = new Date(document.getElementById('recurringUntil').value);
     const bookings = [];
-    
+
     // Start from the selected date
     let currentDate = new Date(selectedDate);
-    
+
     // Create bookings for each week until the end date
     while (currentDate <= untilDate) {
         const bookingForDay = {
@@ -496,11 +496,11 @@ async function createRecurringBookings(bookingData, selectedDate) {
             booking_date: formatDateForDatabase(currentDate)
         };
         bookings.push(bookingForDay);
-        
+
         // Move to next week
         currentDate.setDate(currentDate.getDate() + 7);
     }
-    
+
     if (bookings.length === 0) {
         throw new Error('No dates selected for recurring bookings');
     }
@@ -510,7 +510,7 @@ async function createRecurringBookings(bookingData, selectedDate) {
         const confirmMessage = `This will create ${bookings.length} bookings for every ` +
             `${selectedDate.toLocaleDateString('en-US', { weekday: 'long' })} ` +
             `until ${untilDate.toLocaleDateString()}. Continue?`;
-            
+
         if (!confirm(confirmMessage)) {
             throw new Error('Booking cancelled by user');
         }
@@ -528,16 +528,16 @@ async function createRecurringBookings(bookingData, selectedDate) {
     }
 }
 
-document.getElementById('recurringBooking').addEventListener('change', function() {
+document.getElementById('recurringBooking').addEventListener('change', function () {
     const recurringOptions = document.getElementById('recurringOptions');
     recurringOptions.style.display = this.checked ? 'block' : 'none';
-    
+
     if (this.checked) {
         // Set minimum date to selected date
         const recurringUntil = document.getElementById('recurringUntil');
         const minDate = selectedDate.toISOString().split('T')[0];
         recurringUntil.min = minDate;
-        
+
         // Set default end date to 3 months from selected date
         const defaultEndDate = new Date(selectedDate);
         defaultEndDate.setMonth(defaultEndDate.getMonth() + 3);
@@ -546,7 +546,7 @@ document.getElementById('recurringBooking').addEventListener('change', function(
 });
 
 // Booking Form Handler
-document.getElementById('bookButton').addEventListener('click', async function() {
+document.getElementById('bookButton').addEventListener('click', async function () {
     const studentSelect = document.getElementById('studentSelect');
     const startTimeSelect = document.getElementById('startTimeSelect');
     const endTimeSelect = document.getElementById('endTimeSelect');
@@ -579,15 +579,15 @@ document.getElementById('bookButton').addEventListener('click', async function()
 
     try {
         let response;
-        
+
         if (editingId) {
-            const isRecurringEdit = this.dataset.isRecurring === 'true' && 
-                                  document.getElementById('recurringBooking').checked;
+            const isRecurringEdit = this.dataset.isRecurring === 'true' &&
+                document.getElementById('recurringBooking').checked;
 
             if (isRecurringEdit) {
                 // Get the original booking
                 const originalBooking = bookings.find(b => b.id === editingId);
-                
+
                 // Find all related recurring bookings
                 const { data: relatedBookings, error: findError } = await supabaseClient
                     .from('bookings')
@@ -667,7 +667,7 @@ document.getElementById('bookButton').addEventListener('click', async function()
 
             if (error) throw error;
             response = data;
-            
+
             // Update local bookings array
             if (response) {
                 bookings = [...bookings, ...response];
@@ -680,14 +680,14 @@ document.getElementById('bookButton').addEventListener('click', async function()
         endTimeSelect.value = '';
         document.getElementById('recurringBooking').checked = false;
         document.getElementById('recurringOptions').style.display = 'none';
-        
+
         if (editingId) {
             // Reset editing state
             const bookButton = document.getElementById('bookButton');
             bookButton.textContent = 'Book Class';
             delete bookButton.dataset.editingId;
             delete bookButton.dataset.isRecurring;
-            
+
             const cancelButton = document.getElementById('cancelEditButton');
             if (cancelButton) {
                 cancelButton.remove();
@@ -711,11 +711,11 @@ document.getElementById('bookButton').addEventListener('click', async function()
 // Student Management Functions
 async function setupStudentManagement() {
     console.log('Setting up student management...');
-    
+
     // Get required elements
     const modal = document.getElementById('studentModal');
     const manageStudentsBtn = document.getElementById('manageStudentsBtn');
-    
+
     // Debug logging
     console.log('Found elements:', {
         modal: modal ? 'Yes' : 'No',
@@ -732,7 +732,7 @@ async function setupStudentManagement() {
 
     const closeBtn = modal.querySelector('.close');
     const form = document.getElementById('studentForm');
-    
+
     // More debug logging
     console.log('Additional elements:', {
         closeBtn: closeBtn ? 'Yes' : 'No',
@@ -766,7 +766,7 @@ async function setupStudentManagement() {
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
             const nameInput = document.getElementById('studentName');
-            
+
             try {
                 await addStudent(nameInput.value);
                 nameInput.value = ''; // Clear input
@@ -857,7 +857,7 @@ async function updateStudentSelect() {
         if (error) throw error;
 
         const currentValue = studentSelect.value;
-        
+
         studentSelect.innerHTML = '<option value="">Select student</option>';
         students.forEach(student => {
             const option = document.createElement('option');
@@ -926,7 +926,7 @@ async function deleteStudent(studentId) {
         if (!student) throw new Error('Student not found');
 
         const hasBookings = bookings.some(booking => booking.student_name === student.name);
-        
+
         if (hasBookings) {
             const shouldProceed = confirm(
                 'This student has existing bookings. ' +
@@ -1006,11 +1006,11 @@ function generateStudentInvoiceButtons() {
     // Add month selector
     const monthSelector = document.createElement('div');
     monthSelector.className = 'month-selector';
-    
+
     const currentDate = new Date();
     const monthSelect = document.createElement('select');
     monthSelect.id = 'invoiceMonth';
-    
+
     // Get all months from bookings
     const months = [...new Set(bookings.map(booking => {
         const date = new Date(booking.booking_date);
@@ -1019,7 +1019,7 @@ function generateStudentInvoiceButtons() {
 
     // Default to current month if exists, otherwise latest month
     const currentYearMonth = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
-    
+
     monthSelect.innerHTML = months.map(yearMonth => {
         const [year, month] = yearMonth.split('-');
         const date = new Date(year, month - 1);
@@ -1037,7 +1037,7 @@ function generateStudentInvoiceButtons() {
 
     // Add change event listener for month selection
     monthSelect.addEventListener('change', updateInvoiceDisplay);
-    
+
     // Initial display
     updateInvoiceDisplay();
 }
@@ -1051,8 +1051,8 @@ function updateInvoiceDisplay() {
     const [selectedYear, selectedMonth] = monthSelect.value.split('-');
     const selectedBookings = bookings.filter(booking => {
         const bookingDate = new Date(booking.booking_date);
-        return bookingDate.getFullYear() === parseInt(selectedYear) && 
-               bookingDate.getMonth() === parseInt(selectedMonth) - 1;
+        return bookingDate.getFullYear() === parseInt(selectedYear) &&
+            bookingDate.getMonth() === parseInt(selectedMonth) - 1;
     });
 
     // Clear existing buttons
@@ -1073,7 +1073,7 @@ function updateInvoiceDisplay() {
         viewButton.textContent = `${student} ($${totalAmount.toFixed(2)})`;
         viewButton.onclick = () => showInvoice(student, selectedYear, selectedMonth);
         viewButton.className = 'view-invoice-btn';
-        
+
         // Create download button
         const downloadButton = document.createElement('button');
         downloadButton.textContent = 'Download PDF';
@@ -1089,7 +1089,7 @@ function updateInvoiceDisplay() {
     if (uniqueStudents.length > 0) {
         const allContainer = document.createElement('div');
         allContainer.className = 'all-invoices-buttons';
-        
+
         const viewAllButton = document.createElement('button');
         viewAllButton.textContent = 'View All Students';
         viewAllButton.onclick = () => showInvoice(null, selectedYear, selectedMonth);
@@ -1119,8 +1119,8 @@ function showInvoice(studentName = null, year = null, month = null) {
     // Filter bookings for selected month and student
     const monthBookings = bookings.filter(booking => {
         const bookingDate = new Date(booking.booking_date);
-        const matchesMonth = bookingDate.getFullYear() === parseInt(year) && 
-                           bookingDate.getMonth() === parseInt(month) - 1;
+        const matchesMonth = bookingDate.getFullYear() === parseInt(year) &&
+            bookingDate.getMonth() === parseInt(month) - 1;
         return matchesMonth && (!studentName || booking.student_name === studentName);
     }).sort((a, b) => new Date(a.booking_date) - new Date(b.booking_date));
 
@@ -1156,7 +1156,7 @@ function showInvoice(studentName = null, year = null, month = null) {
 
     const totalAmount = monthBookings.reduce((sum, booking) => sum + booking.amount, 0);
     const totalHours = monthBookings.reduce((sum, booking) => sum + booking.duration_hours, 0);
-    
+
     html += `
         </div>
         <div class="invoice-total">
@@ -1174,12 +1174,12 @@ function groupBookingsByMonth(bookings) {
     return bookings.reduce((groups, booking) => {
         const date = new Date(booking.booking_date);
         const monthKey = date.toLocaleString('default', { month: 'long', year: 'numeric' });
-        
+
         if (!groups[monthKey]) {
             groups[monthKey] = [];
         }
         groups[monthKey].push(booking);
-        
+
         return groups;
     }, {});
 }
@@ -1189,83 +1189,83 @@ function generateMergedInvoice() {
     const firstMonthSelect = document.getElementById('firstMonth');
     const secondMonthSelect = document.getElementById('secondMonth');
     const mergeStudentSelect = document.getElementById('mergeStudentSelect');
-    
+
     const firstMonth = firstMonthSelect.value;
     const secondMonth = secondMonthSelect.value;
     const selectedStudent = mergeStudentSelect.value;
-    
+
     if (!firstMonth || !secondMonth) {
         alert('Please select both months to merge');
         return;
     }
-    
+
     if (firstMonth === secondMonth) {
         alert('Please select two different months to merge');
         return;
     }
-    
+
     // Parse the selected months
     const [firstYear, firstMonthNum] = firstMonth.split('-').map(Number);
     const [secondYear, secondMonthNum] = secondMonth.split('-').map(Number);
-    
+
     // Filter bookings for the selected months
     const firstMonthBookings = bookings.filter(booking => {
         const bookingDate = new Date(booking.booking_date);
-        return bookingDate.getFullYear() === firstYear && 
-               bookingDate.getMonth() === firstMonthNum - 1;
+        return bookingDate.getFullYear() === firstYear &&
+            bookingDate.getMonth() === firstMonthNum - 1;
     });
-    
+
     const secondMonthBookings = bookings.filter(booking => {
         const bookingDate = new Date(booking.booking_date);
-        return bookingDate.getFullYear() === secondYear && 
-               bookingDate.getMonth() === secondMonthNum - 1;
+        return bookingDate.getFullYear() === secondYear &&
+            bookingDate.getMonth() === secondMonthNum - 1;
     });
-    
+
     // Combine all bookings from both months
     const allMergedBookings = [...firstMonthBookings, ...secondMonthBookings];
-    
+
     if (allMergedBookings.length === 0) {
         alert('No bookings found for the selected months');
         return;
     }
-    
+
     // If a specific student is selected, generate only their invoice
     if (selectedStudent) {
-        const studentBookings = allMergedBookings.filter(booking => 
+        const studentBookings = allMergedBookings.filter(booking =>
             booking.student_name === selectedStudent
         ).sort((a, b) => new Date(a.booking_date) - new Date(b.booking_date));
-        
+
         if (studentBookings.length === 0) {
             alert(`No bookings found for ${selectedStudent} in the selected months`);
             return;
         }
-        
+
         generateMergedPDF(studentBookings, selectedStudent, firstMonth, secondMonth);
-    } 
+    }
     // If "All Students" is selected, generate individual invoices for each student
     else {
         // Get unique students from the merged bookings
         const uniqueStudents = [...new Set(allMergedBookings.map(booking => booking.student_name))].sort();
-        
+
         if (uniqueStudents.length === 0) {
             alert('No students found with bookings in the selected months');
             return;
         }
-        
+
         // Create a zip file to contain all the PDFs
         const zip = new JSZip();
         let invoiceCount = 0;
-        
+
         // Generate a separate invoice for each student
         uniqueStudents.forEach(student => {
-            const studentBookings = allMergedBookings.filter(booking => 
+            const studentBookings = allMergedBookings.filter(booking =>
                 booking.student_name === student
             ).sort((a, b) => new Date(a.booking_date) - new Date(b.booking_date));
-            
+
             if (studentBookings.length > 0) {
                 // Generate PDF for this student
                 const pdfDoc = generateMergedPDFForZip(studentBookings, student, firstMonth, secondMonth);
-                
+
                 // Add the PDF to the zip file
                 if (pdfDoc) {
                     const pdfBlob = pdfDoc.output('blob');
@@ -1275,20 +1275,20 @@ function generateMergedInvoice() {
                 }
             }
         });
-        
+
         if (invoiceCount > 0) {
             // Generate and download the zip file
             zip.generateAsync({ type: 'blob' }).then(content => {
                 const [firstMonthName, secondMonthName] = getMonthNames(firstMonth, secondMonth);
                 const zipFilename = `Merged_Invoices_${firstMonthName.replace(/\s+/g, '_')}_and_${secondMonthName.replace(/\s+/g, '_')}.zip`;
-                
+
                 // Create a download link and trigger it
                 const link = document.createElement('a');
                 link.href = URL.createObjectURL(content);
                 link.download = zipFilename;
                 document.body.appendChild(link);
                 link.click();
-                
+
                 // Clean up
                 URL.revokeObjectURL(link.href);
             }).catch(error => {
@@ -1299,7 +1299,7 @@ function generateMergedInvoice() {
             alert('No invoices were generated. Please check your selection.');
         }
     }
-    
+
     // Close the modal
     document.getElementById('mergeInvoicesModal').style.display = 'none';
 }
@@ -1308,10 +1308,10 @@ function generateMergedInvoice() {
 function getMonthNames(firstMonth, secondMonth) {
     const [firstYear, firstMonthNum] = firstMonth.split('-').map(Number);
     const [secondYear, secondMonthNum] = secondMonth.split('-').map(Number);
-    
+
     const firstMonthName = new Date(firstYear, firstMonthNum - 1).toLocaleString('default', { month: 'long', year: 'numeric' });
     const secondMonthName = new Date(secondYear, secondMonthNum - 1).toLocaleString('default', { month: 'long', year: 'numeric' });
-    
+
     return [firstMonthName, secondMonthName];
 }
 
@@ -1320,31 +1320,31 @@ function generateMergedPDFForZip(mergedBookings, studentName, firstMonth, second
     try {
         // Get month names
         const [firstMonthName, secondMonthName] = getMonthNames(firstMonth, secondMonth);
-        
+
         // Create PDF document
         const doc = new jsPDF();
         let yPos = 20;
-        
+
         // Header
         doc.setFontSize(20);
         doc.setTextColor(251, 79, 20); // #FB4F14
         doc.text('Merged Invoice', 20, yPos);
         yPos += 10;
-        
+
         // Months and Student
         doc.setFontSize(14);
         doc.setTextColor(0);
         doc.text(`${firstMonthName} + ${secondMonthName}`, 20, yPos);
         yPos += 10;
-        
+
         doc.text(studentName, 20, yPos);
         yPos += 10;
-        
+
         // Generation date
         doc.setFontSize(10);
         doc.text(`Generated: ${new Date().toLocaleDateString()}`, 20, yPos);
         yPos += 15;
-        
+
         // Column headers
         doc.setFontSize(10);
         doc.text('Date', 20, yPos);
@@ -1352,46 +1352,46 @@ function generateMergedPDFForZip(mergedBookings, studentName, firstMonth, second
         doc.text('Hours', 145, yPos);
         doc.text('Amount', 175, yPos);
         yPos += 8;
-        
+
         // Draw a line under the headers
         doc.setDrawColor(200, 200, 200);
         doc.line(20, yPos - 2, 190, yPos - 2);
-        
+
         // Bookings
         let totalHours = 0;
         let totalAmount = 0;
-        
+
         mergedBookings.forEach(booking => {
             if (yPos > 250) {  // Add a new page if we're near the bottom
                 doc.addPage();
                 yPos = 20;
             }
-            
+
             const dateStr = new Date(booking.booking_date).toLocaleDateString();
             const timeStr = `${booking.start_time} - ${booking.end_time}`;
             totalHours += booking.duration_hours;
             totalAmount += booking.amount;
-            
+
             doc.text(dateStr, 20, yPos);
             doc.text(timeStr, 80, yPos);
             doc.text(booking.duration_hours.toString(), 145, yPos);
             doc.text(`$${booking.amount.toFixed(2)}`, 175, yPos);
-            
+
             yPos += 8;
         });
-        
+
         // Draw a line above the totals
         yPos += 5;
         doc.setDrawColor(200, 200, 200);
         doc.line(20, yPos - 2, 190, yPos - 2);
-        
+
         // Totals
         doc.setFontSize(12);
         doc.setFont(undefined, 'bold');
         doc.text('Total:', 105, yPos + 5);
         doc.text(totalHours.toString(), 145, yPos + 5);
         doc.text(`$${totalAmount.toFixed(2)}`, 175, yPos + 5);
-        
+
         // Add footer text
         yPos = doc.internal.pageSize.height - 30; // Position footer 30 units from bottom
         doc.setFontSize(10);
@@ -1402,9 +1402,9 @@ function generateMergedPDFForZip(mergedBookings, studentName, firstMonth, second
         doc.text('Sincerely yours,', 20, yPos);
         yPos += 7;
         doc.text('Ryan Lazowski', 20, yPos);
-        
+
         return doc;
-        
+
     } catch (error) {
         console.error('Error generating merged PDF for zip:', error);
         return null;
@@ -1416,33 +1416,33 @@ function generateMergedPDF(mergedBookings, studentName, firstMonth, secondMonth)
     try {
         // Get month names
         const [firstMonthName, secondMonthName] = getMonthNames(firstMonth, secondMonth);
-        
+
         // Create PDF document
         const doc = new jsPDF();
         let yPos = 20;
-        
+
         // Header
         doc.setFontSize(20);
         doc.setTextColor(251, 79, 20); // #FB4F14
         doc.text('Merged Invoice', 20, yPos);
         yPos += 10;
-        
+
         // Months and Student
         doc.setFontSize(14);
         doc.setTextColor(0);
         doc.text(`${firstMonthName} + ${secondMonthName}`, 20, yPos);
         yPos += 10;
-        
+
         if (studentName) {
             doc.text(studentName, 20, yPos);
             yPos += 10;
         }
-        
+
         // Generation date
         doc.setFontSize(10);
         doc.text(`Generated: ${new Date().toLocaleDateString()}`, 20, yPos);
         yPos += 15;
-        
+
         // Column headers
         doc.setFontSize(10);
         doc.text('Date', 20, yPos);
@@ -1455,26 +1455,26 @@ function generateMergedPDF(mergedBookings, studentName, firstMonth, secondMonth)
         doc.text('Hours', 145, yPos);
         doc.text('Amount', 175, yPos);
         yPos += 8;
-        
+
         // Draw a line under the headers
         doc.setDrawColor(200, 200, 200);
         doc.line(20, yPos - 2, 190, yPos - 2);
-        
+
         // Bookings
         let totalHours = 0;
         let totalAmount = 0;
-        
+
         mergedBookings.forEach(booking => {
             if (yPos > 250) {  // Add a new page if we're near the bottom
                 doc.addPage();
                 yPos = 20;
             }
-            
+
             const dateStr = new Date(booking.booking_date).toLocaleDateString();
             const timeStr = `${booking.start_time} - ${booking.end_time}`;
             totalHours += booking.duration_hours;
             totalAmount += booking.amount;
-            
+
             doc.text(dateStr, 20, yPos);
             if (!studentName) {
                 doc.text(booking.student_name, 55, yPos);
@@ -1484,22 +1484,22 @@ function generateMergedPDF(mergedBookings, studentName, firstMonth, secondMonth)
             }
             doc.text(booking.duration_hours.toString(), 145, yPos);
             doc.text(`$${booking.amount.toFixed(2)}`, 175, yPos);
-            
+
             yPos += 8;
         });
-        
+
         // Draw a line above the totals
         yPos += 5;
         doc.setDrawColor(200, 200, 200);
         doc.line(20, yPos - 2, 190, yPos - 2);
-        
+
         // Totals
         doc.setFontSize(12);
         doc.setFont(undefined, 'bold');
         doc.text('Total:', 105, yPos + 5);
         doc.text(totalHours.toString(), 145, yPos + 5);
         doc.text(`$${totalAmount.toFixed(2)}`, 175, yPos + 5);
-        
+
         // Add footer text
         yPos = doc.internal.pageSize.height - 30; // Position footer 30 units from bottom
         doc.setFontSize(10);
@@ -1510,13 +1510,13 @@ function generateMergedPDF(mergedBookings, studentName, firstMonth, secondMonth)
         doc.text('Sincerely yours,', 20, yPos);
         yPos += 7;
         doc.text('Ryan Lazowski', 20, yPos);
-        
+
         // Save the PDF
         const shortMonthName = new Date(year, month - 1).toLocaleString('default', { month: 'short' });
-        const filename = studentName 
-            ? `Invoice_${shortMonthName}_${year}_${sanitizeFilename(studentName.replace(/\s+/g, '_'))}.pdf` 
+        const filename = studentName
+            ? `Invoice_${shortMonthName}_${year}_${sanitizeFilename(studentName.replace(/\s+/g, '_'))}.pdf`
             : `Invoice_${shortMonthName}_${year}_All_Students.pdf`;
-        
+
         doc.save(filename);
     } catch (error) {
         console.error('Error generating merged PDF:', error);
@@ -1536,8 +1536,8 @@ function generatePDF(studentName = null, year = null, month = null) {
         // Filter bookings for selected month and student
         const monthBookings = bookings.filter(booking => {
             const bookingDate = new Date(booking.booking_date);
-            const matchesMonth = bookingDate.getFullYear() === parseInt(year) && 
-                               bookingDate.getMonth() === parseInt(month) - 1;
+            const matchesMonth = bookingDate.getFullYear() === parseInt(year) &&
+                bookingDate.getMonth() === parseInt(month) - 1;
             return matchesMonth && (!studentName || booking.student_name === studentName);
         }).sort((a, b) => new Date(a.booking_date) - new Date(b.booking_date));
 
@@ -1608,7 +1608,7 @@ function generatePDF(studentName = null, year = null, month = null) {
         doc.setTextColor(251, 79, 20);
         doc.text(`Total Hours: ${totalHours.toFixed(1)}`, 105, yPos);
         doc.text(`Total: $${totalAmount.toFixed(2)}`, 150, yPos);
-        
+
         // Add footer text
         yPos = doc.internal.pageSize.height - 30; // Position footer 30 units from bottom
         doc.setFontSize(10);
@@ -1621,10 +1621,10 @@ function generatePDF(studentName = null, year = null, month = null) {
 
         // Save the PDF
         const shortMonthName = new Date(year, month - 1).toLocaleString('default', { month: 'short' });
-        const filename = studentName 
-            ? `Invoice_${shortMonthName}_${year}_${sanitizeFilename(studentName.replace(/\s+/g, '_'))}.pdf` 
+        const filename = studentName
+            ? `Invoice_${shortMonthName}_${year}_${sanitizeFilename(studentName.replace(/\s+/g, '_'))}.pdf`
             : `Invoice_${shortMonthName}_${year}_All_Students.pdf`;
-        
+
         doc.save(filename);
     } catch (error) {
         console.error('Error generating PDF:', error);
@@ -1644,8 +1644,8 @@ async function generateAllPDFs(year = null, month = null) {
         // Get all bookings for the selected month
         const monthBookings = bookings.filter(booking => {
             const bookingDate = new Date(booking.booking_date);
-            return bookingDate.getFullYear() === parseInt(year) && 
-                   bookingDate.getMonth() === parseInt(month) - 1;
+            return bookingDate.getFullYear() === parseInt(year) &&
+                bookingDate.getMonth() === parseInt(month) - 1;
         });
 
         if (monthBookings.length === 0) {
@@ -1700,7 +1700,7 @@ async function generateAllPDFs(year = null, month = null) {
             yPos += 8;
 
             // Sort bookings by date
-            const sortedBookings = bookings.sort((a, b) => 
+            const sortedBookings = bookings.sort((a, b) =>
                 new Date(a.booking_date) - new Date(b.booking_date)
             );
 
@@ -1731,7 +1731,7 @@ async function generateAllPDFs(year = null, month = null) {
             doc.setFontSize(12);
             doc.setTextColor(251, 79, 20);
             doc.text(`Total: $${totalAmount.toFixed(2)}`, 150, yPos);
-            
+
             // Add footer text
             yPos = doc.internal.pageSize.height - 30; // Position footer 30 units from bottom
             doc.setFontSize(10);
@@ -1751,7 +1751,7 @@ async function generateAllPDFs(year = null, month = null) {
         // Generate and download zip file
         const zipBlob = await zip.generateAsync({ type: "blob" });
         const zipFilename = `Invoices_${shortMonthName}_${year}.zip`;
-        
+
         // Create download link and trigger download
         const downloadLink = document.createElement('a');
         downloadLink.href = URL.createObjectURL(zipBlob);
@@ -1799,7 +1799,7 @@ function setupMonthNavigation() {
 function setupTimeSelectionHandlers() {
     const startTimeSelect = document.getElementById('startTimeSelect');
     if (startTimeSelect) {
-        startTimeSelect.addEventListener('change', function() {
+        startTimeSelect.addEventListener('change', function () {
             updateEndTimeOptions(this.value);
         });
     }
@@ -1858,44 +1858,44 @@ function populateMergeInvoicesModal() {
     const firstMonthSelect = document.getElementById('firstMonth');
     const secondMonthSelect = document.getElementById('secondMonth');
     const mergeStudentSelect = document.getElementById('mergeStudentSelect');
-    
+
     // Clear existing options
     firstMonthSelect.innerHTML = '';
     secondMonthSelect.innerHTML = '';
     mergeStudentSelect.innerHTML = '<option value="">All Students</option>';
-    
+
     // Get all months from bookings
     const months = [...new Set(bookings.map(booking => {
         const date = new Date(booking.booking_date);
         return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
     }))].sort().reverse(); // Sort in reverse chronological order
-    
+
     // Populate month selects
     months.forEach(yearMonth => {
         const [year, month] = yearMonth.split('-');
         const date = new Date(year, month - 1);
         const monthName = date.toLocaleString('default', { month: 'long', year: 'numeric' });
-        
+
         const firstOption = document.createElement('option');
         firstOption.value = yearMonth;
         firstOption.textContent = monthName;
-        
+
         const secondOption = document.createElement('option');
         secondOption.value = yearMonth;
         secondOption.textContent = monthName;
-        
+
         firstMonthSelect.appendChild(firstOption);
         secondMonthSelect.appendChild(secondOption);
     });
-    
+
     // Set default second month to be different from first if possible
     if (months.length > 1) {
         secondMonthSelect.selectedIndex = 1;
     }
-    
+
     // Get all unique students
     const uniqueStudents = [...new Set(bookings.map(booking => booking.student_name))].sort();
-    
+
     // Populate student select
     uniqueStudents.forEach(student => {
         const option = document.createElement('option');
@@ -1903,19 +1903,19 @@ function populateMergeInvoicesModal() {
         option.textContent = student;
         mergeStudentSelect.appendChild(option);
     });
-    
+
     // Add event listener for the generate button
     document.getElementById('generateMergedInvoice').onclick = generateMergedInvoice;
 }
 
 // Error Handler Setup
 function setupErrorHandling() {
-    window.onerror = function(msg, url, lineNo, columnNo, error) {
+    window.onerror = function (msg, url, lineNo, columnNo, error) {
         console.error('Error: ', msg, '\nURL: ', url, '\nLine: ', lineNo, '\nColumn: ', columnNo, '\nError object: ', error);
         return false;
     };
 
-    window.addEventListener('unhandledrejection', function(event) {
+    window.addEventListener('unhandledrejection', function (event) {
         console.error('Unhandled promise rejection:', event.reason);
     });
 }
@@ -1935,10 +1935,10 @@ async function init() {
         setupFormHandlers();
         setupKeyboardHandlers();
         setupGlobalFunctions();
-        
+
         // Initialize student management
         await setupStudentManagement();
-        
+
         // Initial data loading
         await Promise.all([
             fetchBookings(),
@@ -1951,7 +1951,7 @@ async function init() {
         // Set up initial time slots
         const startTimeSelect = document.getElementById('startTimeSelect');
         const endTimeSelect = document.getElementById('endTimeSelect');
-        
+
         if (startTimeSelect && endTimeSelect) {
             // Initialize time select options
             timeOptions.forEach(time => {
@@ -2010,7 +2010,7 @@ function setupFormHandlers() {
     // Student Form Handler
     const studentForm = document.getElementById('studentForm');
     if (studentForm) {
-        studentForm.addEventListener('submit', async function(e) {
+        studentForm.addEventListener('submit', async function (e) {
             e.preventDefault();
             const studentName = document.getElementById('studentName').value.trim();
             if (studentName) {
@@ -2022,7 +2022,7 @@ function setupFormHandlers() {
 
     // Cancel buttons in forms
     document.querySelectorAll('.cancel-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
+        btn.addEventListener('click', function () {
             this.closest('.modal').style.display = 'none';
         });
     });
@@ -2030,7 +2030,7 @@ function setupFormHandlers() {
 
 // Setup keyboard event listeners
 function setupKeyboardHandlers() {
-    document.addEventListener('keydown', function(e) {
+    document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') {
             // Close any open modals
             document.querySelectorAll('.modal').forEach(modal => {
