@@ -1,22 +1,41 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>English Angel Selector</title>
     <link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
     <div class="container">
         <h1>English Angel Selector</h1>
         <div class="content-wrapper">
+            <div class="class-management">
+                <h2>Class Management</h2>
+                <div class="control-group">
+                    <select id="classSelect"></select>
+                    <button id="newClassButton">New Class</button>
+                </div>
+                <div class="control-group" id="newClassInputGroup" style="display:none;">
+                    <input type="text" id="newClassName" placeholder="Enter class name">
+                    <button id="saveClassButton">Save Class</button>
+                    <button id="cancelClassButton">Cancel</button>
+                </div>
+                <div class="control-group">
+                    <input type="text" id="newStudentName" placeholder="Enter student name">
+                    <button id="addStudentButton">Add Student</button>
+                </div>
+            </div>
+
             <div class="names-list">
-                <h2>Names List</h2>
+                <h2>Students List <span id="studentCount"></span></h2>
                 <ul id="namesList"></ul>
             </div>
             <div class="button-container">
                 <button id="selectButton">Select English Angel</button>
-                <button id="resetButton">Reset Lists</button>
+                <button id="resetButton">Reset Selected Class</button>
             </div>
             <div class="english-angels">
                 <h2>English Angels</h2>
@@ -26,4 +45,5 @@
     </div>
     <script src="script.js"></script>
 </body>
+
 </html>

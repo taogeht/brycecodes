@@ -1,98 +1,310 @@
-// Initial list of names
-const START_NAMES = ["Pinpin", "Eva", "Andrew", "Alston", "Emma L", "Emma H", "Una L", "Jason", "Yoona W", "Anson", "Mona", "Zoey", "Yumi", "Mia", "Eason", "Ocean", "Bernie", "Kyson", "Ruby J", "Charles", "Eugene", "Felix", "Ruby T"];
-let names = [...START_NAMES];
-let englishAngels = [];
+// State
+let data = {
+    classes: [],
+    currentClassId: null
+};
+
+// Initial setup
+function init() {
+    loadData();
+    setupEventListeners();
+}
 
 // Load data from server
-fetch('/api/angels')
-    .then(response => response.json())
-    .then(data => {
-        if (data.names) {
-            names = data.names;
-        }
-        if (data.englishAngels) {
-            englishAngels = data.englishAngels;
-        }
-        displayNames();
-        displayEnglishAngels();
-    })
-    .catch(err => console.error('Error loading data:', err));
+function loadData() {
+    fetch('/api/angels')
+        .then(response => response.json())
+        .then(serverData => {
+            if (Array.isArray(serverData) || (serverData.names && !serverData.classes)) {
+                // Migration: Convert old format to new format
+                console.log("Migrating old data format...");
+                const defaultClass = createClass("Default Class");
 
-// Function to save data to server
+                if (serverData.names) {
+                    defaultClass.names = serverData.names;
+                } else if (Array.isArray(serverData) && serverData.length > 0) {
+                    // Assuming if it's an array, it might be just names, but let's be safe
+                    // The previous server code sent {names: [], englishAngels: []} usually, 
+                    // or just [] if empty. 
+                    // If it's the specific object structure from before:
+                    if (serverData.names) defaultClass.names = serverData.names;
+                }
+
+                if (serverData.englishAngels) {
+                    defaultClass.englishAngels = serverData.englishAngels;
+                }
+
+                data.classes = [defaultClass];
+                data.currentClassId = defaultClass.id;
+                saveData(); // Save the migrated structure
+            } else if (serverData.classes) {
+                // New format
+                data = serverData;
+                // Ensure a current class is selected if classes exist
+                if (!data.currentClassId && data.classes.length > 0) {
+                    data.currentClassId = data.classes[0].id;
+                }
+            } else {
+                // No data or empty
+                if (data.classes.length === 0) {
+                    const defaultClass = createClass("Default Class");
+                    // Add default names if creating from scratch
+                    const START_NAMES = ["Pinpin", "Eva", "Andrew", "Alston", "Emma L", "Emma H", "Una L", "Jason", "Yoona W", "Anson", "Mona", "Zoey", "Yumi", "Mia", "Eason", "Ocean", "Bernie", "Kyson", "Ruby J", "Charles", "Eugene", "Felix", "Ruby T"];
+                    defaultClass.names = [...START_NAMES];
+                    data.classes.push(defaultClass);
+                    data.currentClassId = defaultClass.id;
+                    saveData();
+                }
+            }
+            render();
+        })
+        .catch(err => {
+            console.error('Error loading data:', err);
+            // Fallback for error/offline if needed, or just init empty
+            if (data.classes.length === 0) {
+                const defaultClass = createClass("Default Class");
+                data.classes.push(defaultClass);
+                data.currentClassId = defaultClass.id;
+                render();
+            }
+        });
+}
+
+// Create a new class object
+function createClass(name) {
+    return {
+        id: generateUUID(),
+        name: name,
+        names: [],
+        englishAngels: []
+    };
+}
+
+// Generate simple UUID
+function generateUUID() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+}
+
+// Save data to server
 function saveData() {
     fetch('/api/angels', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ names, englishAngels }),
+        body: JSON.stringify(data),
     })
         .catch(err => console.error('Error saving data:', err));
 }
 
-// Function to display names in the list
-function displayNames() {
-    const namesList = document.getElementById("namesList");
-    namesList.innerHTML = ""; // Clear the list
-    names.forEach(name => {
-        const li = document.createElement("li");
-        li.textContent = name;
-        namesList.appendChild(li);
+// Get current class object
+function getCurrentClass() {
+    return data.classes.find(c => c.id === data.currentClassId);
+}
+
+// UI Rendering
+function render() {
+    renderClassSelect();
+    renderStudents();
+    renderEnglishAngels();
+}
+
+function renderClassSelect() {
+    const select = document.getElementById('classSelect');
+    select.innerHTML = '';
+    data.classes.forEach(cls => {
+        const option = document.createElement('option');
+        option.value = cls.id;
+        option.textContent = cls.name;
+        if (cls.id === data.currentClassId) {
+            option.selected = true;
+        }
+        select.appendChild(option);
     });
 }
 
-// Function to display English Angels with numbers
-function displayEnglishAngels() {
-    const englishAngelsList = document.getElementById("englishAngelsList");
-    englishAngelsList.innerHTML = ""; // Clear the list
-    englishAngels.forEach((name, index) => {
-        const li = document.createElement("li");
-        li.textContent = `${index + 1}. ${name}`;
-        englishAngelsList.appendChild(li);
-    });
+function renderStudents() {
+    const currentClass = getCurrentClass();
+    const list = document.getElementById('namesList');
+    const countSpan = document.getElementById('studentCount');
+
+    list.innerHTML = '';
+    if (currentClass) {
+        countSpan.textContent = `(${currentClass.names.length})`;
+        currentClass.names.forEach(name => {
+            const li = document.createElement('li');
+            li.textContent = name;
+
+            // Add delete button for student validation/management (optional but good UI)
+            const deleteBtn = document.createElement('span');
+            deleteBtn.textContent = ' ❌';
+            deleteBtn.style.cursor = 'pointer';
+            deleteBtn.style.fontSize = '0.8em';
+            deleteBtn.title = 'Remove student';
+            deleteBtn.onclick = (e) => {
+                e.stopPropagation(); // prevent other clicks
+                removeStudent(name);
+            };
+            li.appendChild(deleteBtn);
+
+            list.appendChild(li);
+        });
+    } else {
+        countSpan.textContent = '(0)';
+    }
 }
 
-// Function to select a random name and move it to the English Angels list
+function renderEnglishAngels() {
+    const currentClass = getCurrentClass();
+    const list = document.getElementById('englishAngelsList');
+    list.innerHTML = '';
+
+    if (currentClass) {
+        currentClass.englishAngels.forEach((name, index) => {
+            const li = document.createElement('li');
+            li.textContent = `${index + 1}. ${name}`;
+            list.appendChild(li);
+        });
+    }
+}
+
+// Logic Actions
+
+function switchClass(classId) {
+    data.currentClassId = classId;
+    renderStudents();
+    renderEnglishAngels();
+}
+
+function addNewClass() {
+    const nameInput = document.getElementById('newClassName');
+    const name = nameInput.value.trim();
+    if (name) {
+        const newClass = createClass(name);
+        data.classes.push(newClass);
+        data.currentClassId = newClass.id;
+        saveData();
+
+        nameInput.value = '';
+        toggleNewClassInput(false);
+        render(); // Re-render all to update select and lists
+    } else {
+        alert("Please enter a class name.");
+    }
+}
+
+function addStudent() {
+    const input = document.getElementById('newStudentName');
+    const name = input.value.trim();
+    const currentClass = getCurrentClass();
+
+    if (name && currentClass) {
+        // Prevent duplicates in active list
+        if (currentClass.names.includes(name)) {
+            alert("Student already in the list!");
+            return;
+        }
+
+        currentClass.names.push(name);
+        saveData();
+        input.value = '';
+        renderStudents();
+    } else if (!currentClass) {
+        alert("No class selected!");
+    }
+}
+
+function removeStudent(name) {
+    const currentClass = getCurrentClass();
+    if (currentClass && confirm(`Remove ${name} from ${currentClass.name}?`)) {
+        currentClass.names = currentClass.names.filter(n => n !== name);
+        saveData();
+        renderStudents();
+    }
+}
+
 function selectEnglishAngel() {
-    if (names.length === 0) {
-        alert("No more names to select!");
+    const currentClass = getCurrentClass();
+    if (!currentClass) return;
+
+    if (currentClass.names.length === 0) {
+        alert("No more names to select in this class!");
         return;
     }
 
-    const randomIndex = Math.floor(Math.random() * names.length);
-    const selectedName = names.splice(randomIndex, 1)[0]; // Remove the selected name from the list
+    const randomIndex = Math.floor(Math.random() * currentClass.names.length);
+    const selectedName = currentClass.names.splice(randomIndex, 1)[0];
 
-    englishAngels.push(selectedName);
+    currentClass.englishAngels.push(selectedName);
     saveData();
-
-    displayNames();
-    displayEnglishAngels();
+    renderStudents();
+    renderEnglishAngels();
 }
 
-// Event listener for the button
-document.getElementById("selectButton").addEventListener("click", selectEnglishAngel);
+function resetCurrentClassLists() {
+    const currentClass = getCurrentClass();
+    if (!currentClass) return;
 
-// Function to reset the lists
-function resetLists() {
-    if (confirm("Are you sure you want to reset the lists? This will clear all English Angels.")) {
-        // Reset English Angels
-        englishAngels = [];
+    if (confirm(`Are you sure you want to reset the lists for "${currentClass.name}"? This will move all English Angels back to the student list.`)) {
+        // Move all angels back to names
+        currentClass.names = [...currentClass.names, ...currentClass.englishAngels];
+        currentClass.englishAngels = [];
 
-        // Reset names to original list
-        names = [...START_NAMES];
-
-        // Save to server
         saveData();
-
-        // Update displays
-        displayNames();
-        displayEnglishAngels();
+        renderStudents();
+        renderEnglishAngels();
     }
 }
 
-// Add event listener for reset button
-document.getElementById("resetButton").addEventListener("click", resetLists);
+// Event Listeners
+function setupEventListeners() {
+    // Class selection
+    document.getElementById('classSelect').addEventListener('change', (e) => {
+        switchClass(e.target.value);
+    });
 
-// Initial display of both lists
-displayNames();
-displayEnglishAngels();
+    // New Class UI toggle
+    document.getElementById('newClassButton').addEventListener('click', () => {
+        toggleNewClassInput(true);
+    });
+
+    document.getElementById('cancelClassButton').addEventListener('click', () => {
+        toggleNewClassInput(false);
+    });
+
+    document.getElementById('saveClassButton').addEventListener('click', addNewClass);
+
+    // Add Student
+    document.getElementById('addStudentButton').addEventListener('click', addStudent);
+    document.getElementById('newStudentName').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') addStudent();
+    });
+
+    // Game Actions
+    document.getElementById('selectButton').addEventListener('click', selectEnglishAngel);
+    document.getElementById('resetButton').addEventListener('click', resetCurrentClassLists);
+}
+
+function toggleNewClassInput(show) {
+    const inputGroup = document.getElementById('newClassInputGroup');
+    const createBtn = document.getElementById('newClassButton');
+    const select = document.getElementById('classSelect');
+
+    if (show) {
+        inputGroup.style.display = 'block';
+        createBtn.style.display = 'none';
+        select.disabled = true;
+        document.getElementById('newClassName').focus();
+    } else {
+        inputGroup.style.display = 'none';
+        createBtn.style.display = 'inline-block';
+        select.disabled = false;
+        document.getElementById('newClassName').value = '';
+    }
+}
+
+// Start
+init();
