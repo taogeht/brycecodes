@@ -6,7 +6,13 @@ const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 80;
-const DATA_FILE = path.join(__dirname, 'data.json');
+const DATA_FILE = process.env.DATA_PATH || path.join(__dirname, 'data.json');
+
+// Ensure the directory for DATA_FILE exists
+const dataDir = path.dirname(DATA_FILE);
+if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+}
 
 app.use(cors());
 app.use(bodyParser.json());

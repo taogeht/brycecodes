@@ -17,5 +17,8 @@ COPY englishangel/ ./englishangel/
 # Expose port 80
 EXPOSE 80
 
+# Volume for persistent data
+VOLUME /data
+
 # Start the server
 CMD [ "npm", "start" ]
