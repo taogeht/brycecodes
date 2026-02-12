@@ -165,7 +165,7 @@ function renderEnglishAngels() {
     if (currentClass) {
         currentClass.englishAngels.forEach((name, index) => {
             const li = document.createElement('li');
-            li.textContent = `${index + 1}. ${name}`;
+            li.textContent = `Week ${index + 1}: ${name}`;
             list.appendChild(li);
         });
     }
@@ -250,13 +250,98 @@ function resetCurrentClassLists() {
 
     if (confirm(`Are you sure you want to reset the lists for "${currentClass.name}"? This will move all English Angels back to the student list.`)) {
         // Move all angels back to names
-        currentClass.names = [...currentClass.names, ...currentClass.englishAngels];
+        currentClass.names = [...currentClass.names, ...currentClass.englishAngels.map(entry => {
+            // Extract just the name from "Week X: Name"
+            const parts = entry.split(': ');
+            return parts.length > 1 ? parts[1] : entry;
+        })];
         currentClass.englishAngels = [];
 
         saveData();
         renderStudents();
         renderEnglishAngels();
     }
+}
+
+function drawAllClasses() {
+    if (data.classes.length === 0) {
+        alert("No classes created!");
+        return;
+    }
+
+    // Determine the next week number
+    // Find the max drawn count across all classes
+    let maxDrawn = 0;
+    data.classes.forEach(c => {
+        if (c.englishAngels.length > maxDrawn) {
+            maxDrawn = c.englishAngels.length;
+        }
+    });
+    const nextWeek = maxDrawn + 1;
+
+    const results = [];
+
+    // Iterate all classes
+    let atLeastOneDrawn = false;
+
+    data.classes.forEach(currClass => {
+        if (currClass.names.length > 0) {
+            const randomIndex = Math.floor(Math.random() * currClass.names.length);
+            const selectedName = currClass.names.splice(randomIndex, 1)[0];
+
+            currClass.englishAngels.push(`Week ${nextWeek}: ${selectedName}`);
+            results.push({
+                className: currClass.name,
+                student: selectedName
+            });
+            atLeastOneDrawn = true;
+        } else {
+            results.push({
+                className: currClass.name,
+                student: "(No Value / Empty List)"
+            });
+        }
+    });
+
+    if (atLeastOneDrawn) {
+        saveData();
+        render(); // Update UI behind modal
+        showWeeklyCard(nextWeek, results);
+    } else {
+        alert("All classes are empty! No students left to draw.");
+    }
+}
+
+function showWeeklyCard(weekNum, results) {
+    const card = document.getElementById('weeklyCard');
+    const title = document.getElementById('weeklyCardTitle');
+    const content = document.getElementById('weeklyCardContent');
+
+    title.textContent = `Week ${weekNum}`;
+    content.innerHTML = '';
+
+    results.forEach(res => {
+        const div = document.createElement('div');
+        div.className = 'weekly-card-item';
+
+        const classSpan = document.createElement('span');
+        classSpan.className = 'weekly-card-class';
+        classSpan.textContent = res.className + ':';
+
+        const studentSpan = document.createElement('span');
+        studentSpan.className = 'weekly-card-student';
+        studentSpan.textContent = res.student;
+
+        div.appendChild(classSpan);
+        div.appendChild(studentSpan);
+        content.appendChild(div);
+    });
+
+    card.style.display = 'block';
+}
+
+function closeCard() {
+    document.getElementById('weeklyCard').style.display = 'none';
 }
 
 // Event Listeners
@@ -285,7 +370,9 @@ function setupEventListeners() {
 
     // Game Actions
     document.getElementById('selectButton').addEventListener('click', selectEnglishAngel);
+    document.getElementById('drawAllButton').addEventListener('click', drawAllClasses);
     document.getElementById('resetButton').addEventListener('click', resetCurrentClassLists);
+    document.getElementById('closeCardButton').addEventListener('click', closeCard);
 }
 
 function toggleNewClassInput(show) {
