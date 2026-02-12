@@ -163,6 +163,9 @@ function renderEnglishAngels() {
     list.innerHTML = '';
 
     if (currentClass) {
+        // Track counts for this render pass to add (#N)
+        const nameCounts = {};
+
         currentClass.englishAngels.forEach((name, index) => {
             const li = document.createElement('li');
 
@@ -173,7 +176,17 @@ function renderEnglishAngels() {
                 displayName = parts.length > 1 ? parts[1] : name;
             }
 
-            li.textContent = `Week ${index + 1}: ${displayName}`;
+            // Calculate suffix
+            // We need to know how many times we've seen this name UP TO THIS POINT in the list?
+            // Yes, history implies chronological order.
+
+            if (!nameCounts[displayName]) nameCounts[displayName] = 0;
+            nameCounts[displayName]++;
+
+            const count = nameCounts[displayName];
+            const suffix = count > 1 ? ` (#${count})` : '';
+
+            li.textContent = `Week ${index + 1}: ${displayName}${suffix}`;
             list.appendChild(li);
         });
     }
@@ -292,23 +305,37 @@ function drawAllClasses() {
     let atLeastOneDrawn = false;
 
     data.classes.forEach(currClass => {
+        // Auto-reset if empty
+        if (currClass.names.length === 0 && currClass.englishAngels.length > 0) {
+            // Refill names from unique history
+            const uniqueNames = [...new Set(currClass.englishAngels)];
+            // If uniqueNames is empty (shouldn't be if englishAngels > 0), we can't draw.
+            if (uniqueNames.length > 0) {
+                currClass.names = uniqueNames;
+                // Assuming we want to reset and immediately draw? Yes.
+            }
+        }
+
         if (currClass.names.length > 0) {
             const randomIndex = Math.floor(Math.random() * currClass.names.length);
             const selectedName = currClass.names.splice(randomIndex, 1)[0];
 
-            // Fix: Store ONLY the name, not "Week X: Name"
-            // renderEnglishAngels will handle the numbering
+            // Calculate Round #
+            // Count how many times this name is ALREADY in englishAngels
+            const count = currClass.englishAngels.filter(n => n === selectedName).length;
+            const suffix = count > 0 ? ` (#${count + 1})` : '';
+
             currClass.englishAngels.push(selectedName);
 
             results.push({
                 className: currClass.name,
-                student: selectedName
+                student: selectedName + suffix
             });
             atLeastOneDrawn = true;
         } else {
             results.push({
                 className: currClass.name,
-                student: "(No Value / Empty List)"
+                student: "(No Value / Empty List)" // This should rarely happen now with auto-reset, unless class is truly new/empty
             });
         }
     });
@@ -389,28 +416,25 @@ function showAllHistory() {
             ul.style.listStyleType = 'none';
             ul.style.paddingLeft = '0';
 
+            const nameCounts = {};
+
             c.englishAngels.forEach((entry, index) => {
                 const li = document.createElement('li');
-                // Clean up any double "Week X:" prefix in history view too if using raw string
-                // But generally history view shows raw entry? 
-                // Wait, if I change storage to just name, history view needs to add Week X too?
-                // Or "entry" is just name now.
 
-                // Handle legacy data that might have "Week X: "
+                // Handle legacy data
                 let displayName = entry;
                 if (entry.includes('Week') && entry.includes(':')) {
-                    // It's legacy, keep it or strip it?
-                    // If we restart counting index, it might not match old "Week X".
-                    // But for consistency let's just show what's stored or standarize.
-                    // Let's standardise to "Week {index+1}: {name}"
                     const parts = entry.split(': ');
-                    const namePart = parts.length > 1 ? parts[1] : entry;
-                    displayName = `Week ${index + 1}: ${namePart}`;
-                } else {
-                    displayName = `Week ${index + 1}: ${entry}`;
+                    displayName = parts.length > 1 ? parts[1] : entry;
                 }
 
-                li.textContent = displayName;
+                if (!nameCounts[displayName]) nameCounts[displayName] = 0;
+                nameCounts[displayName]++;
+
+                const count = nameCounts[displayName];
+                const suffix = count > 1 ? ` (#${count})` : '';
+
+                li.textContent = `Week ${index + 1}: ${displayName}${suffix}`;
                 li.style.padding = '5px 0';
                 li.style.borderBottom = '1px dotted #eee';
                 li.style.fontSize = '0.9em';
