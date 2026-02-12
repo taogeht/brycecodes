@@ -9,9 +9,10 @@
 </head>
 
 <body>
-    <div class="container">
-        <h1>English Angel Selector</h1>
-        <div class="content-wrapper">
+    <div class="app-container">
+        <div class="main-content">
+            <h1>English Angel Selector</h1>
+
             <div class="class-management">
                 <h2>Class Management</h2>
                 <div class="control-group">
@@ -29,27 +30,32 @@
                 </div>
             </div>
 
-            <div class="names-list">
-                <h2>Students List <span id="studentCount"></span></h2>
-                <ul id="namesList"></ul>
+            <div class="content-wrapper">
+                <div class="names-list">
+                    <h2>Students List <span id="studentCount"></span></h2>
+                    <ul id="namesList"></ul>
+                </div>
+                <div class="english-angels">
+                    <h2>English Angels (Current Class)</h2>
+                    <ul id="englishAngelsList"></ul>
+                </div>
             </div>
-            <div class="english-angels">
-                <h2>English Angels</h2>
-                <ul id="englishAngelsList"></ul>
+
+            <div class="button-container main-controls">
+                <button id="selectButton">Select Single Angel (Current Class)</button>
+                <button id="drawAllButton" class="primary-action">Draw Week for All Classes</button>
+                <button id="showAllHistoryButton" class="secondary-action">Show All History</button>
+                <button id="resetButton">Reset Selected Class</button>
             </div>
         </div>
 
-        <div class="button-container main-controls">
-            <button id="selectButton">Select Single Angel (Current Class)</button>
-            <button id="drawAllButton" class="primary-action">Draw Week for All Classes</button>
-            <button id="showAllHistoryButton" class="secondary-action">Show All History</button>
-            <button id="resetButton">Reset Selected Class</button>
-        </div>
-
-        <div id="weeklyCard" class="weekly-card" style="display:none;">
-            <h2 id="weeklyCardTitle">Week X</h2>
-            <div id="weeklyCardContent"></div>
-            <button id="closeCardButton">Close</button>
+        <div class="sidebar-panel">
+            <div id="sidebarContent" class="sidebar-content">
+                <h2 id="sidebarTitle">Results / History</h2>
+                <div id="sidebarBody">
+                    <p class="placeholder-text">Select an action to see results here.</p>
+                </div>
+            </div>
         </div>
     </div>
     </div>

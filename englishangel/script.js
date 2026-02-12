@@ -270,7 +270,6 @@ function drawAllClasses() {
     }
 
     // Determine the next week number
-    // Find the max drawn count across all classes
     let maxDrawn = 0;
     data.classes.forEach(c => {
         if (c.englishAngels.length > maxDrawn) {
@@ -305,44 +304,95 @@ function drawAllClasses() {
 
     if (atLeastOneDrawn) {
         saveData();
-        render(); // Update UI behind modal
-        showWeeklyCard(nextWeek, results);
+        render();
+        updateSidebarWithResults(nextWeek, results);
     } else {
         alert("All classes are empty! No students left to draw.");
     }
 }
 
-function showWeeklyCard(weekNum, results) {
-    const card = document.getElementById('weeklyCard');
-    const title = document.getElementById('weeklyCardTitle');
-    const content = document.getElementById('weeklyCardContent');
+function updateSidebarWithResults(weekNum, results) {
+    const title = document.getElementById('sidebarTitle');
+    const body = document.getElementById('sidebarBody');
 
-    title.textContent = `Week ${weekNum}`;
-    content.innerHTML = '';
+    title.textContent = `Results: Week ${weekNum}`;
+    body.innerHTML = '';
 
     results.forEach(res => {
         const div = document.createElement('div');
-        div.className = 'weekly-card-item';
+        div.className = 'sidebar-card-item';
 
         const classSpan = document.createElement('span');
-        classSpan.className = 'weekly-card-class';
-        classSpan.textContent = res.className + ':';
+        classSpan.className = 'sidebar-card-class';
+        classSpan.textContent = res.className;
 
         const studentSpan = document.createElement('span');
-        studentSpan.className = 'weekly-card-student';
+        studentSpan.className = 'sidebar-card-student';
         studentSpan.textContent = res.student;
 
         div.appendChild(classSpan);
         div.appendChild(studentSpan);
-        content.appendChild(div);
+        body.appendChild(div);
     });
-
-    card.style.display = 'block';
 }
 
-function closeCard() {
-    document.getElementById('weeklyCard').style.display = 'none';
+function showAllHistory() {
+    const title = document.getElementById('sidebarTitle');
+    const body = document.getElementById('sidebarBody');
+
+    title.textContent = "All History";
+    body.innerHTML = '';
+
+    if (data.classes.length === 0) {
+        body.innerHTML = '<p class="placeholder-text">No classes found.</p>';
+        return;
+    }
+
+    data.classes.forEach(c => {
+        const classSection = document.createElement('div');
+        classSection.style.marginBottom = '20px';
+        classSection.style.padding = '10px';
+        classSection.style.backgroundColor = 'white';
+        classSection.style.borderRadius = '6px';
+        classSection.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+
+        const classHeader = document.createElement('h3');
+        classHeader.textContent = c.name;
+        classHeader.style.color = '#333';
+        classHeader.style.marginTop = '0';
+        classHeader.style.marginBottom = '10px';
+        classHeader.style.fontSize = '1em';
+        classHeader.style.borderBottom = '1px solid #eee';
+        classHeader.style.paddingBottom = '5px';
+        classSection.appendChild(classHeader);
+
+        if (c.englishAngels.length === 0) {
+            const noData = document.createElement('p');
+            noData.textContent = "No history yet.";
+            noData.style.fontStyle = 'italic';
+            noData.style.color = '#999';
+            noData.style.fontSize = '0.9em';
+            classSection.appendChild(noData);
+        } else {
+            const ul = document.createElement('ul');
+            ul.style.listStyleType = 'none';
+            ul.style.paddingLeft = '0';
+
+            c.englishAngels.forEach(entry => {
+                const li = document.createElement('li');
+                li.textContent = entry;
+                li.style.padding = '5px 0';
+                li.style.borderBottom = '1px dotted #eee';
+                li.style.fontSize = '0.9em';
+                if (li.textContent.includes('Effect')) li.style.display = 'none'; // Cleanup old test data if needed
+                ul.appendChild(li);
+            });
+            classSection.appendChild(ul);
+        }
+        body.appendChild(classSection);
+    });
 }
+
 
 // Event Listeners
 function setupEventListeners() {
@@ -369,11 +419,11 @@ function setupEventListeners() {
     });
 
     // Game Actions
+    // Game Actions
     document.getElementById('selectButton').addEventListener('click', selectEnglishAngel);
     document.getElementById('drawAllButton').addEventListener('click', drawAllClasses);
     document.getElementById('showAllHistoryButton').addEventListener('click', showAllHistory);
     document.getElementById('resetButton').addEventListener('click', resetCurrentClassLists);
-    document.getElementById('closeCardButton').addEventListener('click', closeCard);
 }
 
 function toggleNewClassInput(show) {
