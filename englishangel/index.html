@@ -33,15 +33,25 @@
                 <h2>Students List <span id="studentCount"></span></h2>
                 <ul id="namesList"></ul>
             </div>
-            <div class="button-container">
-                <button id="selectButton">Select English Angel</button>
-                <button id="resetButton">Reset Selected Class</button>
-            </div>
             <div class="english-angels">
                 <h2>English Angels</h2>
                 <ul id="englishAngelsList"></ul>
             </div>
         </div>
+
+        <div class="button-container main-controls">
+            <button id="selectButton">Select Single Angel (Current Class)</button>
+            <button id="drawAllButton" class="primary-action">Draw Week for All Classes</button>
+            <button id="showAllHistoryButton" class="secondary-action">Show All History</button>
+            <button id="resetButton">Reset Selected Class</button>
+        </div>
+
+        <div id="weeklyCard" class="weekly-card" style="display:none;">
+            <h2 id="weeklyCardTitle">Week X</h2>
+            <div id="weeklyCardContent"></div>
+            <button id="closeCardButton">Close</button>
+        </div>
+    </div>
     </div>
     <script src="script.js"></script>
 </body>
