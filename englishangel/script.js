@@ -165,7 +165,15 @@ function renderEnglishAngels() {
     if (currentClass) {
         currentClass.englishAngels.forEach((name, index) => {
             const li = document.createElement('li');
-            li.textContent = `Week ${index + 1}: ${name}`;
+
+            // Clean up name if it already has "Week X: " prefix from legacy data
+            let displayName = name;
+            if (name.includes('Week') && name.includes(':')) {
+                const parts = name.split(': ');
+                displayName = parts.length > 1 ? parts[1] : name;
+            }
+
+            li.textContent = `Week ${index + 1}: ${displayName}`;
             list.appendChild(li);
         });
     }
@@ -288,7 +296,10 @@ function drawAllClasses() {
             const randomIndex = Math.floor(Math.random() * currClass.names.length);
             const selectedName = currClass.names.splice(randomIndex, 1)[0];
 
-            currClass.englishAngels.push(`Week ${nextWeek}: ${selectedName}`);
+            // Fix: Store ONLY the name, not "Week X: Name"
+            // renderEnglishAngels will handle the numbering
+            currClass.englishAngels.push(selectedName);
+
             results.push({
                 className: currClass.name,
                 student: selectedName
@@ -378,13 +389,32 @@ function showAllHistory() {
             ul.style.listStyleType = 'none';
             ul.style.paddingLeft = '0';
 
-            c.englishAngels.forEach(entry => {
+            c.englishAngels.forEach((entry, index) => {
                 const li = document.createElement('li');
-                li.textContent = entry;
+                // Clean up any double "Week X:" prefix in history view too if using raw string
+                // But generally history view shows raw entry? 
+                // Wait, if I change storage to just name, history view needs to add Week X too?
+                // Or "entry" is just name now.
+
+                // Handle legacy data that might have "Week X: "
+                let displayName = entry;
+                if (entry.includes('Week') && entry.includes(':')) {
+                    // It's legacy, keep it or strip it?
+                    // If we restart counting index, it might not match old "Week X".
+                    // But for consistency let's just show what's stored or standarize.
+                    // Let's standardise to "Week {index+1}: {name}"
+                    const parts = entry.split(': ');
+                    const namePart = parts.length > 1 ? parts[1] : entry;
+                    displayName = `Week ${index + 1}: ${namePart}`;
+                } else {
+                    displayName = `Week ${index + 1}: ${entry}`;
+                }
+
+                li.textContent = displayName;
                 li.style.padding = '5px 0';
                 li.style.borderBottom = '1px dotted #eee';
                 li.style.fontSize = '0.9em';
-                if (li.textContent.includes('Effect')) li.style.display = 'none'; // Cleanup old test data if needed
+                if (li.textContent.includes('Effect')) li.style.display = 'none';
                 ul.appendChild(li);
             });
             classSection.appendChild(ul);
@@ -393,6 +423,24 @@ function showAllHistory() {
     });
 }
 
+function deleteCurrentClass() {
+    const currentClass = getCurrentClass();
+    if (!currentClass) return;
+
+    if (confirm(`Are you sure you want to permanently delete the class "${currentClass.name}"?`)) {
+        data.classes = data.classes.filter(c => c.id !== currentClass.id);
+
+        // Select another class if available
+        if (data.classes.length > 0) {
+            data.currentClassId = data.classes[0].id;
+        } else {
+            data.currentClassId = null;
+        }
+
+        saveData();
+        render();
+    }
+}
 
 // Event Listeners
 function setupEventListeners() {
@@ -405,6 +453,8 @@ function setupEventListeners() {
     document.getElementById('newClassButton').addEventListener('click', () => {
         toggleNewClassInput(true);
     });
+
+    document.getElementById('deleteClassButton').addEventListener('click', deleteCurrentClass);
 
     document.getElementById('cancelClassButton').addEventListener('click', () => {
         toggleNewClassInput(false);
