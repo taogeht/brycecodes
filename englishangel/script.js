@@ -371,6 +371,7 @@ function setupEventListeners() {
     // Game Actions
     document.getElementById('selectButton').addEventListener('click', selectEnglishAngel);
     document.getElementById('drawAllButton').addEventListener('click', drawAllClasses);
+    document.getElementById('showAllHistoryButton').addEventListener('click', showAllHistory);
     document.getElementById('resetButton').addEventListener('click', resetCurrentClassLists);
     document.getElementById('closeCardButton').addEventListener('click', closeCard);
 }
