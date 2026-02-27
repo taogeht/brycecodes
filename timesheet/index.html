@@ -5,6 +5,12 @@
     <meta charset="UTF-8">
     <title>Signature Sheet Generator</title>
     <link rel="stylesheet" href="styles.css">
+
+    <!-- DOCX Export Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/docxtemplater/3.42.0/docxtemplater.js"></script>
+    <script src="https://unpkg.com/pizzip@3.1.6/dist/pizzip.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pizzip/3.1.6/pizzip-utils.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 </head>
 
 <body>
@@ -55,14 +61,17 @@
                         type="text" id="time1" placeholder="Time"> <input type="number" id="mins1" placeholder="Mins">
                 </div>
                 <div class="day-config"><label><input type="checkbox" id="work2" value="2" checked> Tuesday</label>
-                    <input type="text" id="time2" value="4:30-5:30"> <input type="number" id="mins2" value="60"></div>
+                    <input type="text" id="time2" value="4:30-5:30"> <input type="number" id="mins2" value="60">
+                </div>
                 <div class="day-config"><label><input type="checkbox" id="work3" value="3" checked> Wednesday</label>
-                    <input type="text" id="time3" value="3:30-5:30"> <input type="number" id="mins3" value="120"></div>
+                    <input type="text" id="time3" value="3:30-5:30"> <input type="number" id="mins3" value="120">
+                </div>
                 <div class="day-config"><label><input type="checkbox" id="work4" value="4"> Thursday</label> <input
                         type="text" id="time4" placeholder="Time"> <input type="number" id="mins4" placeholder="Mins">
                 </div>
                 <div class="day-config"><label><input type="checkbox" id="work5" value="5" checked> Friday</label>
-                    <input type="text" id="time5" value="3:30-5:30"> <input type="number" id="mins5" value="120"></div>
+                    <input type="text" id="time5" value="3:30-5:30"> <input type="number" id="mins5" value="120">
+                </div>
             </div>
             <div id="salaryConfig" style="display:none;">
                 <label>Working Days:</label>
@@ -75,6 +84,7 @@
         </div>
         <br>
         <button onclick="generateTable()">Generate Table</button>
+        <button onclick="exportToWord()" style="background-color: #007bff; margin-left: 10px;">Export to Word</button>
     </div>
 
     <div id="tableContainer"></div>

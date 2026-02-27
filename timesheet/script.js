@@ -259,3 +259,81 @@ function updateSummary() {
     document.getElementById('totalHours').textContent = totalHours;
     document.getElementById('totalPay').textContent = totalPay;
 }
+
+// DOCX Export Functionality
+function loadFile(url, callback) {
+    PizZipUtils.getBinaryContent(url, callback);
+}
+
+function exportToWord() {
+    // 1. Gather data from the generated table
+    const tableRows = document.querySelectorAll('tbody tr');
+    if (tableRows.length === 0) {
+        alert("Please generate a table first!");
+        return;
+    }
+
+    const name = timesheetData.name || document.getElementById('name').value;
+    const className = timesheetData.class || document.getElementById('class').value;
+    const month = parseInt(document.getElementById('month').value);
+    const year = parseInt(document.getElementById('year').value);
+    const monthName = getMonthName(month);
+
+    let days = [];
+    tableRows.forEach((row, index) => {
+        if (!row.classList.contains('day-off')) {
+            const cells = row.cells;
+            days.push({
+                rowIndex: index + 1, // original row number, or we could re-index sequentially for the printout
+                date: cells[1].textContent,
+                className: cells[2].textContent,
+                time: cells[3].textContent,
+                mins: cells[4].textContent,
+                remarks: cells[5].textContent
+            });
+        }
+    });
+
+    // 2. Load the template
+    loadFile('template.docx', function (error, content) {
+        if (error) {
+            console.error(error);
+            alert("Error loading template.docx. Ensure it exists in the timesheet directory.");
+            return;
+        }
+
+        try {
+            const zip = new PizZip(content);
+            const doc = new window.docxtemplater(zip, {
+                paragraphLoop: true,
+                linebreaks: true,
+            });
+
+            // 3. Set the data
+            doc.setData({
+                className: className,
+                name: name,
+                monthName: monthName,
+                year: year,
+                days: days
+            });
+
+            // 4. Render the document
+            doc.render();
+
+            // 5. Output the document
+            const out = doc.getZip().generate({
+                type: "blob",
+                mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            });
+
+            // 6. Download the file
+            const fileName = `${monthName}-${className}.docx`;
+            saveAs(out, fileName);
+
+        } catch (error) {
+            console.error("Error generating document:", error);
+            alert("An error occurred while generating the document.");
+        }
+    });
+}
