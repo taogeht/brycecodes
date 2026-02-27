@@ -337,3 +337,108 @@ function exportToWord() {
         }
     });
 }
+
+function exportToImage() {
+    const originalContainer = document.getElementById('tableContainer');
+    if (!originalContainer || !originalContainer.querySelector('table')) {
+        alert("Please generate a table first!");
+        return;
+    }
+
+    // Create a clone to manipulate safely without affecting UI
+    const clone = originalContainer.cloneNode(true);
+
+    // Style the clone to look like a document page
+    clone.style.width = '800px';
+    clone.style.padding = '40px';
+    clone.style.background = 'white';
+    clone.style.color = 'black';
+    clone.style.position = 'absolute';
+    clone.style.left = '-9999px'; // Hide it off-screen
+    clone.style.top = '0';
+    clone.style.fontFamily = 'Arial, sans-serif';
+    clone.style.boxSizing = 'border-box';
+
+    // Title styling to match DOCX
+    const h2 = clone.querySelector('h2');
+    if (h2) {
+        h2.style.textAlign = 'center';
+        h2.style.fontSize = '24px';
+        h2.style.marginBottom = '20px';
+    }
+
+    // Remove "Action" column header
+    const ths = clone.querySelectorAll('th');
+    if (ths.length > 0) {
+        ths[ths.length - 1].remove();
+    }
+
+    // Process rows
+    const rows = clone.querySelectorAll('tbody tr');
+    let rowIndex = 1;
+    rows.forEach(row => {
+        if (row.classList.contains('day-off')) {
+            row.remove(); // Remove day-off rows completely
+        } else {
+            // Remove the last cell (Action button)
+            const cells = row.querySelectorAll('td');
+            if (cells.length > 0) {
+                cells[cells.length - 1].remove();
+            }
+            // Update the row number to be sequential
+            cells[0].textContent = rowIndex++;
+
+            // Make sure the borders look right for print
+            cells.forEach(c => {
+                c.style.border = '1px solid black';
+                c.style.padding = '8px';
+                c.removeAttribute('contenteditable');
+            });
+        }
+    });
+
+    // Fix header borders
+    clone.querySelectorAll('th').forEach(th => {
+        th.style.border = '1px solid black';
+        th.style.padding = '8px';
+        th.style.textAlign = 'left';
+        th.style.fontWeight = 'bold';
+    });
+    const table = clone.querySelector('table');
+    table.style.borderCollapse = 'collapse';
+    table.style.width = '100%';
+    table.style.marginTop = '20px';
+    table.style.marginBottom = '40px';
+
+    // Remove summary panel
+    const summary = clone.querySelector('.summary');
+    if (summary) summary.remove();
+
+    // Add signature block
+    const sigBlock = document.createElement('div');
+    sigBlock.style.marginTop = '60px';
+    sigBlock.style.fontSize = '24px';
+    sigBlock.style.fontWeight = 'bold';
+    sigBlock.innerHTML = 'Signature: __________________';
+    clone.appendChild(sigBlock);
+
+    // Add to body so html2canvas can properly render it
+    document.body.appendChild(clone);
+
+    const month = parseInt(document.getElementById('month').value);
+    const monthName = getMonthName(month);
+    const className = document.getElementById('class').value || 'Class';
+    const fileName = `${monthName}-${className}.png`;
+
+    html2canvas(clone, { scale: 2 }).then(canvas => {
+        canvas.toBlob(function (blob) {
+            saveAs(blob, fileName);
+            // Clean up
+            document.body.removeChild(clone);
+        });
+    }).catch(err => {
+        console.error("Error generating image:", err);
+        alert("An error occurred while generating the image.");
+        document.body.removeChild(clone);
+    });
+}

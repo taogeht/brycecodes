@@ -11,6 +11,7 @@
     <script src="https://unpkg.com/pizzip@3.1.6/dist/pizzip.js"></script>
     <script src="https://unpkg.com/pizzip@3.1.6/dist/pizzip-utils.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 
 <body>
@@ -85,6 +86,7 @@
         <br>
         <button onclick="generateTable()">Generate Table</button>
         <button onclick="exportToWord()" style="background-color: #007bff; margin-left: 10px;">Export to Word</button>
+        <button onclick="exportToImage()" style="background-color: #17a2b8; margin-left: 10px;">Export to Image</button>
     </div>
 
     <div id="tableContainer"></div>
