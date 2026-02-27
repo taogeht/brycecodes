@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Signature Sheet Generator</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <h1>Signature Sheet Generator</h1>
+
+    <div class="controls">
+        <label>Name: <input type="text" id="name" placeholder="Enter your name"></label><br><br>
+        <label>Class: <input type="text" id="class" placeholder="Enter class (e.g. 3B)"></label><br><br>
+        <label>Pay Rate ($/hr): <input type="number" id="payRate" placeholder="735" value="735"
+                step="0.01"></label><br><br>
+        <label>Type:
+            <select id="employmentType" onchange="handleEmploymentTypeChange()">
+                <option value="hourly">Hourly</option>
+                <option value="salary">Salary</option>
+            </select>
+        </label><br><br>
+        <label>Month:
+            <select id="month">
+                <option value="1">January</option>
+                <option value="2">February</option>
+                <option value="3">March</option>
+                <option value="4">April</option>
+                <option value="5">May</option>
+                <option value="6">June</option>
+                <option value="7">July</option>
+                <option value="8">August</option>
+                <option value="9">September</option>
+                <option value="10">October</option>
+                <option value="11">November</option>
+                <option value="12">December</option>
+            </select>
+        </label>
+        <label>Year:
+            <select id="year">
+                <option value="2024">2024</option>
+                <option value="2025">2025</option>
+                <option value="2026">2026</option>
+                <option value="2027">2027</option>
+                <option value="2028">2028</option>
+                <option value="2029">2029</option>
+                <option value="2030">2030</option>
+            </select>
+        </label><br><br>
+        <div id="scheduleSettings" class="schedule-settings">
+            <h3>Schedule Configuration</h3>
+            <div id="hourlyConfig">
+                <div class="day-config"><label><input type="checkbox" id="work1" value="1"> Monday</label> <input
+                        type="text" id="time1" placeholder="Time"> <input type="number" id="mins1" placeholder="Mins">
+                </div>
+                <div class="day-config"><label><input type="checkbox" id="work2" value="2" checked> Tuesday</label>
+                    <input type="text" id="time2" value="4:30-5:30"> <input type="number" id="mins2" value="60"></div>
+                <div class="day-config"><label><input type="checkbox" id="work3" value="3" checked> Wednesday</label>
+                    <input type="text" id="time3" value="3:30-5:30"> <input type="number" id="mins3" value="120"></div>
+                <div class="day-config"><label><input type="checkbox" id="work4" value="4"> Thursday</label> <input
+                        type="text" id="time4" placeholder="Time"> <input type="number" id="mins4" placeholder="Mins">
+                </div>
+                <div class="day-config"><label><input type="checkbox" id="work5" value="5" checked> Friday</label>
+                    <input type="text" id="time5" value="3:30-5:30"> <input type="number" id="mins5" value="120"></div>
+            </div>
+            <div id="salaryConfig" style="display:none;">
+                <label>Working Days:</label>
+                <label><input type="checkbox" id="sal1" value="1" checked> Mon</label>
+                <label><input type="checkbox" id="sal2" value="2"> Tue</label>
+                <label><input type="checkbox" id="sal3" value="3" checked> Wed</label>
+                <label><input type="checkbox" id="sal4" value="4" checked> Thu</label>
+                <label><input type="checkbox" id="sal5" value="5" checked> Fri</label>
+            </div>
+        </div>
+        <br>
+        <button onclick="generateTable()">Generate Table</button>
+    </div>
+
+    <div id="tableContainer"></div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>

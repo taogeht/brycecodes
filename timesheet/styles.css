@@ -1,0 +1,146 @@
+body {
+    font-family: Arial, sans-serif;
+    max-width: 1200px;
+    margin: 20px auto;
+    padding: 0 20px;
+}
+
+.controls {
+    margin-bottom: 20px;
+    padding: 20px;
+    background: #f5f5f5;
+    border-radius: 8px;
+}
+
+label {
+    display: inline-block;
+    margin-right: 20px;
+}
+
+input,
+select {
+    padding: 5px;
+    margin: 5px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+button {
+    padding: 8px 16px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #45a049;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+th,
+td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+
+th {
+    background-color: #f8f9fa;
+    font-weight: bold;
+}
+
+.day-off {
+    background-color: #ffe6e6;
+    color: #999;
+    text-decoration: line-through;
+}
+
+.schedule-settings {
+    margin-top: 15px;
+    padding: 15px;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.schedule-settings h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 1.1em;
+}
+
+.day-config {
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+}
+
+.day-config label {
+    display: inline-block;
+    width: 120px;
+    margin-right: 10px;
+    margin-bottom: 0;
+}
+
+.day-config input[type="text"] {
+    width: 110px;
+}
+
+.day-config input[type="number"] {
+    width: 70px;
+}
+
+.selected {
+    background-color: #e6ffe6;
+}
+
+/* Responsive design */
+@media screen and (max-width: 768px) {
+    body {
+        padding: 10px;
+    }
+
+    .controls {
+        padding: 10px;
+    }
+
+    label {
+        display: block;
+        margin-bottom: 10px;
+    }
+
+    table {
+        display: block;
+        overflow-x: auto;
+    }
+}
+
+/* Print styles */
+@media print {
+    body {
+        margin: 0;
+        padding: 0;
+    }
+
+    .controls,
+    button {
+        display: none !important;
+    }
+
+    table {
+        margin-top: 0;
+    }
+
+    /* Hide the Action column in print */
+    th:last-child,
+    td:last-child {
+        display: none;
+    }
+}
