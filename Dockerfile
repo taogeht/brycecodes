@@ -13,6 +13,7 @@ COPY server.js ./
 COPY invoice/ ./invoice/
 COPY mainpage/ ./mainpage/
 COPY englishangel/ ./englishangel/
+COPY timesheet/ ./timesheet/
 
 # Expose port 80
 EXPOSE 80
