@@ -279,12 +279,13 @@ function exportToWord() {
     const year = parseInt(document.getElementById('year').value);
     const monthName = getMonthName(month);
 
+    let seqIndex = 1;
     let days = [];
     tableRows.forEach((row, index) => {
         if (!row.classList.contains('day-off')) {
             const cells = row.cells;
             days.push({
-                rowIndex: index + 1, // original row number, or we could re-index sequentially for the printout
+                rowIndex: seqIndex++,
                 date: cells[1].textContent,
                 className: cells[2].textContent,
                 time: cells[3].textContent,
@@ -293,6 +294,17 @@ function exportToWord() {
             });
         }
     });
+
+    while (days.length < 23) {
+        days.push({
+            rowIndex: seqIndex++,
+            date: '',
+            className: '',
+            time: '',
+            mins: '',
+            remarks: ''
+        });
+    }
 
     // 2. Load the template
     loadFile('template.docx', function (error, content) {
@@ -349,7 +361,8 @@ function exportToImage() {
     const clone = originalContainer.cloneNode(true);
 
     // Style the clone to look like a document page
-    clone.style.width = '800px';
+    clone.style.width = '794px';
+    clone.style.minHeight = '1123px';
     clone.style.padding = '40px';
     clone.style.background = 'white';
     clone.style.color = 'black';
@@ -358,6 +371,9 @@ function exportToImage() {
     clone.style.top = '0';
     clone.style.fontFamily = 'Arial, sans-serif';
     clone.style.boxSizing = 'border-box';
+    clone.style.border = '2px solid black';
+    clone.style.display = 'flex';
+    clone.style.flexDirection = 'column';
 
     // Title styling to match DOCX
     const h2 = clone.querySelector('h2');
@@ -393,9 +409,27 @@ function exportToImage() {
                 c.style.border = '1px solid black';
                 c.style.padding = '8px';
                 c.removeAttribute('contenteditable');
+                c.style.height = '35px';
             });
         }
     });
+
+    // Pad to exactly 23 rows for the image representation as well
+    const tbody = clone.querySelector('tbody');
+    while (rowIndex <= 23) {
+        const tr = document.createElement('tr');
+        for (let i = 0; i < 6; i++) {
+            const td = document.createElement('td');
+            td.style.border = '1px solid black';
+            td.style.padding = '8px';
+            td.style.height = '35px';
+            if (i === 0) td.textContent = rowIndex;
+            else td.innerHTML = '&nbsp;'; // Non-breaking space keeps cell structure
+            tr.appendChild(td);
+        }
+        tbody.appendChild(tr);
+        rowIndex++;
+    }
 
     // Fix header borders
     clone.querySelectorAll('th').forEach(th => {
@@ -408,7 +442,7 @@ function exportToImage() {
     table.style.borderCollapse = 'collapse';
     table.style.width = '100%';
     table.style.marginTop = '20px';
-    table.style.marginBottom = '40px';
+    table.style.marginBottom = '20px';
 
     // Remove summary panel
     const summary = clone.querySelector('.summary');
@@ -416,7 +450,8 @@ function exportToImage() {
 
     // Add signature block
     const sigBlock = document.createElement('div');
-    sigBlock.style.marginTop = '60px';
+    sigBlock.style.marginTop = 'auto'; // Pushes to the bottom of the flex container (A4 page height)
+    sigBlock.style.paddingTop = '60px'; // Give ample space before signature
     sigBlock.style.fontSize = '24px';
     sigBlock.style.fontWeight = 'bold';
     sigBlock.innerHTML = 'Signature: __________________';
