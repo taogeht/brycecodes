@@ -14,15 +14,18 @@ COPY mainpage/ ./mainpage/
 COPY englishangel/ ./englishangel/
 COPY timesheet/ ./timesheet/
 
+# ── Fitness Journey frontend (build during Docker build) ──
+COPY fitnessjourney/frontend/package*.json ./fitnessjourney/frontend/
+RUN cd fitnessjourney/frontend && npm ci
+COPY fitnessjourney/frontend/ ./fitnessjourney/frontend/
+RUN cd fitnessjourney/frontend && npm run build
+
 # ── Fitness Journey backend ──
 COPY fitnessjourney/backend/package*.json ./fitnessjourney/backend/
 RUN cd fitnessjourney/backend && npm ci --only=production
 
 COPY fitnessjourney/backend/ ./fitnessjourney/backend/
 RUN cd fitnessjourney/backend && npx prisma generate --schema=src/prisma/schema.prisma
-
-# ── Fitness Journey frontend (pre-built dist) ──
-COPY fitnessjourney/frontend/dist/ ./fitnessjourney/frontend/dist/
 
 # Create upload directories for fitness journey
 RUN mkdir -p /app/uploads/meals /app/uploads/photos
