@@ -12,11 +12,11 @@ npx prisma db push --schema=src/prisma/schema.prisma --skip-generate || echo "Wa
 echo "Running seed..."
 node src/utils/seed.js || echo "Warning: Seed failed, continuing..."
 
-# Start fitness backend in background
+# Start fitness backend in background, force port 3001
 echo "Starting fitness server on port 3001..."
-node src/server.js &
+PORT=3001 node src/server.js &
 
-# Start main brycecodes server
+# Start main brycecodes server on port 80
 echo "Starting main server on port 80..."
 cd /usr/src/app
-node server.js
+PORT=80 node server.js
