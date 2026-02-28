@@ -22,15 +22,10 @@ if (!fs.existsSync(timesheetDataDir)) {
 }
 
 app.use(cors());
-app.use(bodyParser.json());
-
-// Serve static files
-app.use('/invoice', express.static(path.join(__dirname, 'invoice')));
-app.use('/mainpage', express.static(path.join(__dirname, 'mainpage')));
-app.use('/EnglishAngel', express.static(path.join(__dirname, 'englishangel')));
-app.use('/timesheet', express.static(path.join(__dirname, 'timesheet')));
 
 // Fitness Journey: proxy API requests to the fitness backend (port 3001)
+// IMPORTANT: Proxy must be registered BEFORE bodyParser.json() so the request
+// body stream is not consumed before being forwarded to the backend.
 const { createProxyMiddleware } = require('http-proxy-middleware');
 
 app.use('/fitnessjourney/api', (req, res, next) => {
@@ -58,6 +53,15 @@ app.use('/fitnessjourney/uploads', createProxyMiddleware({
     changeOrigin: true,
     pathRewrite: { '^/fitnessjourney/uploads': '/uploads' },
 }));
+
+// Body parser AFTER proxy routes so it doesn't consume the request stream
+app.use(bodyParser.json());
+
+// Serve static files
+app.use('/invoice', express.static(path.join(__dirname, 'invoice')));
+app.use('/mainpage', express.static(path.join(__dirname, 'mainpage')));
+app.use('/EnglishAngel', express.static(path.join(__dirname, 'englishangel')));
+app.use('/timesheet', express.static(path.join(__dirname, 'timesheet')));
 
 // Fitness Journey: serve frontend static files
 app.use('/fitnessjourney', express.static(path.join(__dirname, 'fitnessjourney', 'frontend', 'dist')));
