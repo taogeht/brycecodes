@@ -30,11 +30,15 @@ RUN cd fitnessjourney/backend && npx prisma generate --schema=src/prisma/schema.
 # Create upload directories for fitness journey
 RUN mkdir -p /app/uploads/meals /app/uploads/photos
 
+# Copy startup script
+COPY start.sh ./start.sh
+RUN chmod +x start.sh
+
 # Expose port 80
 EXPOSE 80
 
 # Volume for persistent data
 VOLUME /data
 
-# Start both servers: fitness backend on 3001, main server on 80
-CMD ["sh", "-c", "cd fitnessjourney/backend && npx prisma db push --schema=src/prisma/schema.prisma --skip-generate && node src/utils/seed.js && node src/server.js & cd /usr/src/app && npm start"]
+# Start both servers using the startup script
+CMD ["./start.sh"]
