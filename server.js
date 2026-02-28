@@ -32,10 +32,26 @@ app.use('/timesheet', express.static(path.join(__dirname, 'timesheet')));
 
 // Fitness Journey: proxy API requests to the fitness backend (port 3001)
 const { createProxyMiddleware } = require('http-proxy-middleware');
-app.use('/fitnessjourney/api', createProxyMiddleware({
+
+app.use('/fitnessjourney/api', (req, res, next) => {
+    console.log(`[PROXY] ${req.method} ${req.originalUrl} -> http://localhost:3001${req.originalUrl.replace('/fitnessjourney/api', '')}`);
+    next();
+}, createProxyMiddleware({
     target: 'http://localhost:3001',
     changeOrigin: true,
     pathRewrite: { '^/fitnessjourney/api': '' },
+    on: {
+        proxyReq: (proxyReq, req) => {
+            console.log(`[PROXY] Forwarding: ${req.method} ${proxyReq.path}`);
+        },
+        proxyRes: (proxyRes, req) => {
+            console.log(`[PROXY] Response: ${proxyRes.statusCode} for ${req.method} ${req.originalUrl}`);
+        },
+        error: (err, req, res) => {
+            console.error(`[PROXY] Error: ${err.message}`);
+            res.status(502).json({ error: 'Proxy error', details: err.message });
+        }
+    }
 }));
 app.use('/fitnessjourney/uploads', createProxyMiddleware({
     target: 'http://localhost:3001',
