@@ -14,6 +14,7 @@ COPY invoice/ ./invoice/
 COPY mainpage/ ./mainpage/
 COPY englishangel/ ./englishangel/
 COPY timesheet/ ./timesheet/
+COPY fitnessjourney/ ./fitnessjourney/
 
 # Expose port 80
 EXPOSE 80

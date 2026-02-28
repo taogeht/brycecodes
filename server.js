@@ -29,6 +29,7 @@ app.use('/invoice', express.static(path.join(__dirname, 'invoice')));
 app.use('/mainpage', express.static(path.join(__dirname, 'mainpage')));
 app.use('/EnglishAngel', express.static(path.join(__dirname, 'englishangel')));
 app.use('/timesheet', express.static(path.join(__dirname, 'timesheet')));
+app.use('/fitnessjourney', express.static(path.join(__dirname, 'fitnessjourney')));
 
 // Root redirect to /mainpage
 app.get('/', (req, res) => {
