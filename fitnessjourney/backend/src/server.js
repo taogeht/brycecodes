@@ -16,6 +16,7 @@ const templateRoutes = require('./routes/templates');
 const exportRoutes = require('./routes/export');
 const importRoutes = require('./routes/import');
 const sleepRoutes = require('./routes/sleep');
+const recordRoutes = require('./routes/records');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -47,6 +48,7 @@ app.use('/templates', templateRoutes);
 app.use('/export', exportRoutes);
 app.use('/import', importRoutes);
 app.use('/sleep', sleepRoutes);
+app.use('/records', recordRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

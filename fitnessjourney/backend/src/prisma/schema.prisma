@@ -22,15 +22,19 @@ model User {
 }
 
 model DailyLog {
-  id        String   @id @default(uuid())
-  userId    String   @map("user_id")
-  date      DateTime @db.Date
-  weightKg  Float?   @map("weight_kg")
-  wakeTime  String?  @map("wake_time")
-  sleepTime String?  @map("sleep_time")
-  notes     String?
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  date          DateTime @db.Date
+  weightKg      Float?   @map("weight_kg")
+  wakeTime      String?  @map("wake_time")
+  sleepTime     String?  @map("sleep_time")
+  notes         String?
+  hydrationMl   Int?     @map("hydration_ml")
+  stressLevel   Int?     @map("stress_level")   // 1-5
+  energyLevel   Int?     @map("energy_level")   // 1-5
+  sorenessNotes String?  @map("soreness_notes")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
   user          User          @relation(fields: [userId], references: [id])
   meals         Meal[]
@@ -98,6 +102,8 @@ model Workout {
   distanceKm     Float?   @map("distance_km")
   avgPace        String?  @map("avg_pace")
   effortLevel    Int?     @map("effort_level") // 1-5
+  volumeLoad     Float?   @map("volume_load")  // total weight x reps
+  sets           Json?    // array of { exercise, weight, reps }
   notes          String?
   createdAt      DateTime @default(now()) @map("created_at")
 
@@ -121,13 +127,18 @@ model Supplement {
 }
 
 model BodyMetric {
-  id        String   @id @default(uuid())
-  userId    String   @map("user_id")
-  date      DateTime @db.Date
-  weightKg  Float?   @map("weight_kg")
-  notes     String?
-  photoUrl  String?  @map("photo_url")
-  createdAt DateTime @default(now()) @map("created_at")
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  date        DateTime @db.Date
+  weightKg    Float?   @map("weight_kg")
+  bodyFatPct  Float?   @map("body_fat_pct")
+  muscleMassKg Float?  @map("muscle_mass_kg")
+  waistCm     Float?   @map("waist_cm")
+  hipCm       Float?   @map("hip_cm")
+  chestCm     Float?   @map("chest_cm")
+  notes       String?
+  photoUrl    String?  @map("photo_url")
+  createdAt   DateTime @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id])
 
@@ -138,7 +149,7 @@ model BodyMetric {
 model Goal {
   id          String   @id @default(uuid())
   userId      String   @map("user_id")
-  goalType    String   @map("goal_type") // weight, calories, protein, steps
+  goalType    String   @map("goal_type") // weight, calories, protein, steps, hydration, sleep, body_fat, exercise_mins
   targetValue Float    @map("target_value")
   startDate   DateTime @map("start_date") @db.Date
   targetDate  DateTime @map("target_date") @db.Date
@@ -147,6 +158,21 @@ model Goal {
   user User @relation(fields: [userId], references: [id])
 
   @@map("goals")
+}
+
+model PersonalRecord {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  exerciseName String   @map("exercise_name")
+  metricType   String   @map("metric_type") // weight, reps, time, distance
+  value        Float
+  previousBest Float?   @map("previous_best")
+  date         DateTime @db.Date
+  notes        String?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([userId, exerciseName])
+  @@map("personal_records")
 }
 
 model MealTemplate {

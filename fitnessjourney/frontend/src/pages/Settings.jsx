@@ -48,7 +48,7 @@ export default function Settings() {
         setTemplates(t => t.filter(x => x.id !== id));
     };
 
-    const goalLabels = { weight: '⚖️ Weight (kg)', calories: '🔥 Daily Calories', protein: '💪 Protein (g)', steps: '👟 Daily Steps' };
+    const goalLabels = { weight: '⚖️ Weight (kg)', calories: '🔥 Daily Calories', protein: '💪 Protein (g)', steps: '👟 Daily Steps', hydration: '💧 Hydration (ml)', sleep: '😴 Sleep (hrs)', body_fat: '📉 Body Fat %', exercise_mins: '⏱️ Exercise (mins)' };
 
     if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-2 border-primary-500 border-t-transparent" /></div>;
 

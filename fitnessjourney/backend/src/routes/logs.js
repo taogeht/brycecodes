@@ -41,7 +41,7 @@ router.get('/:date', async (req, res) => {
 // POST /logs — create daily log
 router.post('/', async (req, res) => {
     try {
-        const { date, weightKg, wakeTime, sleepTime, notes } = req.body;
+        const { date, weightKg, wakeTime, sleepTime, notes, hydrationMl, stressLevel, energyLevel, sorenessNotes } = req.body;
         if (!date) {
             return res.status(400).json({ error: 'Date is required' });
         }
@@ -50,14 +50,18 @@ router.post('/', async (req, res) => {
             where: {
                 userId_date: { userId: req.userId, date: new Date(date) }
             },
-            update: { weightKg, wakeTime, sleepTime, notes },
+            update: { weightKg, wakeTime, sleepTime, notes, hydrationMl, stressLevel, energyLevel, sorenessNotes },
             create: {
                 userId: req.userId,
                 date: new Date(date),
                 weightKg,
                 wakeTime,
                 sleepTime,
-                notes
+                notes,
+                hydrationMl,
+                stressLevel,
+                energyLevel,
+                sorenessNotes
             },
             include: {
                 meals: { include: { components: true } },
@@ -76,11 +80,11 @@ router.post('/', async (req, res) => {
 // PUT /logs/:id — update daily log
 router.put('/:id', async (req, res) => {
     try {
-        const { weightKg, wakeTime, sleepTime, notes } = req.body;
+        const { weightKg, wakeTime, sleepTime, notes, hydrationMl, stressLevel, energyLevel, sorenessNotes } = req.body;
 
         const log = await prisma.dailyLog.update({
             where: { id: req.params.id },
-            data: { weightKg, wakeTime, sleepTime, notes },
+            data: { weightKg, wakeTime, sleepTime, notes, hydrationMl, stressLevel, energyLevel, sorenessNotes },
             include: {
                 meals: { include: { components: true } },
                 workouts: true,

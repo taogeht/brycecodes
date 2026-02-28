@@ -7,6 +7,7 @@ const navItems = [
     { to: `/log/${format(new Date(), 'yyyy-MM-dd')}`, label: 'Today\'s Log', icon: '📝' },
     { to: '/meals/add', label: 'Add Meal', icon: '🍽️' },
     { to: '/workouts', label: 'Workouts', icon: '💪' },
+    { to: '/records', label: 'Records', icon: '🏆' },
     { to: '/progress', label: 'Progress', icon: '📈' },
     { to: '/sleep', label: 'Sleep', icon: '😴' },
     { to: '/import', label: 'Import', icon: '📥' },

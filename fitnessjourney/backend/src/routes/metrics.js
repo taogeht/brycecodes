@@ -36,7 +36,7 @@ router.get('/', async (req, res) => {
 // POST /metrics — create body metric
 router.post('/', async (req, res) => {
     try {
-        const { date, weightKg, notes } = req.body;
+        const { date, weightKg, bodyFatPct, muscleMassKg, waistCm, hipCm, chestCm, notes } = req.body;
         if (!date) {
             return res.status(400).json({ error: 'Date is required' });
         }
@@ -46,6 +46,11 @@ router.post('/', async (req, res) => {
                 userId: req.userId,
                 date: new Date(date),
                 weightKg: weightKg ? parseFloat(weightKg) : null,
+                bodyFatPct: bodyFatPct ? parseFloat(bodyFatPct) : null,
+                muscleMassKg: muscleMassKg ? parseFloat(muscleMassKg) : null,
+                waistCm: waistCm ? parseFloat(waistCm) : null,
+                hipCm: hipCm ? parseFloat(hipCm) : null,
+                chestCm: chestCm ? parseFloat(chestCm) : null,
                 notes
             }
         });
