@@ -1,5 +1,6 @@
-.DS_Store
 node_modules/
 .env
+uploads/
+dist/
+.DS_Store
 *.log
-venv/

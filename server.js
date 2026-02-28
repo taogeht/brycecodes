@@ -29,7 +29,26 @@ app.use('/invoice', express.static(path.join(__dirname, 'invoice')));
 app.use('/mainpage', express.static(path.join(__dirname, 'mainpage')));
 app.use('/EnglishAngel', express.static(path.join(__dirname, 'englishangel')));
 app.use('/timesheet', express.static(path.join(__dirname, 'timesheet')));
-app.use('/fitnessjourney', express.static(path.join(__dirname, 'fitnessjourney')));
+
+// Fitness Journey: proxy API requests to the fitness backend (port 3001)
+const { createProxyMiddleware } = require('http-proxy-middleware');
+app.use('/fitnessjourney/api', createProxyMiddleware({
+    target: 'http://localhost:3001',
+    changeOrigin: true,
+    pathRewrite: { '^/fitnessjourney/api': '' },
+}));
+app.use('/fitnessjourney/uploads', createProxyMiddleware({
+    target: 'http://localhost:3001',
+    changeOrigin: true,
+    pathRewrite: { '^/fitnessjourney/uploads': '/uploads' },
+}));
+
+// Fitness Journey: serve frontend static files
+app.use('/fitnessjourney', express.static(path.join(__dirname, 'fitnessjourney', 'frontend', 'dist')));
+// SPA fallback for fitness journey client-side routing
+app.get('/fitnessjourney/*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'fitnessjourney', 'frontend', 'dist', 'index.html'));
+});
 
 // Root redirect to /mainpage
 app.get('/', (req, res) => {
