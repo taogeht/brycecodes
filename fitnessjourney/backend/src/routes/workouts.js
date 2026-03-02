@@ -13,7 +13,7 @@ router.post('/', async (req, res) => {
         const {
             dailyLogId, type, startTime, endTime, durationMins,
             activeCalories, totalCalories, avgHeartRate, maxHeartRate,
-            distanceKm, effortLevel, notes
+            distanceKm, avgPace, effortLevel, volumeLoad, sets, notes
         } = req.body;
 
         if (!dailyLogId || !type) {
@@ -32,7 +32,10 @@ router.post('/', async (req, res) => {
                 avgHeartRate: avgHeartRate ? parseInt(avgHeartRate) : null,
                 maxHeartRate: maxHeartRate ? parseInt(maxHeartRate) : null,
                 distanceKm: distanceKm ? parseFloat(distanceKm) : null,
+                avgPace: avgPace || null,
                 effortLevel: effortLevel ? parseInt(effortLevel) : null,
+                volumeLoad: volumeLoad ? parseFloat(volumeLoad) : null,
+                sets: sets || null,
                 notes
             }
         });
