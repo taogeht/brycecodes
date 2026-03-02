@@ -83,7 +83,11 @@ router.post('/daily/merge', async (req, res) => {
                     weightKg: meta.weight_kg ? parseFloat(meta.weight_kg) : null,
                     wakeTime: meta.wake_time || null,
                     sleepTime: meta.sleep_time || null,
-                    notes: meta.notes || null
+                    notes: meta.notes || null,
+                    hydrationMl: meta.hydration_ml ? parseInt(meta.hydration_ml) : null,
+                    stressLevel: meta.stress_level ? parseInt(meta.stress_level) : null,
+                    energyLevel: meta.energy_level ? parseInt(meta.energy_level) : null,
+                    sorenessNotes: meta.soreness_notes || null
                 }
             });
         } else if (data.meta) {
@@ -94,6 +98,10 @@ router.post('/daily/merge', async (req, res) => {
             if (meta.wake_time !== undefined) updates.wakeTime = meta.wake_time;
             if (meta.sleep_time !== undefined) updates.sleepTime = meta.sleep_time;
             if (meta.notes !== undefined) updates.notes = meta.notes;
+            if (meta.hydration_ml !== undefined) updates.hydrationMl = parseInt(meta.hydration_ml);
+            if (meta.stress_level !== undefined) updates.stressLevel = parseInt(meta.stress_level);
+            if (meta.energy_level !== undefined) updates.energyLevel = parseInt(meta.energy_level);
+            if (meta.soreness_notes !== undefined) updates.sorenessNotes = meta.soreness_notes;
             if (Object.keys(updates).length > 0) {
                 await prisma.dailyLog.update({ where: { id: log.id }, data: updates });
             }
@@ -116,6 +124,8 @@ router.post('/daily/merge', async (req, res) => {
                     distanceKm: w.distance_km ? parseFloat(w.distance_km) : null,
                     avgPace: w.avg_pace || null,
                     effortLevel: w.effort_level ? parseInt(w.effort_level) : null,
+                    volumeLoad: w.volume_load ? parseFloat(w.volume_load) : null,
+                    sets: w.sets || null,
                     notes: w.notes || null
                 }
             });
@@ -294,7 +304,11 @@ async function ingestDailyLog(prisma, userId, data) {
             weightKg: meta.weight_kg ? parseFloat(meta.weight_kg) : null,
             wakeTime: meta.wake_time || null,
             sleepTime: meta.sleep_time || null,
-            notes: meta.notes || null
+            notes: meta.notes || null,
+            hydrationMl: meta.hydration_ml ? parseInt(meta.hydration_ml) : null,
+            stressLevel: meta.stress_level ? parseInt(meta.stress_level) : null,
+            energyLevel: meta.energy_level ? parseInt(meta.energy_level) : null,
+            sorenessNotes: meta.soreness_notes || null
         }
     });
 
@@ -336,6 +350,8 @@ async function ingestDailyLog(prisma, userId, data) {
                 distanceKm: w.distance_km ? parseFloat(w.distance_km) : null,
                 avgPace: w.avg_pace || null,
                 effortLevel: w.effort_level ? parseInt(w.effort_level) : null,
+                volumeLoad: w.volume_load ? parseFloat(w.volume_load) : null,
+                sets: w.sets || null,
                 notes: w.notes || null
             }
         });
