@@ -18,6 +18,8 @@ const EXERCISES = {
     'Pull-up': { icon: '⬆️', muscle: 'Back', img: 'pullup' },
     'Seated Cable Row': { icon: '🚣', muscle: 'Back', img: 'cable-row' },
     'T-Bar Row': { icon: '🚣', muscle: 'Back', img: 'tbar' },
+    'One Arm Row': { icon: '💪', muscle: 'Back', img: 'one-arm-row' },
+    'Bar Hang': { icon: '🧱', muscle: 'Back', img: 'bar-hang' },
     // Shoulders
     'Overhead Press': { icon: '🙌', muscle: 'Shoulders', img: 'ohp' },
     'Lateral Raise': { icon: '🤸', muscle: 'Shoulders', img: 'lateral' },
@@ -144,7 +146,7 @@ function ExerciseIllustration({ exercise, size = 48 }) {
         'chest-press': 'chest-press', 'incline-press': 'chest-press', 'decline-press': 'chest-press',
         'fly': 'chest-press', 'cable-cross': 'chest-press', 'pushup': 'plank',
         'deadlift': 'deadlift', 'row': 'deadlift', 'pulldown': 'pullup', 'pullup': 'pullup',
-        'cable-row': 'deadlift', 'tbar': 'deadlift',
+        'cable-row': 'deadlift', 'tbar': 'deadlift', 'one-arm-row': 'deadlift', 'bar-hang': 'pullup',
         'ohp': 'chest-press', 'lateral': 'curl', 'front-raise': 'curl', 'face-pull': 'curl', 'arnold': 'chest-press',
         'squat': 'squat', 'leg-press': 'squat', 'rdl': 'deadlift', 'leg-ext': 'squat',
         'leg-curl': 'squat', 'calf': 'squat', 'lunge': 'squat', 'hip-thrust': 'squat',
