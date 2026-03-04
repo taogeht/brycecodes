@@ -20,6 +20,21 @@ async function seed() {
 
     console.log(`✅ User created: ${user.email} (password: changeme123)`);
 
+    // Add Bill
+    const billHash = await bcrypt.hash('canucks', 10);
+
+    const bill = await prisma.user.upsert({
+        where: { email: 'bill@bigguns.com' },
+        update: {},
+        create: {
+            email: 'bill@bigguns.com',
+            passwordHash: billHash,
+            name: 'Bill'
+        }
+    });
+
+    console.log(`✅ User created: ${bill.email}`);
+
     // Create some default goals
     const today = new Date();
     const threeMonthsLater = new Date(today);
