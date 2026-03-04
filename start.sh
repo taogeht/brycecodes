@@ -4,9 +4,17 @@ set -e
 echo "Starting fitness backend..."
 cd /usr/src/app/fitnessjourney/backend
 
-# Run prisma migrations (don't block startup if it fails)
+# Run prisma db push with retry (database may not be ready immediately)
 echo "Running Prisma db push..."
-npx prisma db push --schema=src/prisma/schema.prisma --skip-generate || echo "Warning: Prisma db push failed, continuing..."
+for i in 1 2 3; do
+    if npx prisma db push --schema=src/prisma/schema.prisma --skip-generate; then
+        echo "✅ Prisma db push succeeded"
+        break
+    else
+        echo "⚠️ Prisma db push attempt $i failed, retrying in 3s..."
+        sleep 3
+    fi
+done
 
 # Run seed (don't block startup if it fails)
 echo "Running seed..."
