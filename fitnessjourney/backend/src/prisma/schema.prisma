@@ -12,6 +12,7 @@ model User {
   email        String       @unique
   passwordHash String       @map("password_hash")
   name         String
+  apiKey       String?      @unique @map("api_key")
   createdAt    DateTime     @default(now()) @map("created_at")
 
   dailyLogs    DailyLog[]

@@ -17,6 +17,7 @@ const exportRoutes = require('./routes/export');
 const importRoutes = require('./routes/import');
 const sleepRoutes = require('./routes/sleep');
 const recordRoutes = require('./routes/records');
+const apikeyRoutes = require('./routes/apikeys');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -49,6 +50,7 @@ app.use('/export', exportRoutes);
 app.use('/import', importRoutes);
 app.use('/sleep', sleepRoutes);
 app.use('/records', recordRoutes);
+app.use('/apikeys', apikeyRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

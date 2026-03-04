@@ -11,16 +11,22 @@ export default function Settings() {
     const [saving, setSaving] = useState(false);
     const [weightInput, setWeightInput] = useState('');
     const [weightSaving, setWeightSaving] = useState(false);
+    const [apiKey, setApiKey] = useState(null);
+    const [apiKeyVisible, setApiKeyVisible] = useState(false);
+    const [apiKeyLoading, setApiKeyLoading] = useState(false);
+    const [copied, setCopied] = useState(false);
 
     const SUPPLEMENTS = ['Creatine', 'Magnesium', 'Caffeine', 'Whey Protein', 'Fish Oil', 'Vitamin D', 'Zinc', 'Multivitamin'];
 
     useEffect(() => {
         Promise.all([
             api.get('/goals'),
-            api.get('/templates')
-        ]).then(([g, t]) => {
+            api.get('/templates'),
+            api.get('/apikeys')
+        ]).then(([g, t, k]) => {
             setGoals(g.data);
             setTemplates(t.data);
+            setApiKey(k.data.apiKey);
         }).catch(console.error).finally(() => setLoading(false));
     }, []);
 
@@ -48,6 +54,24 @@ export default function Settings() {
         setTemplates(t => t.filter(x => x.id !== id));
     };
 
+    const regenerateApiKey = async () => {
+        if (!confirm('Are you sure? Your old API key will stop working immediately.')) return;
+        setApiKeyLoading(true);
+        try {
+            const { data } = await api.post('/apikeys/regenerate');
+            setApiKey(data.apiKey);
+            setApiKeyVisible(true);
+        } catch (e) { console.error(e); } finally { setApiKeyLoading(false); }
+    };
+
+    const copyApiKey = () => {
+        navigator.clipboard.writeText(apiKey);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    const maskedKey = apiKey ? apiKey.slice(0, 8) + '••••••••••••••••' + apiKey.slice(-8) : '—';
+
     const goalLabels = { weight: '⚖️ Weight (kg)', calories: '🔥 Daily Calories', protein: '💪 Protein (g)', steps: '👟 Daily Steps', hydration: '💧 Hydration (ml)', sleep: '😴 Sleep (hrs)', body_fat: '📉 Body Fat %', exercise_mins: '⏱️ Exercise (mins)' };
 
     if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-2 border-primary-500 border-t-transparent" /></div>;
@@ -63,6 +87,53 @@ export default function Settings() {
                     <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center text-2xl font-bold">{user?.name?.[0]}</div>
                     <div><p className="font-semibold text-lg">{user?.name}</p><p className="text-surface-200 text-sm">{user?.email}</p></div>
                 </div>
+            </div>
+
+            {/* API Key */}
+            <div className="bg-surface-900 border border-surface-800 rounded-2xl p-6">
+                <h2 className="text-lg font-semibold mb-2">API Key</h2>
+                <p className="text-sm text-surface-200 mb-4">Use this key to authenticate external tools (e.g. OpenClaw). Send it as an <code className="text-primary-400 bg-surface-800 px-1.5 py-0.5 rounded">X-API-Key</code> header.</p>
+                {apiKey ? (
+                    <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                            <code className="flex-1 px-4 py-2.5 rounded-xl bg-surface-800 border border-surface-700 text-sm font-mono text-surface-100 break-all select-all">
+                                {apiKeyVisible ? apiKey : maskedKey}
+                            </code>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            <button
+                                onClick={() => setApiKeyVisible(!apiKeyVisible)}
+                                className="px-4 py-2 rounded-xl bg-surface-800 hover:bg-surface-700 text-sm text-surface-200 hover:text-white transition-all"
+                            >
+                                {apiKeyVisible ? '🙈 Hide' : '👁️ Reveal'}
+                            </button>
+                            <button
+                                onClick={copyApiKey}
+                                className="px-4 py-2 rounded-xl bg-surface-800 hover:bg-surface-700 text-sm text-surface-200 hover:text-white transition-all"
+                            >
+                                {copied ? '✅ Copied!' : '📋 Copy'}
+                            </button>
+                            <button
+                                onClick={regenerateApiKey}
+                                disabled={apiKeyLoading}
+                                className="px-4 py-2 rounded-xl bg-red-900/20 hover:bg-red-900/40 text-sm text-red-400 hover:text-red-300 transition-all disabled:opacity-50"
+                            >
+                                {apiKeyLoading ? 'Regenerating...' : '🔄 Regenerate'}
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="flex items-center gap-3">
+                        <p className="text-sm text-surface-400">No API key yet.</p>
+                        <button
+                            onClick={regenerateApiKey}
+                            disabled={apiKeyLoading}
+                            className="px-4 py-2 rounded-xl bg-primary-600 hover:bg-primary-500 text-sm text-white font-medium transition-all disabled:opacity-50"
+                        >
+                            {apiKeyLoading ? 'Generating...' : 'Generate API Key'}
+                        </button>
+                    </div>
+                )}
             </div>
 
             {/* Quick Weight Entry */}
@@ -95,7 +166,7 @@ export default function Settings() {
                 )}
                 <form onSubmit={addGoal} className="space-y-4">
                     <p className="text-sm text-surface-200 font-medium">Add New Goal</p>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <select value={form.goalType} onChange={e => setForm(f => ({ ...f, goalType: e.target.value }))} className="px-3 py-2 rounded-xl bg-surface-800 border border-surface-700 text-white focus:ring-2 focus:ring-primary-500 focus:outline-none">
                             {Object.entries(goalLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                         </select>

@@ -1,5 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 
 const prisma = new PrismaClient();
 
@@ -7,33 +8,39 @@ async function seed() {
     console.log('🌱 Seeding database...');
 
     const passwordHash = await bcrypt.hash('changeme123', 10);
+    const bryceApiKey = crypto.randomBytes(32).toString('hex');
 
     const user = await prisma.user.upsert({
         where: { email: 'brycev@gmail.com' },
-        update: {},
+        update: { apiKey: bryceApiKey },
         create: {
             email: 'brycev@gmail.com',
             passwordHash,
-            name: 'Bryce'
+            name: 'Bryce',
+            apiKey: bryceApiKey
         }
     });
 
     console.log(`✅ User created: ${user.email} (password: changeme123)`);
+    console.log(`   API Key: ${bryceApiKey}`);
 
     // Add Bill
     const billHash = await bcrypt.hash('canucks', 10);
+    const billApiKey = crypto.randomBytes(32).toString('hex');
 
     const bill = await prisma.user.upsert({
         where: { email: 'bill@bigguns.com' },
-        update: {},
+        update: { apiKey: billApiKey },
         create: {
             email: 'bill@bigguns.com',
             passwordHash: billHash,
-            name: 'Bill'
+            name: 'Bill',
+            apiKey: billApiKey
         }
     });
 
     console.log(`✅ User created: ${bill.email}`);
+    console.log(`   API Key: ${billApiKey}`);
 
     // Create some default goals
     const today = new Date();
