@@ -8,39 +8,48 @@ async function seed() {
     console.log('🌱 Seeding database...');
 
     const passwordHash = await bcrypt.hash('changeme123', 10);
-    const bryceApiKey = crypto.randomBytes(32).toString('hex');
 
     const user = await prisma.user.upsert({
         where: { email: 'brycev@gmail.com' },
-        update: { apiKey: bryceApiKey },
+        update: {},
         create: {
             email: 'brycev@gmail.com',
             passwordHash,
             name: 'Bryce',
-            apiKey: bryceApiKey
+            apiKey: crypto.randomBytes(32).toString('hex')
         }
     });
 
-    console.log(`✅ User created: ${user.email} (password: changeme123)`);
-    console.log(`   API Key: ${bryceApiKey}`);
+    // Ensure user has an API key (for existing users who don't have one yet)
+    if (!user.apiKey) {
+        const newKey = crypto.randomBytes(32).toString('hex');
+        await prisma.user.update({ where: { id: user.id }, data: { apiKey: newKey } });
+        console.log(`✅ User: ${user.email} — generated new API key`);
+    } else {
+        console.log(`✅ User: ${user.email} — API key already set`);
+    }
 
     // Add Bill
     const billHash = await bcrypt.hash('canucks', 10);
-    const billApiKey = crypto.randomBytes(32).toString('hex');
 
     const bill = await prisma.user.upsert({
         where: { email: 'bill@bigguns.com' },
-        update: { apiKey: billApiKey },
+        update: {},
         create: {
             email: 'bill@bigguns.com',
             passwordHash: billHash,
             name: 'Bill',
-            apiKey: billApiKey
+            apiKey: crypto.randomBytes(32).toString('hex')
         }
     });
 
-    console.log(`✅ User created: ${bill.email}`);
-    console.log(`   API Key: ${billApiKey}`);
+    if (!bill.apiKey) {
+        const newKey = crypto.randomBytes(32).toString('hex');
+        await prisma.user.update({ where: { id: bill.id }, data: { apiKey: newKey } });
+        console.log(`✅ User: ${bill.email} — generated new API key`);
+    } else {
+        console.log(`✅ User: ${bill.email} — API key already set`);
+    }
 
     // Create some default goals
     const today = new Date();

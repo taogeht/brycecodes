@@ -18,7 +18,7 @@ router.get('/', async (req, res) => {
         res.json({ apiKey: user?.apiKey || null });
     } catch (err) {
         console.error('Get API key error:', err);
-        res.status(500).json({ error: 'Failed to get API key' });
+        res.status(500).json({ error: 'Failed to get API key', details: err.message });
     }
 });
 
@@ -33,7 +33,7 @@ router.post('/regenerate', async (req, res) => {
         res.json({ apiKey });
     } catch (err) {
         console.error('Regenerate API key error:', err);
-        res.status(500).json({ error: 'Failed to regenerate API key' });
+        res.status(500).json({ error: 'Failed to regenerate API key', details: err.message });
     }
 });
 
