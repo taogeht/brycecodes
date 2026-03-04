@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { format } from 'date-fns';
+import { useState, useEffect, useCallback } from 'react';
+import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, addMonths, subMonths, isSameMonth, isSameDay, isToday } from 'date-fns';
 import api from '../api/client';
 
 // ─── Exercise Library with icons ────────────────────────────────────
@@ -188,6 +188,11 @@ export default function Workouts() {
     const [tab, setTab] = useState('weights'); // weights | general
     const [saving, setSaving] = useState(false);
 
+    // Calendar state
+    const [selectedDate, setSelectedDate] = useState(new Date());
+    const [calendarMonth, setCalendarMonth] = useState(new Date());
+    const [workoutDates, setWorkoutDates] = useState(new Set());
+
     // Weights state
     const [weightDate, setWeightDate] = useState(format(new Date(), 'yyyy-MM-dd'));
     const [muscleFilter, setMuscleFilter] = useState('All');
@@ -199,9 +204,29 @@ export default function Workouts() {
     const initForm = { date: format(new Date(), 'yyyy-MM-dd'), type: 'walk', startTime: '', endTime: '', durationMins: '', activeCalories: '', totalCalories: '', avgHeartRate: '', maxHeartRate: '', distanceKm: '', effortLevel: 3, notes: '' };
     const [form, setForm] = useState(initForm);
 
-    useEffect(() => { load(); }, []);
-    const load = async () => {
-        try { const r = await api.get(`/logs/${format(new Date(), 'yyyy-MM-dd')}`); setWorkouts(r.data?.workouts || []); } catch (e) { } finally { setLoading(false); }
+    // Load workouts for selected date
+    const load = useCallback(async (date) => {
+        const d = date || selectedDate;
+        setLoading(true);
+        try { const r = await api.get(`/logs/${format(d, 'yyyy-MM-dd')}`); setWorkouts(r.data?.workouts || []); } catch (e) { setWorkouts([]); } finally { setLoading(false); }
+    }, [selectedDate]);
+
+    // Load workout dates for the visible month
+    const loadWorkoutDates = useCallback(async (month) => {
+        try {
+            const from = format(startOfMonth(month), 'yyyy-MM-dd');
+            const to = format(endOfMonth(month), 'yyyy-MM-dd');
+            const { data } = await api.get(`/workouts/dates?from=${from}&to=${to}`);
+            setWorkoutDates(new Set(data));
+        } catch (e) { console.error(e); }
+    }, []);
+
+    useEffect(() => { load(selectedDate); }, [selectedDate]);
+    useEffect(() => { loadWorkoutDates(calendarMonth); }, [calendarMonth]);
+
+    const selectDate = (date) => {
+        setSelectedDate(date);
+        setWeightDate(format(date, 'yyyy-MM-dd'));
     };
 
     // Add exercise to the workout
@@ -261,7 +286,8 @@ export default function Workouts() {
                 notes: exercises.map(e => e.name).join(', ')
             });
 
-            await load();
+            await load(selectedDate);
+            await loadWorkoutDates(calendarMonth);
             setExercises([]);
         } catch (err) { console.error(err); }
         finally { setSaving(false); }
@@ -278,7 +304,7 @@ export default function Workouts() {
         try {
             const lr = await api.post('/logs', { date: form.date });
             await api.post('/workouts', { dailyLogId: lr.data.id, type: form.type, startTime: form.startTime || null, endTime: form.endTime || null, durationMins: form.durationMins || null, activeCalories: form.activeCalories || null, totalCalories: form.totalCalories || null, avgHeartRate: form.avgHeartRate || null, maxHeartRate: form.maxHeartRate || null, distanceKm: form.distanceKm || null, effortLevel: form.effortLevel, notes: form.notes });
-            await load(); setShowForm(false); setForm(initForm);
+            await load(selectedDate); await loadWorkoutDates(calendarMonth); setShowForm(false); setForm(initForm);
         } catch (e) { console.error(e); } finally { setSaving(false); }
     };
     const del = async (id) => { await api.delete(`/workouts/${id}`); setWorkouts(w => w.filter(x => x.id !== id)); };
@@ -291,6 +317,15 @@ export default function Workouts() {
     });
 
     if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-2 border-primary-500 border-t-transparent" /></div>;
+
+    // Build calendar grid
+    const monthStart = startOfMonth(calendarMonth);
+    const monthEnd = endOfMonth(calendarMonth);
+    const calStart = startOfWeek(monthStart);
+    const calEnd = endOfWeek(monthEnd);
+    const calendarDays = [];
+    let day = calStart;
+    while (day <= calEnd) { calendarDays.push(day); day = addDays(day, 1); }
 
     return (
         <div className="space-y-6 max-w-4xl">
@@ -305,6 +340,50 @@ export default function Workouts() {
                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab === 'general' ? 'bg-primary-600 text-white shadow-lg' : 'text-surface-200 hover:text-white hover:bg-surface-800'}`}>
                         🏃 General
                     </button>
+                </div>
+            </div>
+
+            {/* ─── Calendar ────────────────────────────────────────── */}
+            <div className="bg-surface-900 border border-surface-800 rounded-2xl p-5">
+                {/* Month nav */}
+                <div className="flex items-center justify-between mb-4">
+                    <button onClick={() => setCalendarMonth(m => subMonths(m, 1))}
+                        className="p-2 rounded-lg text-surface-200 hover:bg-surface-800 hover:text-white transition-colors">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                    </button>
+                    <h2 className="text-sm font-semibold">{format(calendarMonth, 'MMMM yyyy')}</h2>
+                    <button onClick={() => setCalendarMonth(m => addMonths(m, 1))}
+                        className="p-2 rounded-lg text-surface-200 hover:bg-surface-800 hover:text-white transition-colors">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                    </button>
+                </div>
+                {/* Day-of-week headers */}
+                <div className="grid grid-cols-7 mb-1">
+                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+                        <div key={d} className="text-center text-xs text-surface-400 font-medium py-1">{d}</div>
+                    ))}
+                </div>
+                {/* Day cells */}
+                <div className="grid grid-cols-7 gap-1">
+                    {calendarDays.map((d, i) => {
+                        const dateStr = format(d, 'yyyy-MM-dd');
+                        const inMonth = isSameMonth(d, calendarMonth);
+                        const selected = isSameDay(d, selectedDate);
+                        const today = isToday(d);
+                        const hasWorkout = workoutDates.has(dateStr);
+                        return (
+                            <button key={i} onClick={() => selectDate(d)}
+                                className={`relative flex flex-col items-center justify-center py-2 rounded-xl text-sm transition-all
+                                    ${!inMonth ? 'text-surface-700' : selected ? 'bg-primary-600 text-white font-bold shadow-lg shadow-primary-600/30' : today ? 'bg-surface-800 text-primary-400 font-semibold' : 'text-surface-100 hover:bg-surface-800'}
+                                `}
+                            >
+                                {format(d, 'd')}
+                                {hasWorkout && (
+                                    <span className={`absolute bottom-1 w-1.5 h-1.5 rounded-full ${selected ? 'bg-white' : 'bg-primary-400'}`} />
+                                )}
+                            </button>
+                        );
+                    })}
                 </div>
             </div>
 
@@ -448,11 +527,13 @@ export default function Workouts() {
                 </>
             )}
 
-            {/* Today's Workouts List */}
+            {/* Workouts List for Selected Date */}
             <div className="space-y-3">
-                <h2 className="text-lg font-semibold">Today's Workouts</h2>
+                <h2 className="text-lg font-semibold">
+                    {isToday(selectedDate) ? "Today's Workouts" : `Workouts — ${format(selectedDate, 'EEE, MMM d, yyyy')}`}
+                </h2>
                 {workouts.length === 0 ? (
-                    <div className="bg-surface-900 border border-surface-800 rounded-2xl p-8 text-center text-surface-200"><p className="text-4xl mb-3">🏃</p><p>No workouts logged today.</p></div>
+                    <div className="bg-surface-900 border border-surface-800 rounded-2xl p-8 text-center text-surface-200"><p className="text-4xl mb-3">🏃</p><p>No workouts logged {isToday(selectedDate) ? 'today' : 'on this day'}.</p></div>
                 ) : workouts.map(w => (
                     <div key={w.id} className="bg-surface-900 border border-surface-800 rounded-2xl p-5 hover:border-surface-700 transition-all">
                         <div className="flex items-center justify-between mb-3">

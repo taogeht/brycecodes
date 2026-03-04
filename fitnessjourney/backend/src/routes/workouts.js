@@ -7,7 +7,28 @@ const prisma = new PrismaClient();
 
 router.use(authenticate);
 
-// POST /workouts
+// GET /workouts/dates?from=YYYY-MM-DD&to=YYYY-MM-DD — dates that have workouts
+router.get('/dates', async (req, res) => {
+    try {
+        const { from, to } = req.query;
+        if (!from || !to) return res.status(400).json({ error: 'from and to query params required' });
+
+        const logs = await prisma.dailyLog.findMany({
+            where: {
+                userId: req.userId,
+                date: { gte: new Date(from), lte: new Date(to) },
+                workouts: { some: {} }
+            },
+            select: { date: true }
+        });
+
+        const dates = logs.map(l => l.date.toISOString().split('T')[0]);
+        res.json(dates);
+    } catch (err) {
+        console.error('Get workout dates error:', err);
+        res.status(500).json({ error: 'Failed to fetch workout dates' });
+    }
+});
 router.post('/', async (req, res) => {
     try {
         const {

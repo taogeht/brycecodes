@@ -13,6 +13,7 @@ model User {
   passwordHash String       @map("password_hash")
   name         String
   apiKey       String?      @unique @map("api_key")
+  isAdmin      Boolean      @default(false) @map("is_admin")
   createdAt    DateTime     @default(now()) @map("created_at")
 
   dailyLogs    DailyLog[]

@@ -15,18 +15,26 @@ export default function Settings() {
     const [apiKeyVisible, setApiKeyVisible] = useState(false);
     const [apiKeyLoading, setApiKeyLoading] = useState(false);
     const [copied, setCopied] = useState(false);
+    const [allUsers, setAllUsers] = useState([]);
+    const [newUserEmail, setNewUserEmail] = useState('');
+    const [newUserPassword, setNewUserPassword] = useState('');
+    const [addingUser, setAddingUser] = useState(false);
+    const [userMsg, setUserMsg] = useState(null);
 
     const SUPPLEMENTS = ['Creatine', 'Magnesium', 'Caffeine', 'Whey Protein', 'Fish Oil', 'Vitamin D', 'Zinc', 'Multivitamin'];
 
     useEffect(() => {
-        Promise.all([
+        const fetches = [
             api.get('/goals'),
             api.get('/templates'),
             api.get('/apikeys')
-        ]).then(([g, t, k]) => {
+        ];
+        if (user?.isAdmin) fetches.push(api.get('/auth/users'));
+        Promise.all(fetches).then(([g, t, k, u]) => {
             setGoals(g.data);
             setTemplates(t.data);
             setApiKey(k.data.apiKey);
+            if (u) setAllUsers(u.data);
         }).catch(console.error).finally(() => setLoading(false));
     }, []);
 
@@ -73,6 +81,23 @@ export default function Settings() {
     const maskedKey = apiKey ? apiKey.slice(0, 8) + '••••••••••••••••' + apiKey.slice(-8) : '—';
 
     const goalLabels = { weight: '⚖️ Weight (kg)', calories: '🔥 Daily Calories', protein: '💪 Protein (g)', steps: '👟 Daily Steps', hydration: '💧 Hydration (ml)', sleep: '😴 Sleep (hrs)', body_fat: '📉 Body Fat %', exercise_mins: '⏱️ Exercise (mins)' };
+
+    const addUser = async (e) => {
+        e.preventDefault();
+        setAddingUser(true);
+        setUserMsg(null);
+        try {
+            const { data } = await api.post('/auth/users', { email: newUserEmail, password: newUserPassword });
+            setAllUsers(prev => [{ ...data, createdAt: new Date().toISOString() }, ...prev]);
+            setNewUserEmail('');
+            setNewUserPassword('');
+            setUserMsg({ type: 'success', text: `User ${data.email} created successfully` });
+        } catch (err) {
+            setUserMsg({ type: 'error', text: err.response?.data?.error || 'Failed to create user' });
+        } finally {
+            setAddingUser(false);
+        }
+    };
 
     if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-2 border-primary-500 border-t-transparent" /></div>;
 
@@ -200,6 +225,78 @@ export default function Settings() {
                             </div>
                         ))}
                     </div>
+                </div>
+            )}
+
+            {/* User Management (admin only) */}
+            {user?.isAdmin && (
+                <div className="bg-surface-900 border border-surface-800 rounded-2xl p-6">
+                    <h2 className="text-lg font-semibold mb-4">👥 User Management</h2>
+
+                    {userMsg && (
+                        <div className={`mb-4 px-4 py-3 rounded-xl text-sm font-medium ${userMsg.type === 'success'
+                                ? 'bg-green-900/20 border border-green-500/20 text-green-400'
+                                : 'bg-red-900/20 border border-red-500/20 text-red-400'
+                            }`}>
+                            {userMsg.type === 'success' ? '✅' : '❌'} {userMsg.text}
+                        </div>
+                    )}
+
+                    {/* Add User form */}
+                    <form onSubmit={addUser} className="space-y-3 mb-6">
+                        <p className="text-sm text-surface-200 font-medium">Add New User</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <input
+                                type="email"
+                                placeholder="Email"
+                                value={newUserEmail}
+                                onChange={e => setNewUserEmail(e.target.value)}
+                                required
+                                className="px-3 py-2 rounded-xl bg-surface-800 border border-surface-700 text-white focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                            />
+                            <input
+                                type="password"
+                                placeholder="Password"
+                                value={newUserPassword}
+                                onChange={e => setNewUserPassword(e.target.value)}
+                                required
+                                minLength={6}
+                                className="px-3 py-2 rounded-xl bg-surface-800 border border-surface-700 text-white focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                            />
+                        </div>
+                        <button
+                            type="submit"
+                            disabled={addingUser}
+                            className="px-6 py-2 rounded-xl bg-primary-600 hover:bg-primary-500 text-white font-medium disabled:opacity-50 transition-all"
+                        >
+                            {addingUser ? 'Adding...' : 'Add User'}
+                        </button>
+                    </form>
+
+                    {/* Existing users list */}
+                    {allUsers.length > 0 && (
+                        <div>
+                            <p className="text-sm text-surface-200 font-medium mb-3">Existing Users</p>
+                            <div className="space-y-2">
+                                {allUsers.map(u => (
+                                    <div key={u.id} className="flex items-center justify-between p-3 rounded-xl bg-surface-800/50">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center text-sm font-bold">
+                                                {u.name?.[0] || u.email[0].toUpperCase()}
+                                            </div>
+                                            <div>
+                                                <p className="font-medium text-sm">{u.name || u.email.split('@')[0]}</p>
+                                                <p className="text-xs text-surface-200">{u.email}</p>
+                                            </div>
+                                        </div>
+                                        <span className="text-xs text-surface-400">
+                                            {new Date(u.createdAt).toLocaleDateString()}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
         </div>

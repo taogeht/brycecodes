@@ -11,11 +11,12 @@ async function seed() {
 
     const user = await prisma.user.upsert({
         where: { email: 'brycev@gmail.com' },
-        update: {},
+        update: { isAdmin: true },
         create: {
             email: 'brycev@gmail.com',
             passwordHash,
             name: 'Bryce',
+            isAdmin: true,
             apiKey: crypto.randomBytes(32).toString('hex')
         }
     });
