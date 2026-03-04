@@ -255,6 +255,9 @@ router.post('/daily/merge', async (req, res) => {
 router.get('/history', async (req, res) => {
     try {
         const logs = await prisma.importLog.findMany({
+            where: {
+                dailyLog: { userId: req.userId }
+            },
             orderBy: { importedAt: 'desc' },
             take: 30,
             select: {
