@@ -7,7 +7,7 @@ cd /usr/src/app/fitnessjourney/backend
 # Run prisma db push with retry (database may not be ready immediately)
 echo "Running Prisma db push..."
 for i in 1 2 3; do
-    if npx prisma db push --schema=src/prisma/schema.prisma --skip-generate; then
+    if npx prisma db push --schema=src/prisma/schema.prisma --skip-generate 2>&1; then
         echo "✅ Prisma db push succeeded"
         break
     else
@@ -15,6 +15,10 @@ for i in 1 2 3; do
         sleep 3
     fi
 done
+
+# Run raw SQL migration fallback (adds api_key column if db push didn't)
+echo "Running migration fallback..."
+node src/utils/migrate.js || echo "Warning: Migration fallback failed, continuing..."
 
 # Run seed (don't block startup if it fails)
 echo "Running seed..."
