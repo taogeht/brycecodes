@@ -22,7 +22,7 @@ export default function Import() {
         reader.readAsText(file);
     };
 
-    // Auto-wrap single items (bare workout, supplement, meal) into full structure
+    // Auto-wrap and normalize structures (helps with loosely formatted or generated JSONs)
     const normalizeData = (data) => {
         // Single workout object with a "type" field but no "workouts" array
         if (data.type && !data.workouts && !data.nutrition && !data.supplements) {
@@ -36,6 +36,36 @@ export default function Import() {
         if (data.meal_type && data.name && !data.nutrition) {
             return { date: data.date, nutrition: { meals: [data] } };
         }
+
+        // Convert object-based meals (where keys are meal types) into arrays
+        if (data.nutrition?.meals && !Array.isArray(data.nutrition.meals) && typeof data.nutrition.meals === 'object') {
+            data.nutrition.meals = Object.entries(data.nutrition.meals).map(([key, value]) => {
+                if (typeof value === 'string') {
+                    return { meal_type: key, name: value };
+                }
+                const name = value.name || value.base || (Array.isArray(value.items) ? value.items.join(', ') : null) || key;
+                return { meal_type: key, name, ...value };
+            });
+        }
+
+        // Move/flatten supplements to the top level root as an array of objects
+        let rawSupps = data.supplements || data.nutrition?.supplements;
+        if (rawSupps) {
+            if (Array.isArray(rawSupps)) {
+                data.supplements = rawSupps.map(item => (typeof item === 'string' ? { name: item } : item));
+            } else if (rawSupps.items && Array.isArray(rawSupps.items)) {
+                data.supplements = rawSupps.items.map(item => (typeof item === 'string' ? { name: item } : item));
+            } else if (typeof rawSupps === 'object') {
+                data.supplements = Object.entries(rawSupps).map(([k, v]) => {
+                    if (typeof v === 'string') return { name: k, notes: v };
+                    return { name: k, ...v };
+                });
+            }
+            if (data.nutrition && data.nutrition.supplements) {
+                delete data.nutrition.supplements;
+            }
+        }
+
         return data;
     };
 
@@ -52,23 +82,43 @@ export default function Import() {
             setParsed(data);
             if (errs.length > 0) { setErrors(errs); setStatus('error'); }
             else { setStatus('validated'); }
-        } catch { setErrors(['Invalid JSON — check for syntax errors']); setStatus('error'); setParsed(null); }
+        } catch (e) {
+            if (e instanceof SyntaxError) {
+                setErrors(['Invalid JSON — check for syntax errors']);
+            } else {
+                setErrors([`Processing error: ${e.message}`]);
+            }
+            setStatus('error');
+            setParsed(null);
+        }
     };
 
     const validate = (data) => {
         const errs = [];
         if (data.date && isNaN(new Date(data.date))) errs.push('Invalid date format');
         if (data.nutrition?.meals) {
-            data.nutrition.meals.forEach((m, i) => {
-                if (!m.name) errs.push(`Meal ${i + 1}: missing "name"`);
-                if (!m.meal_type) errs.push(`Meal ${i + 1}: missing "meal_type"`);
-            });
+            if (Array.isArray(data.nutrition.meals)) {
+                data.nutrition.meals.forEach((m, i) => {
+                    if (!m.name) errs.push(`Meal ${i + 1}: missing "name"`);
+                    if (!m.meal_type) errs.push(`Meal ${i + 1}: missing "meal_type"`);
+                });
+            } else {
+                errs.push('nutrition.meals must be an array');
+            }
         }
         if (data.workouts) {
-            data.workouts.forEach((w, i) => { if (!w.type) errs.push(`Workout ${i + 1}: missing "type"`); });
+            if (Array.isArray(data.workouts)) {
+                data.workouts.forEach((w, i) => { if (!w.type) errs.push(`Workout ${i + 1}: missing "type"`); });
+            } else {
+                errs.push('workouts must be an array');
+            }
         }
         if (data.supplements) {
-            data.supplements.forEach((s, i) => { if (!s.name) errs.push(`Supplement ${i + 1}: missing "name"`); });
+            if (Array.isArray(data.supplements)) {
+                data.supplements.forEach((s, i) => { if (!s.name) errs.push(`Supplement ${i + 1}: missing "name"`); });
+            } else {
+                errs.push('supplements must be an array');
+            }
         }
         return errs;
     };
