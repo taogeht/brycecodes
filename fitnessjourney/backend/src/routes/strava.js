@@ -4,12 +4,101 @@ const { authenticate } = require('../middleware/auth');
 const {
     exchangeCode,
     getValidToken,
+    getValidTokenByAthleteId,
+    fetchActivity,
     fetchActivities,
     activityToWorkout
 } = require('../utils/strava-client');
 
 const router = express.Router();
 const prisma = new PrismaClient();
+
+// ── Webhook endpoints (PUBLIC — no auth, Strava calls these directly) ──
+
+// GET /strava/webhook — Strava subscription validation (challenge/response)
+router.get('/webhook', (req, res) => {
+    const mode = req.query['hub.mode'];
+    const token = req.query['hub.verify_token'];
+    const challenge = req.query['hub.challenge'];
+
+    const verifyToken = process.env.STRAVA_WEBHOOK_VERIFY_TOKEN || 'fitnessjourney_strava';
+
+    if (mode === 'subscribe' && token === verifyToken) {
+        console.log('Strava webhook subscription validated');
+        return res.json({ 'hub.challenge': challenge });
+    }
+    res.status(403).json({ error: 'Verification failed' });
+});
+
+// POST /strava/webhook — receive activity events from Strava
+router.post('/webhook', async (req, res) => {
+    // Always respond 200 quickly — Strava expects it within 2 seconds
+    res.status(200).json({ received: true });
+
+    try {
+        const { object_type, object_id, aspect_type, owner_id } = req.body;
+
+        // Only handle activity creates and updates
+        if (object_type !== 'activity' || (aspect_type !== 'create' && aspect_type !== 'update')) return;
+
+        const token = await getValidTokenByAthleteId(owner_id);
+        if (!token) {
+            console.log(`Strava webhook: no token for athlete ${owner_id}`);
+            return;
+        }
+
+        const activity = await fetchActivity(token.accessToken, object_id);
+        const activityDate = new Date(activity.start_date_local);
+        const dateStr = activityDate.toISOString().split('T')[0];
+
+        // Get or create daily log
+        let dailyLog = await prisma.dailyLog.findFirst({
+            where: { userId: token.userId, date: new Date(dateStr) }
+        });
+        if (!dailyLog) {
+            dailyLog = await prisma.dailyLog.create({
+                data: { userId: token.userId, date: new Date(dateStr) }
+            });
+        }
+
+        // Check for duplicate
+        const startTime = activityDate.toTimeString().slice(0, 5);
+        const existing = await prisma.workout.findFirst({
+            where: {
+                dailyLogId: dailyLog.id,
+                startTime,
+                notes: { startsWith: 'Strava:' }
+            }
+        });
+
+        if (aspect_type === 'update' && existing) {
+            // Update existing workout with fresh data
+            const workoutData = activityToWorkout(activity);
+            await prisma.workout.update({
+                where: { id: existing.id },
+                data: workoutData
+            });
+            console.log(`Strava webhook: updated workout for activity ${object_id}`);
+        } else if (!existing) {
+            // Create new workout
+            const workoutData = activityToWorkout(activity);
+            await prisma.workout.create({
+                data: { dailyLogId: dailyLog.id, ...workoutData }
+            });
+            console.log(`Strava webhook: created workout for activity ${object_id}`);
+        }
+
+        // Update last sync timestamp
+        await prisma.stravaToken.update({
+            where: { id: token.id },
+            data: { lastSyncAt: new Date() }
+        });
+    } catch (err) {
+        console.error('Strava webhook processing error:', err);
+    }
+});
+
+// ── Authenticated endpoints ──
 
 router.use(authenticate);
 

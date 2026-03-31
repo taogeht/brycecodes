@@ -100,6 +100,27 @@ async function fetchActivities(accessToken, { after, before, page = 1, perPage =
 }
 
 /**
+ * Fetch a single activity by ID from Strava.
+ */
+async function fetchActivity(accessToken, activityId) {
+    return stravaGet(accessToken, `/activities/${activityId}`);
+}
+
+/**
+ * Get a valid token by athlete ID (for webhook — no userId available).
+ */
+async function getValidTokenByAthleteId(athleteId) {
+    let token = await prisma.stravaToken.findFirst({ where: { athleteId } });
+    if (!token) return null;
+
+    const now = Math.floor(Date.now() / 1000);
+    if (token.expiresAt < now + 60) {
+        token = await refreshAccessToken(token);
+    }
+    return token;
+}
+
+/**
  * Map a Strava activity type to our app's workout type.
  */
 function mapActivityType(stravaType) {
@@ -173,7 +194,9 @@ module.exports = {
     exchangeCode,
     refreshAccessToken,
     getValidToken,
+    getValidTokenByAthleteId,
     stravaGet,
+    fetchActivity,
     fetchActivities,
     mapActivityType,
     activityToWorkout
