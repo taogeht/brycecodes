@@ -18,6 +18,7 @@ const importRoutes = require('./routes/import');
 const sleepRoutes = require('./routes/sleep');
 const recordRoutes = require('./routes/records');
 const apikeyRoutes = require('./routes/apikeys');
+const stravaRoutes = require('./routes/strava');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -51,6 +52,7 @@ app.use('/import', importRoutes);
 app.use('/sleep', sleepRoutes);
 app.use('/records', recordRoutes);
 app.use('/apikeys', apikeyRoutes);
+app.use('/strava', stravaRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

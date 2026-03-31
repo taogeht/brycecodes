@@ -20,20 +20,42 @@ export default function Settings() {
     const [newUserPassword, setNewUserPassword] = useState('');
     const [addingUser, setAddingUser] = useState(false);
     const [userMsg, setUserMsg] = useState(null);
+    const [strava, setStrava] = useState({ connected: false });
+    const [stravaLoading, setStravaLoading] = useState(false);
+    const [syncDays, setSyncDays] = useState(7);
+    const [syncResult, setSyncResult] = useState(null);
+    const [syncing, setSyncing] = useState(false);
 
     const SUPPLEMENTS = ['Creatine', 'Magnesium', 'Caffeine', 'Whey Protein', 'Fish Oil', 'Vitamin D', 'Zinc', 'Multivitamin'];
+
+    // Handle Strava OAuth callback redirect
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const code = params.get('code');
+        const scope = params.get('scope');
+        if (code) {
+            // Clean the URL
+            window.history.replaceState({}, '', window.location.pathname);
+            api.get(`/strava/callback?code=${code}&scope=${scope || ''}`)
+                .then(() => api.get('/strava/status'))
+                .then(({ data }) => setStrava(data))
+                .catch(err => console.error('Strava callback error:', err));
+        }
+    }, []);
 
     useEffect(() => {
         const fetches = [
             api.get('/goals'),
             api.get('/templates'),
-            api.get('/apikeys')
+            api.get('/apikeys'),
+            api.get('/strava/status')
         ];
         if (user?.isAdmin) fetches.push(api.get('/auth/users'));
-        Promise.all(fetches).then(([g, t, k, u]) => {
+        Promise.all(fetches).then(([g, t, k, s, u]) => {
             setGoals(g.data);
             setTemplates(t.data);
             setApiKey(k.data.apiKey);
+            setStrava(s.data);
             if (u) setAllUsers(u.data);
         }).catch(console.error).finally(() => setLoading(false));
     }, []);
@@ -99,6 +121,37 @@ export default function Settings() {
         }
     };
 
+    const connectStrava = async () => {
+        setStravaLoading(true);
+        try {
+            const { data } = await api.get('/strava/auth-url');
+            window.location.href = data.url;
+        } catch (e) { console.error(e); setStravaLoading(false); }
+    };
+
+    const disconnectStrava = async () => {
+        if (!confirm('Disconnect Strava? Your synced workouts will remain.')) return;
+        setStravaLoading(true);
+        try {
+            await api.post('/strava/disconnect');
+            setStrava({ connected: false });
+            setSyncResult(null);
+        } catch (e) { console.error(e); } finally { setStravaLoading(false); }
+    };
+
+    const syncStrava = async () => {
+        setSyncing(true);
+        setSyncResult(null);
+        try {
+            const { data } = await api.post('/strava/sync', { days: syncDays });
+            setSyncResult(data.summary);
+            const s = await api.get('/strava/status');
+            setStrava(s.data);
+        } catch (e) {
+            setSyncResult({ error: e.response?.data?.error || 'Sync failed' });
+        } finally { setSyncing(false); }
+    };
+
     if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-2 border-primary-500 border-t-transparent" /></div>;
 
     return (
@@ -158,6 +211,62 @@ export default function Settings() {
                             {apiKeyLoading ? 'Generating...' : 'Generate API Key'}
                         </button>
                     </div>
+                )}
+            </div>
+
+            {/* Strava Integration */}
+            <div className="bg-surface-900 border border-surface-800 rounded-2xl p-6">
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-xl bg-[#FC4C02] flex items-center justify-center text-white font-bold text-lg">S</div>
+                    <div>
+                        <h2 className="text-lg font-semibold">Strava</h2>
+                        <p className="text-sm text-surface-200">Sync your activities automatically</p>
+                    </div>
+                </div>
+
+                {strava.connected ? (
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-green-900/20 border border-green-500/20">
+                            <span className="text-green-400 text-sm font-medium">Connected</span>
+                            <span className="text-surface-400 text-sm">Athlete #{strava.athleteId}</span>
+                            {strava.lastSyncAt && (
+                                <span className="text-surface-400 text-sm ml-auto">Last sync: {new Date(strava.lastSyncAt).toLocaleDateString()}</span>
+                            )}
+                        </div>
+
+                        <div className="flex items-end gap-3">
+                            <div>
+                                <label className="block text-sm text-surface-200 mb-1">Sync last N days</label>
+                                <select value={syncDays} onChange={e => setSyncDays(Number(e.target.value))} className="px-3 py-2 rounded-xl bg-surface-800 border border-surface-700 text-white focus:ring-2 focus:ring-primary-500 focus:outline-none">
+                                    <option value={3}>3 days</option>
+                                    <option value={7}>7 days</option>
+                                    <option value={14}>14 days</option>
+                                    <option value={30}>30 days</option>
+                                    <option value={90}>90 days</option>
+                                </select>
+                            </div>
+                            <button onClick={syncStrava} disabled={syncing} className="px-6 py-2 rounded-xl bg-[#FC4C02] hover:bg-[#e04400] text-white font-medium disabled:opacity-50 transition-all">
+                                {syncing ? 'Syncing...' : 'Sync Now'}
+                            </button>
+                            <button onClick={disconnectStrava} disabled={stravaLoading} className="px-4 py-2 rounded-xl bg-red-900/20 hover:bg-red-900/40 text-sm text-red-400 hover:text-red-300 transition-all disabled:opacity-50 ml-auto">
+                                Disconnect
+                            </button>
+                        </div>
+
+                        {syncResult && (
+                            <div className={`px-4 py-3 rounded-xl text-sm ${syncResult.error ? 'bg-red-900/20 border border-red-500/20 text-red-400' : 'bg-green-900/20 border border-green-500/20 text-green-400'}`}>
+                                {syncResult.error ? (
+                                    <span>{syncResult.error}</span>
+                                ) : (
+                                    <span>Found {syncResult.activitiesFound} activities — {syncResult.workoutsCreated} new workouts created, {syncResult.duplicatesSkipped} duplicates skipped</span>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    <button onClick={connectStrava} disabled={stravaLoading} className="px-6 py-2.5 rounded-xl bg-[#FC4C02] hover:bg-[#e04400] text-white font-medium disabled:opacity-50 transition-all">
+                        {stravaLoading ? 'Connecting...' : 'Connect Strava'}
+                    </button>
                 )}
             </div>
 
