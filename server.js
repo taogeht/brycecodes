@@ -8,6 +8,7 @@ const app = express();
 const PORT = process.env.PORT || 80;
 const DATA_FILE = process.env.DATA_PATH || path.join(__dirname, 'data.json');
 const TIMESHEET_DATA_FILE = process.env.TIMESHEET_DATA_PATH || path.join(__dirname, 'timesheet_data.json');
+const CHORES_DATA_FILE = process.env.CHORES_DATA_PATH || path.join(__dirname, 'chores_data.json');
 
 // Ensure the directory for DATA_FILE exists
 const dataDir = path.dirname(DATA_FILE);
@@ -19,6 +20,12 @@ if (!fs.existsSync(dataDir)) {
 const timesheetDataDir = path.dirname(TIMESHEET_DATA_FILE);
 if (!fs.existsSync(timesheetDataDir)) {
     fs.mkdirSync(timesheetDataDir, { recursive: true });
+}
+
+// Ensure the directory for CHORES_DATA_FILE exists
+const choresDataDir = path.dirname(CHORES_DATA_FILE);
+if (!fs.existsSync(choresDataDir)) {
+    fs.mkdirSync(choresDataDir, { recursive: true });
 }
 
 app.use(cors());
@@ -62,6 +69,7 @@ app.use('/invoice', express.static(path.join(__dirname, 'invoice')));
 app.use('/mainpage', express.static(path.join(__dirname, 'mainpage')));
 app.use('/EnglishAngel', express.static(path.join(__dirname, 'englishangel')));
 app.use('/timesheet', express.static(path.join(__dirname, 'timesheet')));
+app.use('/chores', express.static(path.join(__dirname, 'chores', 'public')));
 
 // Fitness Journey: serve frontend static files
 app.use('/fitnessjourney', express.static(path.join(__dirname, 'fitnessjourney', 'frontend', 'dist')));
@@ -125,6 +133,56 @@ app.post('/api/timesheet', (req, res) => {
         console.error("Error writing timesheet data file:", err);
         res.status(500).json({ error: "Failed to save timesheet data" });
     }
+});
+
+// API for Chores persistence — atomic write via tmp+rename, serialized through a queue
+let choresWriting = false;
+const choresWriteQueue = [];
+
+function flushChoresQueue() {
+    if (choresWriting || choresWriteQueue.length === 0) return;
+    choresWriting = true;
+    const { data, res } = choresWriteQueue.shift();
+    const tmp = CHORES_DATA_FILE + '.tmp';
+    fs.writeFile(tmp, JSON.stringify(data, null, 2), (err) => {
+        if (err) {
+            choresWriting = false;
+            res.status(500).json({ error: 'Write failed' });
+            flushChoresQueue();
+            return;
+        }
+        fs.rename(tmp, CHORES_DATA_FILE, (err2) => {
+            choresWriting = false;
+            if (err2) {
+                res.status(500).json({ error: 'Rename failed' });
+            } else {
+                res.json({ success: true });
+            }
+            flushChoresQueue();
+        });
+    });
+}
+
+app.get('/api/chores', (req, res) => {
+    if (!fs.existsSync(CHORES_DATA_FILE)) {
+        return res.json(null); // frontend uses defaultState() when null
+    }
+    try {
+        const raw = fs.readFileSync(CHORES_DATA_FILE, 'utf8');
+        res.json(JSON.parse(raw));
+    } catch (err) {
+        console.error("Error reading chores data file:", err);
+        res.status(500).json({ error: "Read failed" });
+    }
+});
+
+app.post('/api/chores', (req, res) => {
+    const data = req.body;
+    if (!data || typeof data !== 'object') {
+        return res.status(400).json({ error: 'Invalid payload' });
+    }
+    choresWriteQueue.push({ data, res });
+    flushChoresQueue();
 });
 
 app.listen(PORT, () => {

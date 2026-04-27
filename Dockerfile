@@ -13,6 +13,7 @@ COPY invoice/ ./invoice/
 COPY mainpage/ ./mainpage/
 COPY englishangel/ ./englishangel/
 COPY timesheet/ ./timesheet/
+COPY chores/public/ ./chores/public/
 
 # ── Fitness Journey frontend (build during Docker build) ──
 COPY fitnessjourney/frontend/package*.json ./fitnessjourney/frontend/

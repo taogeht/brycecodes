@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mission Control — Chore Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #222635;
+    --surface3: #2a2f42;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --text: #eef0f8;
+    --text2: #8b90aa;
+    --text3: #555a70;
+    --accent: #6c63ff;
+    --accent2: #8b84ff;
+    --green: #3ecf8e;
+    --green2: #25a06a;
+    --amber: #f5a623;
+    --red: #ff5757;
+    --pink: #ff6bba;
+    --teal: #38bdf8;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --radius-xs: 5px;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Space Grotesk', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { background: var(--bg); color: var(--text); font-family: var(--sans); }
+  body { min-height: 100vh; }
+
+  /* TOPBAR */
+  .topbar {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(15,17,23,0.92); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 58px;
+  }
+  .topbar-brand { display: flex; align-items: center; gap: 10px; }
+  .brand-icon {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent), var(--pink));
+    display: flex; align-items: center; justify-content: center; font-size: 16px;
+  }
+  .brand-name { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; }
+  .brand-sub { font-size: 11px; color: var(--text2); font-family: var(--mono); }
+  .topbar-nav { display: flex; gap: 6px; }
+  .nav-btn {
+    padding: 6px 14px; border-radius: var(--radius-xs);
+    background: transparent; border: 1px solid transparent;
+    color: var(--text2); font-family: var(--sans); font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .nav-btn:hover { color: var(--text); background: var(--surface2); }
+  .nav-btn.active { color: var(--text); background: var(--surface2); border-color: var(--border2); }
+  .topbar-right { display: flex; align-items: center; gap: 8px; }
+  .save-indicator {
+    font-family: var(--mono); font-size: 11px;
+    padding: 3px 9px; border-radius: var(--radius-xs);
+    border: 1px solid var(--border); color: var(--text3);
+    transition: all 0.3s;
+  }
+  .save-indicator.saving { color: var(--amber); border-color: rgba(245,166,35,0.3); }
+  .save-indicator.saved { color: var(--green); border-color: rgba(62,207,142,0.3); }
+  .save-indicator.error { color: var(--red); border-color: rgba(255,87,87,0.3); }
+
+  /* LOADING SCREEN */
+  #loading-screen {
+    position: fixed; inset: 0; z-index: 200;
+    background: var(--bg);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 16px;
+  }
+  .loading-spinner {
+    width: 36px; height: 36px; border-radius: 50%;
+    border: 2px solid var(--surface3);
+    border-top-color: var(--accent);
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-size: 13px; color: var(--text3); font-family: var(--mono); }
+
+  /* LAYOUT */
+  .page { display: none; }
+  .page.active { display: block; }
+  .container { max-width: 960px; margin: 0 auto; padding: 32px 24px; }
+
+  /* STATS ROW */
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 28px; }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px 18px;
+    position: relative; overflow: hidden;
+  }
+  .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+  .stat-card.green::before { background: var(--green); }
+  .stat-card.amber::before { background: var(--amber); }
+  .stat-card.purple::before { background: var(--accent); }
+  .stat-card.teal::before { background: var(--teal); }
+  .stat-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600; margin-bottom: 6px; }
+  .stat-value { font-size: 26px; font-weight: 700; font-family: var(--mono); letter-spacing: -1px; }
+  .stat-sub { font-size: 11px; color: var(--text2); margin-top: 3px; }
+  .stat-card.green .stat-value { color: var(--green); }
+  .stat-card.amber .stat-value { color: var(--amber); }
+  .stat-card.purple .stat-value { color: var(--accent2); }
+  .stat-card.teal .stat-value { color: var(--teal); }
+
+  /* STREAK */
+  .streak-row { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; flex-wrap: wrap; }
+  .streak-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: linear-gradient(135deg, rgba(245,166,35,0.15), rgba(245,166,35,0.05));
+    border: 1px solid rgba(245,166,35,0.3);
+    border-radius: 100px; padding: 8px 16px;
+    font-size: 13px; font-weight: 600; color: var(--amber);
+  }
+  .streak-badge.streak-zero { color: var(--text3); border-color: var(--border); background: var(--surface); }
+
+  /* PROGRESS */
+  .progress-wrap { margin-bottom: 4px; }
+  .progress-label { font-size: 11px; color: var(--text3); display: flex; justify-content: space-between; margin-bottom: 5px; }
+  .progress-bar { height: 4px; background: var(--surface3); border-radius: 100px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--green)); border-radius: 100px; transition: width 0.4s ease; }
+
+  /* SECTION HEADER */
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; margin-top: 28px; }
+  .section-title { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.7px; color: var(--text2); }
+  .section-hint { font-size: 12px; color: var(--text3); font-family: var(--mono); }
+
+  /* CHORE TABLE */
+  .chore-table { width: 100%; border-collapse: collapse; }
+  .chore-table thead th {
+    font-size: 11px; font-weight: 600; color: var(--text3);
+    text-transform: uppercase; letter-spacing: 0.5px;
+    padding: 6px 8px; text-align: center;
+  }
+  .chore-table thead th.chore-name-th { text-align: left; padding-left: 0; }
+  .chore-table tbody tr { border-top: 1px solid var(--border); transition: background 0.1s; }
+  .chore-table tbody tr:hover { background: rgba(255,255,255,0.02); }
+  .chore-row td { padding: 10px 8px; vertical-align: middle; }
+  .chore-name-cell { text-align: left; padding-left: 0 !important; }
+  .chore-name { font-size: 14px; font-weight: 500; }
+  .chore-nt { font-size: 11px; color: var(--text3); font-family: var(--mono); margin-top: 1px; }
+  .chore-earned { font-size: 12px; font-family: var(--mono); font-weight: 600; color: var(--green); text-align: right; white-space: nowrap; min-width: 52px; }
+  .chore-earned.zero { color: var(--text3); }
+
+  /* CHECKBOXES */
+  .cb-wrap { display: flex; justify-content: center; align-items: center; }
+  .cb {
+    width: 28px; height: 28px; border-radius: 8px;
+    border: 1.5px solid var(--border2); background: var(--surface2);
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s; -webkit-appearance: none; appearance: none;
+  }
+  .cb:hover { border-color: var(--accent); background: rgba(108,99,255,0.1); }
+  .cb:checked { background: var(--green2); border-color: var(--green); }
+  .cb:checked::after { content: ''; width: 5px; height: 9px; border: 2px solid #fff; border-top: none; border-left: none; transform: rotate(42deg) translateY(-1px); display: block; }
+  .weekly-cb {
+    width: 36px; height: 36px; border-radius: var(--radius-sm);
+    border: 1.5px solid var(--border2); background: var(--surface2);
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s; -webkit-appearance: none; appearance: none;
+  }
+  .weekly-cb:hover { border-color: var(--teal); background: rgba(56,189,248,0.1); }
+  .weekly-cb:checked { background: rgba(56,189,248,0.15); border-color: var(--teal); }
+  .weekly-cb:checked::after { content: ''; width: 6px; height: 11px; border: 2px solid var(--teal); border-top: none; border-left: none; transform: rotate(42deg) translateY(-1px); display: block; }
+
+  /* SPLIT */
+  .split-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 24px; }
+  .split-card { border-radius: var(--radius); padding: 20px 22px; border: 1px solid var(--border); }
+  .split-spend { background: rgba(245,166,35,0.06); border-color: rgba(245,166,35,0.2); }
+  .split-save { background: rgba(62,207,142,0.06); border-color: rgba(62,207,142,0.2); }
+  .split-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.7px; font-weight: 600; margin-bottom: 4px; }
+  .split-spend .split-label { color: var(--amber); }
+  .split-save .split-label { color: var(--green); }
+  .split-amount { font-size: 32px; font-weight: 700; font-family: var(--mono); letter-spacing: -1.5px; }
+  .split-spend .split-amount { color: var(--amber); }
+  .split-save .split-amount { color: var(--green); }
+  .split-desc { font-size: 12px; color: var(--text2); margin-top: 4px; }
+
+  /* ADD CHORE */
+  .add-chore-form {
+    display: flex; gap: 8px; margin-top: 16px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px 16px;
+    align-items: flex-end; flex-wrap: wrap;
+  }
+  .field { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 120px; }
+  .field label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+  .field input, .field select {
+    background: var(--surface2); border: 1px solid var(--border2);
+    color: var(--text); border-radius: var(--radius-xs);
+    padding: 8px 10px; font-size: 13px; font-family: var(--sans);
+    outline: none; transition: border-color 0.15s;
+  }
+  .field input:focus, .field select:focus { border-color: var(--accent); }
+  .field select option { background: var(--surface2); }
+  .btn-add {
+    padding: 9px 18px; border-radius: var(--radius-xs);
+    background: var(--accent); border: none;
+    color: #fff; font-family: var(--sans); font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: all 0.15s; white-space: nowrap; align-self: flex-end;
+  }
+  .btn-add:hover { background: var(--accent2); transform: translateY(-1px); }
+  .btn-remove {
+    background: none; border: none; color: var(--text3);
+    cursor: pointer; font-size: 14px; padding: 4px; line-height: 1;
+    transition: color 0.1s; border-radius: 4px;
+  }
+  .btn-remove:hover { color: var(--red); background: rgba(255,87,87,0.1); }
+
+  /* WEEK NAV */
+  .week-nav { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; }
+  .week-nav-btn {
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text2); border-radius: var(--radius-xs);
+    padding: 7px 14px; font-family: var(--sans); font-size: 13px;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .week-nav-btn:hover { border-color: var(--border2); color: var(--text); }
+  .week-nav-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .week-nav-label {
+    font-family: var(--mono); font-size: 12px; color: var(--text2);
+    background: var(--surface); border: 1px solid var(--border);
+    padding: 7px 12px; border-radius: var(--radius-xs); flex: 1; text-align: center;
+  }
+  .current-week-badge {
+    font-size: 10px; background: var(--accent); color: #fff;
+    padding: 1px 6px; border-radius: 100px; vertical-align: middle; margin-left: 6px; font-weight: 600;
+  }
+
+  /* HISTORY */
+  .week-history-list { display: flex; flex-direction: column; gap: 10px; }
+  .week-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    cursor: pointer; transition: border-color 0.15s;
+  }
+  .week-card:hover { border-color: var(--border2); }
+  .week-card-label { font-size: 14px; font-weight: 600; }
+  .week-card-sub { font-size: 12px; color: var(--text3); font-family: var(--mono); margin-top: 2px; }
+  .week-card-total { font-size: 20px; font-weight: 700; font-family: var(--mono); color: var(--green); }
+  .week-card-streak { font-size: 12px; color: var(--amber); margin-top: 2px; }
+  .week-detail {
+    background: var(--surface2); border-radius: var(--radius-sm);
+    margin-top: 8px; padding: 14px 16px;
+    display: none; font-size: 13px; color: var(--text2); line-height: 1.8;
+  }
+  .week-detail.open { display: block; }
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--text3); }
+  .empty-icon { font-size: 40px; margin-bottom: 12px; opacity: 0.5; }
+  .empty-text { font-size: 15px; }
+
+  @media (max-width: 640px) {
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .split-row { grid-template-columns: 1fr; }
+    .add-chore-form { flex-direction: column; }
+    .topbar-right .save-indicator { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div id="loading-screen">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">Loading mission data...</div>
+</div>
+
+<div class="topbar">
+  <div class="topbar-brand">
+    <div class="brand-icon">🚀</div>
+    <div>
+      <div class="brand-name">Mission Control</div>
+      <div class="brand-sub">Chore Tracker</div>
+    </div>
+  </div>
+  <div class="topbar-nav">
+    <button class="nav-btn active" onclick="showPage('tracker', this)">This Week</button>
+    <button class="nav-btn" onclick="showPage('history', this)">History</button>
+  </div>
+  <div class="topbar-right">
+    <div class="save-indicator" id="save-indicator">synced</div>
+  </div>
+</div>
+
+<!-- TRACKER PAGE -->
+<div id="page-tracker" class="page active">
+  <div class="container">
+
+    <div class="week-nav">
+      <button class="week-nav-btn" onclick="navigateWeek(-1)">← Prev</button>
+      <div class="week-nav-label" id="week-nav-label"></div>
+      <button class="week-nav-btn" id="next-week-btn" onclick="navigateWeek(1)">Next →</button>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card green">
+        <div class="stat-label">This Week</div>
+        <div class="stat-value" id="stat-total">0 NT</div>
+        <div class="stat-sub">total earned</div>
+      </div>
+      <div class="stat-card amber">
+        <div class="stat-label">To Spend</div>
+        <div class="stat-value" id="stat-spend">0 NT</div>
+        <div class="stat-sub">50% yours to use</div>
+      </div>
+      <div class="stat-card teal">
+        <div class="stat-label">To Save</div>
+        <div class="stat-value" id="stat-save">0 NT</div>
+        <div class="stat-sub">50% bank</div>
+      </div>
+      <div class="stat-card purple">
+        <div class="stat-label">All-Time Saved</div>
+        <div class="stat-value" id="stat-alltime">0 NT</div>
+        <div class="stat-sub">total in the bank</div>
+      </div>
+    </div>
+
+    <div class="streak-row">
+      <div class="streak-badge" id="daily-streak-badge">
+        <span>🔥</span><span id="daily-streak-text">0 day streak</span>
+      </div>
+      <div class="streak-badge" id="weekly-streak-badge">
+        <span>⭐</span><span id="weekly-streak-text">0 week streak</span>
+      </div>
+    </div>
+
+    <div class="progress-wrap">
+      <div class="progress-label">
+        <span>Weekly completion</span>
+        <span id="progress-pct">0%</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+    </div>
+
+    <div class="section-header">
+      <div class="section-title">Daily Chores</div>
+      <div class="section-hint">Mon – Sun</div>
+    </div>
+    <table class="chore-table">
+      <thead><tr>
+        <th class="chore-name-th">Chore</th>
+        <th>M</th><th>T</th><th>W</th><th>T</th><th>F</th><th>S</th><th>S</th>
+        <th style="text-align:right;padding-right:0">Earned</th><th></th>
+      </tr></thead>
+      <tbody id="daily-tbody"></tbody>
+    </table>
+
+    <div class="section-header" style="margin-top:24px">
+      <div class="section-title">Recycling</div>
+      <div class="section-hint">up to 4× per week · 25 NT each</div>
+    </div>
+    <table class="chore-table">
+      <thead><tr>
+        <th class="chore-name-th">Chore</th>
+        <th>#1</th><th>#2</th><th>#3</th><th>#4</th>
+        <th colspan="3"></th>
+        <th style="text-align:right;padding-right:0">Earned</th><th></th>
+      </tr></thead>
+      <tbody id="recycling-tbody"></tbody>
+    </table>
+
+    <div class="section-header" style="margin-top:24px">
+      <div class="section-title">Weekly Chores</div>
+      <div class="section-hint">once per week</div>
+    </div>
+    <table class="chore-table">
+      <thead><tr>
+        <th class="chore-name-th">Chore</th>
+        <th>Done?</th>
+        <th colspan="6"></th>
+        <th style="text-align:right;padding-right:0">Earned</th><th></th>
+      </tr></thead>
+      <tbody id="weekly-tbody"></tbody>
+    </table>
+
+    <div class="split-row">
+      <div class="split-card split-spend">
+        <div class="split-label">💸 Spend</div>
+        <div class="split-amount" id="split-spend-amt">0 NT</div>
+        <div class="split-desc">Half of everything earned this week</div>
+      </div>
+      <div class="split-card split-save">
+        <div class="split-label">🏦 Save</div>
+        <div class="split-amount" id="split-save-amt">0 NT</div>
+        <div class="split-desc">Goes in the bank</div>
+      </div>
+    </div>
+
+    <div class="section-header" style="margin-top:32px">
+      <div class="section-title">Add a Chore</div>
+    </div>
+    <div class="add-chore-form">
+      <div class="field">
+        <label>Chore name</label>
+        <input type="text" id="new-chore-name" placeholder="e.g. Feed the cat" />
+      </div>
+      <div class="field" style="max-width:90px">
+        <label>NT value</label>
+        <input type="number" id="new-chore-nt" placeholder="10" min="1" />
+      </div>
+      <div class="field" style="max-width:140px">
+        <label>Type</label>
+        <select id="new-chore-type">
+          <option value="daily">Daily (7×)</option>
+          <option value="weekly">Weekly (1×)</option>
+        </select>
+      </div>
+      <button class="btn-add" onclick="addChore()">+ Add Chore</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- HISTORY PAGE -->
+<div id="page-history" class="page">
+  <div class="container">
+    <div class="section-header" style="margin-top:0">
+      <div class="section-title">Weekly History</div>
+      <div class="section-hint">tap a week to expand</div>
+    </div>
+    <div class="week-history-list" id="history-list">
+      <div class="empty-state">
+        <div class="empty-icon">📋</div>
+        <div class="empty-text">No history yet — complete some chores!</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── CONFIG ──────────────────────────────────────────────────────────────────
+// When self-hosting, this will be '' (same origin). During dev, set to your VPS URL.
+const API_BASE = '';
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let state = null;
+let viewingWeekKey = getCurrentWeekKey();
+let saveTimer = null;
+
+function defaultState() {
+  return {
+    chores: [
+      { id: 'wipe-table',    name: 'Wipe the Table',     nt: 5,   type: 'daily' },
+      { id: 'garbage',       name: 'Take Out Garbage',    nt: 10,  type: 'daily' },
+      { id: 'dirty-clothes', name: 'Empty Dirty Clothes', nt: 10,  type: 'daily' },
+      { id: 'floss',         name: 'Floss',               nt: 10,  type: 'daily' },
+      { id: 'pushups',       name: 'Push-ups',            nt: 1,   type: 'daily' },
+      { id: 'recycling',     name: 'Recycling',           nt: 25,  type: 'recycling', slots: 4 },
+      { id: 'bathroom',      name: 'Clean Bathroom',      nt: 100, type: 'weekly' },
+      { id: 'dust-tidy',     name: 'Dust / Tidy',         nt: 100, type: 'weekly' },
+    ],
+    weeks: {},
+  };
+}
+
+// ─── API ─────────────────────────────────────────────────────────────────────
+async function loadFromServer() {
+  try {
+    const res = await fetch(API_BASE + '/api/chores');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    state = data || defaultState();
+  } catch (e) {
+    console.error('Load failed:', e);
+    state = defaultState();
+    setSaveIndicator('error', 'offline');
+  }
+}
+
+function setSaveIndicator(cls, text) {
+  const el = document.getElementById('save-indicator');
+  el.className = 'save-indicator ' + cls;
+  el.textContent = text;
+}
+
+function scheduleSave() {
+  setSaveIndicator('saving', 'saving...');
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(pushToServer, 800);
+}
+
+async function pushToServer() {
+  try {
+    const res = await fetch(API_BASE + '/api/chores', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(state),
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    setSaveIndicator('saved', 'synced ✓');
+    setTimeout(() => setSaveIndicator('', 'synced'), 2000);
+  } catch (e) {
+    console.error('Save failed:', e);
+    setSaveIndicator('error', 'save failed');
+  }
+}
+
+// ─── DATE / WEEK UTILS ───────────────────────────────────────────────────────
+function getMondayOf(date) {
+  const d = new Date(date);
+  const day = d.getDay();
+  d.setDate(d.getDate() + (day === 0 ? -6 : 1 - day));
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function getCurrentWeekKey() {
+  return weekKey(getMondayOf(new Date()));
+}
+
+function weekKey(mondayDate) {
+  return mondayDate.toISOString().slice(0, 10);
+}
+
+function weekKeyToLabel(key) {
+  const monday = new Date(key + 'T00:00:00');
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  const fmt = d => d.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' });
+  return fmt(monday) + ' – ' + fmt(sunday);
+}
+
+function navigateWeek(dir) {
+  const d = new Date(viewingWeekKey + 'T00:00:00');
+  d.setDate(d.getDate() + dir * 7);
+  viewingWeekKey = weekKey(d);
+  renderTracker();
+}
+
+// ─── DATA HELPERS ────────────────────────────────────────────────────────────
+function getWeekData(wk) {
+  if (!state.weeks[wk]) state.weeks[wk] = { checks: {} };
+  return state.weeks[wk];
+}
+
+function getCheck(wk, choreId, slot) {
+  const key = slot !== undefined ? `${choreId}_${slot}` : choreId;
+  return !!(getWeekData(wk).checks[key]);
+}
+
+function setCheck(wk, choreId, slot, val) {
+  const key = slot !== undefined ? `${choreId}_${slot}` : choreId;
+  getWeekData(wk).checks[key] = val;
+  updateWeekSnapshot(wk);
+  scheduleSave();
+}
+
+function updateWeekSnapshot(wk) {
+  const wd = getWeekData(wk);
+  const earned = totalEarned(wk);
+  wd.earned = earned;
+  wd.saved = Math.floor(earned / 2);
+  wd.dailyStreakSnapshot = calcDailyStreak();
+  wd.weeklyStreakSnapshot = calcWeeklyStreak();
+}
+
+// ─── EARNINGS ────────────────────────────────────────────────────────────────
+function choreEarned(chore, wk) {
+  if (chore.type === 'daily') {
+    let n = 0;
+    for (let i = 0; i < 7; i++) if (getCheck(wk, chore.id, i)) n++;
+    return n * chore.nt;
+  }
+  if (chore.type === 'recycling') {
+    let n = 0;
+    for (let i = 0; i < (chore.slots || 4); i++) if (getCheck(wk, chore.id, i)) n++;
+    return n * chore.nt;
+  }
+  if (chore.type === 'weekly') {
+    return getCheck(wk, chore.id) ? chore.nt : 0;
+  }
+  return 0;
+}
+
+function totalEarned(wk) {
+  return state.chores.reduce((sum, c) => sum + choreEarned(c, wk), 0);
+}
+
+// ─── STREAKS ─────────────────────────────────────────────────────────────────
+function isDailyComplete(wk, dayIdx) {
+  const dailies = state.chores.filter(c => c.type === 'daily');
+  return dailies.length > 0 && dailies.every(c => getCheck(wk, c.id, dayIdx));
+}
+
+function calcDailyStreak() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  let streak = 0;
+  for (let i = 0; i < 365; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    const wk = weekKey(getMondayOf(d));
+    const dayIdx = (d.getDay() + 6) % 7;
+    if (isDailyComplete(wk, dayIdx)) {
+      streak++;
+    } else {
+      if (i > 0) break;
+    }
+  }
+  return streak;
+}
+
+function isWeeklyComplete(wk) {
+  const weeklies = state.chores.filter(c => c.type === 'weekly');
+  return weeklies.length > 0 && weeklies.every(c => getCheck(wk, c.id));
+}
+
+function calcWeeklyStreak() {
+  const curMon = getMondayOf(new Date());
+  let streak = 0;
+  for (let i = 0; i < 52; i++) {
+    const mon = new Date(curMon);
+    mon.setDate(curMon.getDate() - i * 7);
+    const wk = weekKey(mon);
+    if (isWeeklyComplete(wk)) {
+      streak++;
+    } else {
+      if (i > 0) break;
+    }
+  }
+  return streak;
+}
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function renderTracker() {
+  const wk = viewingWeekKey;
+  const isCurrent = wk === getCurrentWeekKey();
+
+  document.getElementById('week-nav-label').innerHTML =
+    weekKeyToLabel(wk) + (isCurrent ? '<span class="current-week-badge">NOW</span>' : '');
+  document.getElementById('next-week-btn').disabled = isCurrent;
+
+  const earned = totalEarned(wk);
+  const half = Math.floor(earned / 2);
+  document.getElementById('stat-total').textContent = earned + ' NT';
+  document.getElementById('stat-spend').textContent = half + ' NT';
+  document.getElementById('stat-save').textContent = half + ' NT';
+  document.getElementById('split-spend-amt').textContent = half + ' NT';
+  document.getElementById('split-save-amt').textContent = half + ' NT';
+
+  const allTimeSaved = Object.values(state.weeks).reduce((s, w) => s + (w.saved || 0), 0);
+  document.getElementById('stat-alltime').textContent = allTimeSaved + ' NT';
+
+  const ds = calcDailyStreak();
+  const ws = calcWeeklyStreak();
+  document.getElementById('daily-streak-text').textContent = ds + (ds === 1 ? ' day' : ' days') + ' streak';
+  document.getElementById('weekly-streak-text').textContent = ws + (ws === 1 ? ' week' : ' weeks') + ' streak';
+  document.getElementById('daily-streak-badge').className = 'streak-badge' + (ds === 0 ? ' streak-zero' : '');
+  document.getElementById('weekly-streak-badge').className = 'streak-badge' + (ws === 0 ? ' streak-zero' : '');
+
+  let totalPossible = 0, totalDone = 0;
+  state.chores.forEach(c => {
+    if (c.type === 'daily') {
+      totalPossible += 7;
+      for (let i = 0; i < 7; i++) if (getCheck(wk, c.id, i)) totalDone++;
+    } else if (c.type === 'recycling') {
+      totalPossible += (c.slots || 4);
+      for (let i = 0; i < (c.slots || 4); i++) if (getCheck(wk, c.id, i)) totalDone++;
+    } else if (c.type === 'weekly') {
+      totalPossible++;
+      if (getCheck(wk, c.id)) totalDone++;
+    }
+  });
+  const pct = totalPossible ? Math.round(totalDone / totalPossible * 100) : 0;
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-pct').textContent = pct + '%';
+
+  renderBody('daily-tbody', state.chores.filter(c => c.type === 'daily'), wk, 7);
+  renderBody('recycling-tbody', state.chores.filter(c => c.type === 'recycling'), wk, 0);
+  renderBody('weekly-tbody', state.chores.filter(c => c.type === 'weekly'), wk, 1);
+}
+
+function renderBody(tbodyId, chores, wk, defaultSlots) {
+  const tbody = document.getElementById(tbodyId);
+  tbody.innerHTML = '';
+  if (chores.length === 0) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td colspan="10" style="padding:14px 0;color:var(--text3);font-size:13px;">None yet — add one below</td>`;
+    tbody.appendChild(tr);
+    return;
+  }
+  chores.forEach(chore => {
+    const slots = chore.type === 'recycling' ? (chore.slots || 4) : defaultSlots;
+    tbody.appendChild(buildChoreRow(chore, wk, slots));
+  });
+}
+
+function buildChoreRow(chore, wk, slots) {
+  const tr = document.createElement('tr');
+  tr.className = 'chore-row';
+
+  const nameTd = document.createElement('td');
+  nameTd.className = 'chore-name-cell';
+  nameTd.innerHTML = `<div class="chore-name">${chore.name}</div><div class="chore-nt">${chore.nt} NT each</div>`;
+  tr.appendChild(nameTd);
+
+  const isWeekly = chore.type === 'weekly';
+  for (let i = 0; i < slots; i++) {
+    const td = document.createElement('td');
+    td.className = 'cb-wrap';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.className = isWeekly ? 'weekly-cb' : 'cb';
+    const checked = isWeekly ? getCheck(wk, chore.id) : getCheck(wk, chore.id, i);
+    if (checked) cb.checked = true;
+    const slotArg = isWeekly ? undefined : i;
+    cb.addEventListener('change', () => {
+      setCheck(wk, chore.id, slotArg, cb.checked);
+      renderTracker();
+    });
+    td.appendChild(cb);
+    tr.appendChild(td);
+  }
+
+  // Filler columns to align "Earned" column
+  const fillerCount = chore.type === 'weekly' ? 6 : (chore.type === 'recycling' ? 3 : 0);
+  for (let i = 0; i < fillerCount; i++) tr.appendChild(document.createElement('td'));
+
+  const earnedTd = document.createElement('td');
+  const e = choreEarned(chore, wk);
+  earnedTd.className = 'chore-earned' + (e === 0 ? ' zero' : '');
+  earnedTd.textContent = e + ' NT';
+  tr.appendChild(earnedTd);
+
+  const removeTd = document.createElement('td');
+  removeTd.style.width = '28px';
+  const rb = document.createElement('button');
+  rb.className = 'btn-remove';
+  rb.title = 'Remove chore';
+  rb.textContent = '✕';
+  rb.onclick = () => {
+    if (confirm(`Remove "${chore.name}"?`)) {
+      state.chores = state.chores.filter(c => c.id !== chore.id);
+      scheduleSave();
+      renderTracker();
+    }
+  };
+  removeTd.appendChild(rb);
+  tr.appendChild(removeTd);
+
+  return tr;
+}
+
+// ─── ADD CHORE ────────────────────────────────────────────────────────────────
+function addChore() {
+  const name = document.getElementById('new-chore-name').value.trim();
+  const nt = parseInt(document.getElementById('new-chore-nt').value);
+  const type = document.getElementById('new-chore-type').value;
+  if (!name || isNaN(nt) || nt < 1) { alert('Enter a name and a valid NT amount.'); return; }
+  state.chores.push({ id: 'custom_' + Date.now(), name, nt, type });
+  document.getElementById('new-chore-name').value = '';
+  document.getElementById('new-chore-nt').value = '';
+  scheduleSave();
+  renderTracker();
+}
+
+// ─── HISTORY ─────────────────────────────────────────────────────────────────
+function renderHistory() {
+  const list = document.getElementById('history-list');
+  const entries = Object.entries(state.weeks)
+    .filter(([, v]) => v.earned > 0 || Object.keys(v.checks || {}).length > 0)
+    .sort((a, b) => b[0].localeCompare(a[0]));
+
+  if (entries.length === 0) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">No history yet — complete some chores!</div></div>';
+    return;
+  }
+
+  list.innerHTML = '';
+  entries.forEach(([wk, wd]) => {
+    const earned = wd.earned || 0;
+    const saved = wd.saved || Math.floor(earned / 2);
+    const isCurrent = wk === getCurrentWeekKey();
+
+    const card = document.createElement('div');
+    card.className = 'week-card';
+    card.innerHTML = `
+      <div>
+        <div class="week-card-label">${weekKeyToLabel(wk)}${isCurrent ? '<span class="current-week-badge">NOW</span>' : ''}</div>
+        <div class="week-card-sub">${isCurrent ? 'In progress' : 'Complete'}</div>
+      </div>
+      <div style="text-align:right">
+        <div class="week-card-total">${earned} NT</div>
+        <div class="week-card-streak">${saved} NT saved · ${saved} NT to spend</div>
+      </div>
+    `;
+
+    const detail = document.createElement('div');
+    detail.className = 'week-detail';
+    const checks = Object.values(wd.checks || {}).filter(Boolean).length;
+    detail.innerHTML = `
+      <strong style="color:var(--text)">Checks completed:</strong> ${checks}<br>
+      <strong style="color:var(--text)">Total earned:</strong> ${earned} NT<br>
+      <strong style="color:var(--text)">Saved:</strong> ${saved} NT &nbsp;|&nbsp;
+      <strong style="color:var(--text)">To spend:</strong> ${saved} NT<br>
+      ${wd.dailyStreakSnapshot ? `<strong style="color:var(--text)">Daily streak:</strong> 🔥 ${wd.dailyStreakSnapshot} days<br>` : ''}
+      ${wd.weeklyStreakSnapshot ? `<strong style="color:var(--text)">Weekly streak:</strong> ⭐ ${wd.weeklyStreakSnapshot} weeks` : ''}
+    `;
+
+    card.addEventListener('click', () => {
+      const isOpen = detail.classList.contains('open');
+      document.querySelectorAll('.week-detail').forEach(d => d.classList.remove('open'));
+      if (!isOpen) detail.classList.add('open');
+    });
+
+    const wrap = document.createElement('div');
+    wrap.appendChild(card);
+    wrap.appendChild(detail);
+    list.appendChild(wrap);
+  });
+}
+
+// ─── PAGE NAV ─────────────────────────────────────────────────────────────────
+function showPage(name, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (name === 'history') renderHistory();
+  if (name === 'tracker') renderTracker();
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+(async () => {
+  await loadFromServer();
+  document.getElementById('loading-screen').style.display = 'none';
+  renderTracker();
+})();
+</script>
+</body>
+</html>
