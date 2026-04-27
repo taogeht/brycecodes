@@ -152,11 +152,11 @@
   .chore-earned.zero { color: var(--text3); }
 
   /* CHECKBOXES */
-  .cb-wrap { display: flex; justify-content: center; align-items: center; }
+  .cb-wrap { text-align: center; }
   .cb {
     width: 28px; height: 28px; border-radius: 8px;
     border: 1.5px solid var(--border2); background: var(--surface2);
-    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
     transition: all 0.15s; -webkit-appearance: none; appearance: none;
   }
   .cb:hover { border-color: var(--accent); background: rgba(108,99,255,0.1); }
@@ -165,7 +165,7 @@
   .weekly-cb {
     width: 36px; height: 36px; border-radius: var(--radius-sm);
     border: 1.5px solid var(--border2); background: var(--surface2);
-    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
     transition: all 0.15s; -webkit-appearance: none; appearance: none;
   }
   .weekly-cb:hover { border-color: var(--teal); background: rgba(56,189,248,0.1); }
