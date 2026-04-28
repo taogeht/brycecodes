@@ -44,7 +44,11 @@ const { createProxyMiddleware } = require('http-proxy-middleware');
 app.use('/12x12/api', createProxyMiddleware({
     target: 'http://localhost:3002',
     changeOrigin: true,
-    pathRewrite: { '^/12x12': '' },
+    // app.use('/12x12/api', ...) already strips the mount path, so by the
+    // time string-based pathRewrite runs, req.url is just /users (not
+    // /12x12/api/users). Use a function and originalUrl so we can drop
+    // /12x12 and keep /api — the 12x12 backend's routes are /api/*.
+    pathRewrite: (_path, req) => req.originalUrl.replace(/^\/12x12/, ''),
     on: {
         // Without this handler, http-proxy-middleware v3 falls through to
         // the next middleware on connection errors — which means the SPA
