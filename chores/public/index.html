@@ -448,16 +448,7 @@ let saveTimer = null;
 
 function defaultState() {
   return {
-    chores: [
-      { id: 'wipe-table',    name: 'Wipe the Table',     nt: 5,   type: 'daily' },
-      { id: 'garbage',       name: 'Take Out Garbage',    nt: 10,  type: 'daily' },
-      { id: 'dirty-clothes', name: 'Empty Dirty Clothes', nt: 10,  type: 'daily' },
-      { id: 'floss',         name: 'Floss',               nt: 10,  type: 'daily' },
-      { id: 'pushups',       name: 'Push-ups',            nt: 1,   type: 'daily' },
-      { id: 'recycling',     name: 'Recycling',           nt: 25,  type: 'recycling', slots: 4 },
-      { id: 'bathroom',      name: 'Clean Bathroom',      nt: 100, type: 'weekly' },
-      { id: 'dust-tidy',     name: 'Dust / Tidy',         nt: 100, type: 'weekly' },
-    ],
+    chores: [],
     weeks: {},
   };
 }
