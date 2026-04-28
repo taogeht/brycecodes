@@ -542,7 +542,15 @@ function getCurrentWeekKey() {
 }
 
 function weekKey(mondayDate) {
-  return mondayDate.toISOString().slice(0, 10);
+  // Format as YYYY-MM-DD in LOCAL time. Earlier versions used toISOString()
+  // which converts to UTC, off-by-one'ing the date for users in UTC+
+  // timezones (the local Monday's UTC equivalent is the previous Sunday).
+  // That made week navigation jump by 8 days instead of 7 and made data
+  // lookups miss the SQL-backfilled keys (which use UTC Mondays).
+  const y = mondayDate.getFullYear();
+  const m = String(mondayDate.getMonth() + 1).padStart(2, '0');
+  const d = String(mondayDate.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 function weekKeyToLabel(key) {
