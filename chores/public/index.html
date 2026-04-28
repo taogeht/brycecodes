@@ -553,6 +553,18 @@ function weekKeyToLabel(key) {
   return fmt(monday) + ' – ' + fmt(sunday);
 }
 
+// Number a given week relative to state.firstWeekMonday (Week 1's Monday).
+// Used to keep "Week 15" stable even when intermediate weeks have no data.
+// Falls back to null when the anchor isn't set; renderHistory then numbers
+// by entry position instead.
+function weekNumberFor(wk) {
+  if (!state.firstWeekMonday) return null;
+  const wkDate = new Date(wk + 'T00:00:00');
+  const anchor = new Date(state.firstWeekMonday + 'T00:00:00');
+  const diffWeeks = Math.round((wkDate - anchor) / (7 * 86400000));
+  return diffWeeks + 1;
+}
+
 function navigateWeek(dir) {
   const d = new Date(viewingWeekKey + 'T00:00:00');
   d.setDate(d.getDate() + dir * 7);
@@ -838,14 +850,15 @@ function renderHistory() {
   }
 
   list.innerHTML = '';
-  // entries are sorted newest-first; Week N is human-numbered with the
-  // oldest entry as Week 1 and the newest as the highest number, so the
-  // backfilled "Week 1 = 235 NT" stays Week 1 even as new weeks accrue.
+  // entries are sorted newest-first. weekNumberFor() anchors on
+  // state.firstWeekMonday so "Week 15" stays Week 15 even when weeks
+  // 13/14 have no data (gaps don't reshuffle the numbers). Falls back
+  // to position-based numbering if no anchor is set yet.
   entries.forEach(([wk, wd], i) => {
     const earned = wd.earned || 0;
     const saved = wd.saved || Math.floor(earned / 2);
     const isCurrent = wk === getCurrentWeekKey();
-    const weekNum = entries.length - i;
+    const weekNum = weekNumberFor(wk) ?? (entries.length - i);
 
     const card = document.createElement('div');
     card.className = 'week-card';
