@@ -838,21 +838,24 @@ function renderHistory() {
   }
 
   list.innerHTML = '';
-  entries.forEach(([wk, wd]) => {
+  // entries are sorted newest-first; Week N is human-numbered with the
+  // oldest entry as Week 1 and the newest as the highest number, so the
+  // backfilled "Week 1 = 235 NT" stays Week 1 even as new weeks accrue.
+  entries.forEach(([wk, wd], i) => {
     const earned = wd.earned || 0;
     const saved = wd.saved || Math.floor(earned / 2);
     const isCurrent = wk === getCurrentWeekKey();
+    const weekNum = entries.length - i;
 
     const card = document.createElement('div');
     card.className = 'week-card';
     card.innerHTML = `
       <div>
-        <div class="week-card-label">${weekKeyToLabel(wk)}${isCurrent ? '<span class="current-week-badge">NOW</span>' : ''}</div>
-        <div class="week-card-sub">${isCurrent ? 'In progress' : 'Complete'}</div>
+        <div class="week-card-label">Week ${weekNum}${isCurrent ? '<span class="current-week-badge">NOW</span>' : ''}</div>
+        <div class="week-card-sub">${weekKeyToLabel(wk)}${isCurrent ? ' · in progress' : ''}</div>
       </div>
       <div style="text-align:right">
         <div class="week-card-total">${earned} NT</div>
-        <div class="week-card-streak">${saved} NT saved · ${saved} NT to spend</div>
       </div>
     `;
 
@@ -860,12 +863,12 @@ function renderHistory() {
     detail.className = 'week-detail';
     const checks = Object.values(wd.checks || {}).filter(Boolean).length;
     detail.innerHTML = `
-      <strong style="color:var(--text)">Checks completed:</strong> ${checks}<br>
       <strong style="color:var(--text)">Total earned:</strong> ${earned} NT<br>
       <strong style="color:var(--text)">Saved:</strong> ${saved} NT &nbsp;|&nbsp;
-      <strong style="color:var(--text)">To spend:</strong> ${saved} NT<br>
-      ${wd.dailyStreakSnapshot ? `<strong style="color:var(--text)">Daily streak:</strong> 🔥 ${wd.dailyStreakSnapshot} days<br>` : ''}
-      ${wd.weeklyStreakSnapshot ? `<strong style="color:var(--text)">Weekly streak:</strong> ⭐ ${wd.weeklyStreakSnapshot} weeks` : ''}
+      <strong style="color:var(--text)">To spend:</strong> ${saved} NT
+      ${checks ? `<br><strong style="color:var(--text)">Checks completed:</strong> ${checks}` : ''}
+      ${wd.dailyStreakSnapshot ? `<br><strong style="color:var(--text)">Daily streak:</strong> 🔥 ${wd.dailyStreakSnapshot} days` : ''}
+      ${wd.weeklyStreakSnapshot ? `<br><strong style="color:var(--text)">Weekly streak:</strong> ⭐ ${wd.weeklyStreakSnapshot} weeks` : ''}
     `;
 
     card.addEventListener('click', () => {
