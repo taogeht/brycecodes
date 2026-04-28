@@ -9,8 +9,8 @@ A monorepo of several independent web projects glued together by a single Expres
 Subprojects:
 - `mainpage/`, `invoice/`, `englishangel/`, `timesheet/`, `darren/` — vanilla HTML/CSS/JS static sites mounted at `/<name>`.
 - `chores/` — single-file SPA (`chores/public/index.html`) mounted at `/chores`. State persisted via `GET/POST /api/chores` to a single JSONB row in `chores.state` (Postgres). Schema is bootstrapped on root-server startup; reuses `DATABASE_URL`.
-- `fitnessjourney/` — full-stack app (React+Vite frontend, Node/Express+Prisma+PostgreSQL backend on port 3001). Mounted under `/fitnessjourney` in production.
 - `12x12/` — full-stack flashcards app (React CRA + TypeScript frontend, Express+TypeScript+PostgreSQL backend on port 3002). Mounted under `/12x12` in production. CRA `homepage` is set to `/12x12` so built assets resolve correctly.
+- `fitnessjourney/` — **disabled.** Source code preserved in this directory but not built or run. To revive: re-add the fitness blocks to `Dockerfile`, `start.sh`, and `server.js` (see git history before this point).
 
 `create_template.py` is a one-off script (run from the project's `venv/`) that uses `python-docx` to regenerate `timesheet/template.docx` from `timesheet/SignatureSheet.docx` for docxtemplater.
 
@@ -22,23 +22,7 @@ npm install
 npm start                    # node server.js, defaults to PORT=80
 ```
 
-Fitness backend (`fitnessjourney/backend/`):
-```bash
-npm install
-npm run dev                  # node --watch src/server.js, PORT=3001
-npm start
-npm run seed                 # seeds admin user brycev@gmail.com / changeme123
-npx prisma db push --schema=src/prisma/schema.prisma   # apply schema (no migrations dir)
-npx prisma generate --schema=src/prisma/schema.prisma
-```
-
-Fitness frontend (`fitnessjourney/frontend/`):
-```bash
-npm install
-npm run dev                  # Vite on :3000, proxies /api and /uploads to :3001
-npm run build                # outputs to dist/, served by root server in prod
-npm run lint                 # eslint .
-```
+Fitness backend / frontend — **disabled.** Source still present under `fitnessjourney/` but the production server doesn't build, run, or proxy it. See `CLAUDE.md` overview section for revival notes.
 
 12x12 (`12x12/`):
 ```bash
@@ -58,11 +42,11 @@ Production image (builds everything — root server, all static sites, fitness f
 
 ## Architecture notes that aren't obvious from the code
 
-**Proxy ordering in `server.js` is load-bearing.** The `/fitnessjourney/api`, `/fitnessjourney/uploads`, and `/12x12/api` proxies are all registered *before* `bodyParser.json()`. If you add middleware, do not insert body-parsing or anything that consumes the request stream above those proxies — the backend would receive empty POST bodies. There is an explicit comment near the first fitness proxy warning about this.
+**Proxy ordering in `server.js` is load-bearing.** The `/12x12/api` proxy is registered *before* `bodyParser.json()`. If you add middleware, do not insert body-parsing or anything that consumes the request stream above the proxy — the backend would receive empty POST bodies.
 
-**12x12 path-rewrite differs from fitness.** Fitness rewrites `^/fitnessjourney/api` → `''` (drops `/api`), so the fitness backend uses `/auth`, `/meals`, etc. 12x12 rewrites `^/12x12` → `''` (keeps `/api`), so the 12x12 backend keeps its `/api/login`, `/api/cards`, etc. Don't normalize one to the other — the backends were written with their own conventions.
+**12x12 path-rewrite keeps `/api`.** The proxy rewrites `^/12x12` → `''`, so `/12x12/api/login` arrives at the backend as `/api/login`. The 12x12 backend's auth middleware specifically gates on `req.path.startsWith('/api')`, so don't change this without updating that check.
 
-**12x12 backend port is 3002, not 3001.** Both 12x12 and fitness use Postgres. By default they share `DATABASE_URL` (12x12 lives in its own `srs.*` schema, so they don't collide). `start.sh` honors `TWELVE_DATABASE_URL` as an override if you want them split.
+**12x12 backend port is 3002.** It connects to Postgres via `DATABASE_URL` (or `TWELVE_DATABASE_URL` as override) and lives in the `srs.*` schema. The `chores.*` schema (singleton row JSONB blob) shares the same `DATABASE_URL`, queried from the root server.
 
 **12x12 migration is `psql -f`, not Prisma.** `start.sh` runs the SQL file directly via `psql` (postgresql-client is installed in the Dockerfile specifically for this). The migration uses `CREATE TABLE IF NOT EXISTS` so re-running is safe. There is no auto-seeded user — per `12x12/README.md`, you create the first teacher with a manual SQL `INSERT` after migration runs.
 

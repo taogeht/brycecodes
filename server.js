@@ -22,7 +22,7 @@ if (!fs.existsSync(timesheetDataDir)) {
     fs.mkdirSync(timesheetDataDir, { recursive: true });
 }
 
-// Postgres pool for chores persistence (shares fitness DATABASE_URL).
+// Postgres pool for chores persistence (uses DATABASE_URL).
 // Bootstraps its own schema/table on first start — no separate migration step.
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 pool.query(`
@@ -36,40 +36,11 @@ pool.query(`
 
 app.use(cors());
 
-// Fitness Journey: proxy API requests to the fitness backend (port 3001)
-// IMPORTANT: Proxy must be registered BEFORE bodyParser.json() so the request
-// body stream is not consumed before being forwarded to the backend.
+// 12x12: proxy API requests to the flashcards backend (port 3002).
+// IMPORTANT: Proxy must be registered BEFORE bodyParser.json() so the
+// request body stream isn't consumed before being forwarded.
 const { createProxyMiddleware } = require('http-proxy-middleware');
 
-app.use('/fitnessjourney/api', (req, res, next) => {
-    console.log(`[PROXY] ${req.method} ${req.originalUrl} -> http://localhost:3001${req.originalUrl.replace('/fitnessjourney/api', '')}`);
-    next();
-}, createProxyMiddleware({
-    target: 'http://localhost:3001',
-    changeOrigin: true,
-    pathRewrite: { '^/fitnessjourney/api': '' },
-    on: {
-        proxyReq: (proxyReq, req) => {
-            console.log(`[PROXY] Forwarding: ${req.method} ${proxyReq.path}`);
-        },
-        proxyRes: (proxyRes, req) => {
-            console.log(`[PROXY] Response: ${proxyRes.statusCode} for ${req.method} ${req.originalUrl}`);
-        },
-        error: (err, req, res) => {
-            console.error(`[PROXY] Error: ${err.message}`);
-            res.status(502).json({ error: 'Proxy error', details: err.message });
-        }
-    }
-}));
-app.use('/fitnessjourney/uploads', createProxyMiddleware({
-    target: 'http://localhost:3001',
-    changeOrigin: true,
-    pathRewrite: { '^/fitnessjourney/uploads': '/uploads' },
-}));
-
-// 12x12: proxy API requests to the flashcards backend (port 3002)
-// IMPORTANT: same constraint as fitness — proxy must be registered BEFORE
-// bodyParser.json() so the request body stream isn't consumed.
 app.use('/12x12/api', createProxyMiddleware({
     target: 'http://localhost:3002',
     changeOrigin: true,
@@ -85,13 +56,6 @@ app.use('/mainpage', express.static(path.join(__dirname, 'mainpage')));
 app.use('/EnglishAngel', express.static(path.join(__dirname, 'englishangel')));
 app.use('/timesheet', express.static(path.join(__dirname, 'timesheet')));
 app.use('/chores', express.static(path.join(__dirname, 'chores', 'public')));
-
-// Fitness Journey: serve frontend static files
-app.use('/fitnessjourney', express.static(path.join(__dirname, 'fitnessjourney', 'frontend', 'dist')));
-// SPA fallback for fitness journey client-side routing
-app.get('/fitnessjourney/*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'fitnessjourney', 'frontend', 'dist', 'index.html'));
-});
 
 // 12x12: serve CRA build output
 app.use('/12x12', express.static(path.join(__dirname, '12x12', 'client', 'build')));
