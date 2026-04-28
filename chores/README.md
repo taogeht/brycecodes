@@ -13,9 +13,9 @@ chores/
 
 ## Persistence
 
-The root server reads/writes `chores_data.json` at the repo root (override with `CHORES_DATA_PATH` env var, e.g. `/data/chores_data.json` in the Docker setup). Writes are atomic (tmp file + rename) and serialized through a queue to prevent concurrent corruption.
+State lives in Postgres as a single JSONB row in `chores.state` (one shared "singleton" row — the app is single-tenant household state, no per-user split). The root server bootstraps the schema/table on startup and reuses `DATABASE_URL` from the fitness/12x12 setup.
 
-When the file is missing, `GET /api/chores` returns `null` and the frontend falls back to `defaultState()`.
+`GET /api/chores` returns the JSON blob (or `null` when the row doesn't exist yet — the frontend falls back to `defaultState()`). `POST /api/chores` is an `INSERT ... ON CONFLICT DO UPDATE`, atomic at the database layer.
 
 ## Local dev
 

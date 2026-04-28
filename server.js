@@ -3,12 +3,12 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const fs = require('fs');
 const path = require('path');
+const { Pool } = require('pg');
 
 const app = express();
 const PORT = process.env.PORT || 80;
 const DATA_FILE = process.env.DATA_PATH || path.join(__dirname, 'data.json');
 const TIMESHEET_DATA_FILE = process.env.TIMESHEET_DATA_PATH || path.join(__dirname, 'timesheet_data.json');
-const CHORES_DATA_FILE = process.env.CHORES_DATA_PATH || path.join(__dirname, 'chores_data.json');
 
 // Ensure the directory for DATA_FILE exists
 const dataDir = path.dirname(DATA_FILE);
@@ -22,11 +22,17 @@ if (!fs.existsSync(timesheetDataDir)) {
     fs.mkdirSync(timesheetDataDir, { recursive: true });
 }
 
-// Ensure the directory for CHORES_DATA_FILE exists
-const choresDataDir = path.dirname(CHORES_DATA_FILE);
-if (!fs.existsSync(choresDataDir)) {
-    fs.mkdirSync(choresDataDir, { recursive: true });
-}
+// Postgres pool for chores persistence (shares fitness DATABASE_URL).
+// Bootstraps its own schema/table on first start — no separate migration step.
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+pool.query(`
+    CREATE SCHEMA IF NOT EXISTS chores;
+    CREATE TABLE IF NOT EXISTS chores.state (
+        id TEXT PRIMARY KEY DEFAULT 'singleton',
+        data JSONB NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+`).catch(err => console.error('Chores schema bootstrap failed:', err.message));
 
 app.use(cors());
 
@@ -151,54 +157,38 @@ app.post('/api/timesheet', (req, res) => {
     }
 });
 
-// API for Chores persistence — atomic write via tmp+rename, serialized through a queue
-let choresWriting = false;
-const choresWriteQueue = [];
-
-function flushChoresQueue() {
-    if (choresWriting || choresWriteQueue.length === 0) return;
-    choresWriting = true;
-    const { data, res } = choresWriteQueue.shift();
-    const tmp = CHORES_DATA_FILE + '.tmp';
-    fs.writeFile(tmp, JSON.stringify(data, null, 2), (err) => {
-        if (err) {
-            choresWriting = false;
-            res.status(500).json({ error: 'Write failed' });
-            flushChoresQueue();
-            return;
-        }
-        fs.rename(tmp, CHORES_DATA_FILE, (err2) => {
-            choresWriting = false;
-            if (err2) {
-                res.status(500).json({ error: 'Rename failed' });
-            } else {
-                res.json({ success: true });
-            }
-            flushChoresQueue();
-        });
-    });
-}
-
-app.get('/api/chores', (req, res) => {
-    if (!fs.existsSync(CHORES_DATA_FILE)) {
-        return res.json(null); // frontend uses defaultState() when null
-    }
+// API for Chores persistence — single JSONB row in chores.state
+app.get('/api/chores', async (req, res) => {
     try {
-        const raw = fs.readFileSync(CHORES_DATA_FILE, 'utf8');
-        res.json(JSON.parse(raw));
+        const { rows } = await pool.query(
+            "SELECT data FROM chores.state WHERE id = 'singleton'"
+        );
+        // null tells the frontend to use defaultState()
+        res.json(rows.length ? rows[0].data : null);
     } catch (err) {
-        console.error("Error reading chores data file:", err);
-        res.status(500).json({ error: "Read failed" });
+        console.error("Error reading chores state:", err.message);
+        res.status(500).json({ error: 'Read failed' });
     }
 });
 
-app.post('/api/chores', (req, res) => {
+app.post('/api/chores', async (req, res) => {
     const data = req.body;
     if (!data || typeof data !== 'object') {
         return res.status(400).json({ error: 'Invalid payload' });
     }
-    choresWriteQueue.push({ data, res });
-    flushChoresQueue();
+    try {
+        await pool.query(
+            `INSERT INTO chores.state (id, data, updated_at)
+             VALUES ('singleton', $1, NOW())
+             ON CONFLICT (id) DO UPDATE
+                SET data = EXCLUDED.data, updated_at = NOW()`,
+            [data]
+        );
+        res.json({ success: true });
+    } catch (err) {
+        console.error("Error writing chores state:", err.message);
+        res.status(500).json({ error: 'Write failed' });
+    }
 });
 
 app.listen(PORT, () => {

@@ -8,7 +8,7 @@ A monorepo of several independent web projects glued together by a single Expres
 
 Subprojects:
 - `mainpage/`, `invoice/`, `englishangel/`, `timesheet/`, `darren/` — vanilla HTML/CSS/JS static sites mounted at `/<name>`.
-- `chores/` — single-file SPA (`chores/public/index.html`) mounted at `/chores`. State persisted via `GET/POST /api/chores` (atomic tmp+rename write, serialized queue) to `chores_data.json` (override with `CHORES_DATA_PATH`).
+- `chores/` — single-file SPA (`chores/public/index.html`) mounted at `/chores`. State persisted via `GET/POST /api/chores` to a single JSONB row in `chores.state` (Postgres). Schema is bootstrapped on root-server startup; reuses `DATABASE_URL`.
 - `fitnessjourney/` — full-stack app (React+Vite frontend, Node/Express+Prisma+PostgreSQL backend on port 3001). Mounted under `/fitnessjourney` in production.
 - `12x12/` — full-stack flashcards app (React CRA + TypeScript frontend, Express+TypeScript+PostgreSQL backend on port 3002). Mounted under `/12x12` in production. CRA `homepage` is set to `/12x12` so built assets resolve correctly.
 
@@ -74,4 +74,4 @@ Production image (builds everything — root server, all static sites, fitness f
 
 **Schema migrations are not the standard Prisma flow.** There's no `prisma/migrations/` directory; `start.sh` uses `prisma db push` (which syncs the schema without migration history) plus a hand-written raw-SQL fallback in `utils/migrate.js` that adds the `api_key` column if push didn't. When changing `schema.prisma`, plan for `db push`, not `migrate dev`.
 
-**Persistence for the static-site APIs is flat JSON files.** `/api/angels` (English Angel), `/api/timesheet`, and `/api/chores` in the root `server.js` read/write `data.json`, `timesheet_data.json`, and `chores_data.json` respectively. Paths are overridable via `DATA_PATH` / `TIMESHEET_DATA_PATH` / `CHORES_DATA_PATH` env vars and the docker setup mounts a volume at `/data`. `/api/angels` and `/api/timesheet` use a simple synchronous `writeFileSync`; `/api/chores` is the only one that does an atomic tmp+rename and serializes writes through a queue. If you copy any of these as a template for a new endpoint, prefer the chores pattern.
+**Persistence for the static-site APIs is mixed.** `/api/angels` (English Angel) and `/api/timesheet` read/write flat JSON files (`data.json`, `timesheet_data.json`) — paths overridable via `DATA_PATH` / `TIMESHEET_DATA_PATH`, docker volume at `/data`. `/api/chores` is the odd one out: it lives in Postgres (`chores.state`, single JSONB row, UPSERT on save) and reuses `DATABASE_URL`. The schema is bootstrapped at server startup with `CREATE SCHEMA IF NOT EXISTS chores; CREATE TABLE IF NOT EXISTS chores.state ...`. Chores moved to Postgres because the JSON path defaulted inside the container and didn't survive redeploys.
