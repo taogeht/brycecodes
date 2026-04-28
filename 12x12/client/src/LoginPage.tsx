@@ -406,7 +406,7 @@ export default function LoginPage({
         <div style={{ marginTop: '32px', paddingTop: '24px', borderTop: '1px solid #eee' }}>
           {isTeacherMode ? (
             <button
-              onClick={() => (window.location.href = '/')}
+              onClick={() => (window.location.href = '/12x12/')}
               style={{
                 padding: '8px 16px',
                 backgroundColor: '#6c757d',
@@ -420,7 +420,7 @@ export default function LoginPage({
             </button>
           ) : (
             <button
-              onClick={() => (window.location.href = '/teacher')}
+              onClick={() => (window.location.href = '/12x12/teacher')}
               style={{
                 padding: '8px 16px',
                 backgroundColor: '#28a745',

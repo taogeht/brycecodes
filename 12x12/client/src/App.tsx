@@ -73,7 +73,7 @@ export default function App() {
   const [availableDecksStatus, setAvailableDecksStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [availableDecksError, setAvailableDecksError] = useState<string | null>(null);
   const [selectedDeckId, setSelectedDeckId] = useState<string>('default-12x12');
-  const isTeacherRoute = typeof window !== 'undefined' && window.location.pathname.startsWith('/teacher');
+  const isTeacherRoute = typeof window !== 'undefined' && window.location.pathname.startsWith('/12x12/teacher');
   const handleDeckInputChange = (value: string) => {
     setSelectedDeckId('manual-input');
     setPendingDeckInput(value);
@@ -84,7 +84,7 @@ export default function App() {
     if (!currentUser) return;
     if (isTeacherRoute && currentUser.user_type !== 'teacher') {
       setCurrentUser(null);
-      window.location.href = '/';
+      window.location.href = '/12x12/';
     }
   }, [currentUser, isTeacherRoute]);
 
@@ -313,12 +313,12 @@ export default function App() {
           }}>
             <h1 style={{ marginBottom: '16px', color: '#dc3545' }}>Teacher Portal Required</h1>
             <p style={{ marginBottom: '24px', color: '#666' }}>
-              Teacher accounts must sign in from <code>/teacher</code>.
+              Teacher accounts must sign in from <code>/12x12/teacher</code>.
             </p>
             <button
               onClick={() => {
                 setCurrentUser(null);
-                window.location.href = '/teacher';
+                window.location.href = '/12x12/teacher';
               }}
               style={{
                 padding: '12px 24px',

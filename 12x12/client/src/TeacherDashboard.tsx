@@ -1002,7 +1002,7 @@ export default function TeacherDashboard({ onLogout, userId }: { onLogout: () =>
                   </div>
                   {(() => {
                     const origin = typeof window !== 'undefined' ? window.location.origin : '';
-                    const shareLink = origin ? `${origin}?deck=${selectedDeck.id}` : `?deck=${selectedDeck.id}`;
+                    const shareLink = origin ? `${origin}/12x12/?deck=${selectedDeck.id}` : `?deck=${selectedDeck.id}`;
                     return (
                       <>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
