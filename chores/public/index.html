@@ -171,6 +171,16 @@
   .weekly-cb:hover { border-color: var(--teal); background: rgba(56,189,248,0.1); }
   .weekly-cb:checked { background: rgba(56,189,248,0.15); border-color: var(--teal); }
   .weekly-cb:checked::after { content: ''; width: 6px; height: 11px; border: 2px solid var(--teal); border-top: none; border-left: none; transform: rotate(42deg) translateY(-1px); display: block; }
+  .qty-input {
+    width: 46px; height: 30px;
+    background: var(--surface2); border: 1.5px solid var(--border2);
+    color: var(--text); border-radius: 6px;
+    text-align: center; font-family: var(--mono); font-size: 13px;
+    outline: none; padding: 0; -moz-appearance: textfield;
+  }
+  .qty-input:focus { border-color: var(--accent); }
+  .qty-input::-webkit-outer-spin-button,
+  .qty-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 
   /* SPLIT */
   .split-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 24px; }
@@ -355,8 +365,22 @@
     </table>
 
     <div class="section-header" style="margin-top:24px">
-      <div class="section-title">Recycling</div>
-      <div class="section-hint">up to 4× per week · 25 NT each</div>
+      <div class="section-title">3× per week</div>
+      <div class="section-hint">three times in any week</div>
+    </div>
+    <table class="chore-table">
+      <thead><tr>
+        <th class="chore-name-th">Chore</th>
+        <th>#1</th><th>#2</th><th>#3</th>
+        <th colspan="4"></th>
+        <th style="text-align:right;padding-right:0">Earned</th><th></th>
+      </tr></thead>
+      <tbody id="thrice-tbody"></tbody>
+    </table>
+
+    <div class="section-header" style="margin-top:24px">
+      <div class="section-title">4× per week</div>
+      <div class="section-hint">four times in any week</div>
     </div>
     <table class="chore-table">
       <thead><tr>
@@ -365,7 +389,7 @@
         <th colspan="3"></th>
         <th style="text-align:right;padding-right:0">Earned</th><th></th>
       </tr></thead>
-      <tbody id="recycling-tbody"></tbody>
+      <tbody id="fourx-tbody"></tbody>
     </table>
 
     <div class="section-header" style="margin-top:24px">
@@ -407,11 +431,20 @@
         <label>NT value</label>
         <input type="number" id="new-chore-nt" placeholder="10" min="1" />
       </div>
-      <div class="field" style="max-width:140px">
-        <label>Type</label>
+      <div class="field" style="max-width:160px">
+        <label>Schedule</label>
         <select id="new-chore-type">
           <option value="daily">Daily (7×)</option>
+          <option value="3x">3× per week</option>
+          <option value="4x">4× per week</option>
           <option value="weekly">Weekly (1×)</option>
+        </select>
+      </div>
+      <div class="field" style="max-width:160px">
+        <label>Track count?</label>
+        <select id="new-chore-qty">
+          <option value="0">No (one-tap check)</option>
+          <option value="1">Yes (e.g. push-ups)</option>
         </select>
       </div>
       <button class="btn-add" onclick="addChore()">+ Add Chore</button>
@@ -533,9 +566,27 @@ function getWeekData(wk) {
   return state.weeks[wk];
 }
 
-function getCheck(wk, choreId, slot) {
+// Schedule type → number of slots in the row.
+// 'recycling' is kept as a backwards-compat alias of '4x'.
+function slotCount(chore) {
+  switch (chore.type) {
+    case 'daily':     return 7;
+    case '3x':        return 3;
+    case '4x':
+    case 'recycling': return chore.slots || 4;
+    case 'weekly':    return 1;
+    default:          return 1;
+  }
+}
+
+// Raw stored value — number for quantity chores, true/false for checkbox chores.
+function getCheckValue(wk, choreId, slot) {
   const key = slot !== undefined ? `${choreId}_${slot}` : choreId;
-  return !!(getWeekData(wk).checks[key]);
+  return getWeekData(wk).checks[key];
+}
+
+function getCheck(wk, choreId, slot) {
+  return !!getCheckValue(wk, choreId, slot);
 }
 
 function setCheck(wk, choreId, slot, val) {
@@ -555,21 +606,24 @@ function updateWeekSnapshot(wk) {
 }
 
 // ─── EARNINGS ────────────────────────────────────────────────────────────────
+// For quantity chores, each slot stores a count and earnings = sum × NT/unit.
+// For checkbox chores, each slot is true/false and earnings = count × NT.
+function slotUnits(chore, val) {
+  if (chore.quantity) return Number(val) || 0;
+  return val ? 1 : 0;
+}
+
 function choreEarned(chore, wk) {
-  if (chore.type === 'daily') {
-    let n = 0;
-    for (let i = 0; i < 7; i++) if (getCheck(wk, chore.id, i)) n++;
-    return n * chore.nt;
-  }
-  if (chore.type === 'recycling') {
-    let n = 0;
-    for (let i = 0; i < (chore.slots || 4); i++) if (getCheck(wk, chore.id, i)) n++;
-    return n * chore.nt;
-  }
+  let units = 0;
   if (chore.type === 'weekly') {
-    return getCheck(wk, chore.id) ? chore.nt : 0;
+    units = slotUnits(chore, getCheckValue(wk, chore.id));
+  } else {
+    const slots = slotCount(chore);
+    for (let i = 0; i < slots; i++) {
+      units += slotUnits(chore, getCheckValue(wk, chore.id, i));
+    }
   }
-  return 0;
+  return units * chore.nt;
 }
 
 function totalEarned(wk) {
@@ -650,15 +704,13 @@ function renderTracker() {
 
   let totalPossible = 0, totalDone = 0;
   state.chores.forEach(c => {
-    if (c.type === 'daily') {
-      totalPossible += 7;
-      for (let i = 0; i < 7; i++) if (getCheck(wk, c.id, i)) totalDone++;
-    } else if (c.type === 'recycling') {
-      totalPossible += (c.slots || 4);
-      for (let i = 0; i < (c.slots || 4); i++) if (getCheck(wk, c.id, i)) totalDone++;
-    } else if (c.type === 'weekly') {
+    if (c.type === 'weekly') {
       totalPossible++;
       if (getCheck(wk, c.id)) totalDone++;
+    } else {
+      const slots = slotCount(c);
+      totalPossible += slots;
+      for (let i = 0; i < slots; i++) if (getCheck(wk, c.id, i)) totalDone++;
     }
   });
   const pct = totalPossible ? Math.round(totalDone / totalPossible * 100) : 0;
@@ -666,7 +718,8 @@ function renderTracker() {
   document.getElementById('progress-pct').textContent = pct + '%';
 
   renderBody('daily-tbody', state.chores.filter(c => c.type === 'daily'), wk, 7);
-  renderBody('recycling-tbody', state.chores.filter(c => c.type === 'recycling'), wk, 0);
+  renderBody('thrice-tbody', state.chores.filter(c => c.type === '3x'), wk, 3);
+  renderBody('fourx-tbody', state.chores.filter(c => c.type === '4x' || c.type === 'recycling'), wk, 4);
   renderBody('weekly-tbody', state.chores.filter(c => c.type === 'weekly'), wk, 1);
 }
 
@@ -680,8 +733,7 @@ function renderBody(tbodyId, chores, wk, defaultSlots) {
     return;
   }
   chores.forEach(chore => {
-    const slots = chore.type === 'recycling' ? (chore.slots || 4) : defaultSlots;
-    tbody.appendChild(buildChoreRow(chore, wk, slots));
+    tbody.appendChild(buildChoreRow(chore, wk, slotCount(chore) || defaultSlots));
   });
 }
 
@@ -691,29 +743,46 @@ function buildChoreRow(chore, wk, slots) {
 
   const nameTd = document.createElement('td');
   nameTd.className = 'chore-name-cell';
-  nameTd.innerHTML = `<div class="chore-name">${chore.name}</div><div class="chore-nt">${chore.nt} NT each</div>`;
+  const ntLabel = chore.quantity ? `${chore.nt} NT per unit` : `${chore.nt} NT each`;
+  nameTd.innerHTML = `<div class="chore-name">${chore.name}</div><div class="chore-nt">${ntLabel}</div>`;
   tr.appendChild(nameTd);
 
   const isWeekly = chore.type === 'weekly';
   for (let i = 0; i < slots; i++) {
     const td = document.createElement('td');
     td.className = 'cb-wrap';
-    const cb = document.createElement('input');
-    cb.type = 'checkbox';
-    cb.className = isWeekly ? 'weekly-cb' : 'cb';
-    const checked = isWeekly ? getCheck(wk, chore.id) : getCheck(wk, chore.id, i);
-    if (checked) cb.checked = true;
     const slotArg = isWeekly ? undefined : i;
-    cb.addEventListener('change', () => {
-      setCheck(wk, chore.id, slotArg, cb.checked);
-      renderTracker();
-    });
-    td.appendChild(cb);
+
+    if (chore.quantity) {
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.min = '0';
+      input.className = 'qty-input';
+      const v = getCheckValue(wk, chore.id, slotArg);
+      input.value = (v && v > 0) ? v : '';
+      input.addEventListener('change', () => {
+        const n = parseInt(input.value, 10);
+        const stored = (isNaN(n) || n < 0) ? 0 : n;
+        setCheck(wk, chore.id, slotArg, stored);
+        renderTracker();
+      });
+      td.appendChild(input);
+    } else {
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.className = isWeekly ? 'weekly-cb' : 'cb';
+      if (getCheck(wk, chore.id, slotArg)) cb.checked = true;
+      cb.addEventListener('change', () => {
+        setCheck(wk, chore.id, slotArg, cb.checked);
+        renderTracker();
+      });
+      td.appendChild(cb);
+    }
     tr.appendChild(td);
   }
 
-  // Filler columns to align "Earned" column
-  const fillerCount = chore.type === 'weekly' ? 6 : (chore.type === 'recycling' ? 3 : 0);
+  // Filler columns to keep "Earned" in the same horizontal column across all sections
+  const fillerCount = 7 - slots;
   for (let i = 0; i < fillerCount; i++) tr.appendChild(document.createElement('td'));
 
   const earnedTd = document.createElement('td');
@@ -746,10 +815,12 @@ function addChore() {
   const name = document.getElementById('new-chore-name').value.trim();
   const nt = parseInt(document.getElementById('new-chore-nt').value);
   const type = document.getElementById('new-chore-type').value;
+  const quantity = document.getElementById('new-chore-qty').value === '1';
   if (!name || isNaN(nt) || nt < 1) { alert('Enter a name and a valid NT amount.'); return; }
-  state.chores.push({ id: 'custom_' + Date.now(), name, nt, type });
+  state.chores.push({ id: 'custom_' + Date.now(), name, nt, type, quantity });
   document.getElementById('new-chore-name').value = '';
   document.getElementById('new-chore-nt').value = '';
+  document.getElementById('new-chore-qty').value = '0';
   scheduleSave();
   renderTracker();
 }
