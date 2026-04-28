@@ -61,6 +61,15 @@ app.use('/fitnessjourney/uploads', createProxyMiddleware({
     pathRewrite: { '^/fitnessjourney/uploads': '/uploads' },
 }));
 
+// 12x12: proxy API requests to the flashcards backend (port 3002)
+// IMPORTANT: same constraint as fitness — proxy must be registered BEFORE
+// bodyParser.json() so the request body stream isn't consumed.
+app.use('/12x12/api', createProxyMiddleware({
+    target: 'http://localhost:3002',
+    changeOrigin: true,
+    pathRewrite: { '^/12x12': '' },
+}));
+
 // Body parser AFTER proxy routes so it doesn't consume the request stream
 app.use(bodyParser.json());
 
@@ -76,6 +85,13 @@ app.use('/fitnessjourney', express.static(path.join(__dirname, 'fitnessjourney',
 // SPA fallback for fitness journey client-side routing
 app.get('/fitnessjourney/*', (req, res) => {
     res.sendFile(path.join(__dirname, 'fitnessjourney', 'frontend', 'dist', 'index.html'));
+});
+
+// 12x12: serve CRA build output
+app.use('/12x12', express.static(path.join(__dirname, '12x12', 'client', 'build')));
+// SPA fallback for 12x12 (CRA in-app routing)
+app.get('/12x12/*', (req, res) => {
+    res.sendFile(path.join(__dirname, '12x12', 'client', 'build', 'index.html'));
 });
 
 // Root redirect to /mainpage

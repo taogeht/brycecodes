@@ -1,0 +1,31 @@
+{
+  "name": "12x12",
+  "version": "1.0.0",
+  "description": "12x12 is a multiplication practice platform with a React frontend and Node.js backend",
+  "scripts": {
+    "install-all": "npm install && cd client && npm install && cd ../server && npm install",
+    "ci:client": "npm --prefix client ci",
+    "ci:server": "npm --prefix server ci",
+    "ci:deps": "npm run ci:client && npm run ci:server",
+    "start": "npm --prefix server run start",
+    "dev": "concurrently \"npm run server:dev\" \"npm run client\"",
+    "server": "npm --prefix server run start",
+    "server:dev": "npm --prefix server run dev",
+    "client": "cd client && npm start",
+    "build": "npm run ci:deps && node scripts/build-client.js && npm --prefix server run build",
+    "test": "cd client && npm test && cd ../server && npm test",
+    "setup-db": "cd server && npm run migrate"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "keywords": [
+    "react",
+    "node",
+    "express",
+    "fullstack",
+    "typescript"
+  ],
+  "author": "",
+  "license": "ISC"
+}
