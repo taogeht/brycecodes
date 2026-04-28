@@ -208,7 +208,10 @@ CREATE INDEX IF NOT EXISTS idx_srs_student_progress_user_id ON srs.student_progr
 CREATE INDEX IF NOT EXISTS idx_srs_reviews_user_id ON srs.reviews(user_id);
 CREATE INDEX IF NOT EXISTS idx_srs_reviews_created_at ON srs.reviews(created_at);
 
--- Populate multiplication flashcards for the full 12 × 12 table
+-- Populate multiplication flashcards for the full 12 × 12 table.
+-- Skip on re-runs: once srs.cards is populated and deck_id has been
+-- promoted to NOT NULL further down, this loop's deck_id-less INSERT
+-- would violate the constraint and abort the rest of the migration.
 DO $$
 DECLARE
   multiplicand INTEGER;
@@ -216,6 +219,10 @@ DECLARE
   front_label TEXT;
   back_value TEXT;
 BEGIN
+  IF EXISTS (SELECT 1 FROM srs.cards LIMIT 1) THEN
+    RAISE NOTICE 'srs.cards already populated, skipping seed loop';
+    RETURN;
+  END IF;
   FOR multiplicand IN 1..12 LOOP
     FOR multiplier IN 1..12 LOOP
       front_label := CONCAT(multiplicand, ' × ', multiplier);

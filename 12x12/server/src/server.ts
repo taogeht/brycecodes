@@ -1449,14 +1449,12 @@ app.get('/api/cards', async (req: Request, res: Response) => {
 
   const setParamRaw = typeof req.query.set === 'string' ? req.query.set.trim() : null;
   const setParam = setParamRaw ? setParamRaw.toLowerCase() : null;
-  let practiceSet: '9x9' | 'full' = 'full';
+  const practiceSet: 'full' = 'full';
   let deckFilterId: string | null = null;
 
   if (setParam) {
-    if (setParam === '9x9') {
-      practiceSet = '9x9';
-    } else if (setParam === 'full') {
-      practiceSet = 'full';
+    if (setParam === 'full') {
+      // default
     } else if (setParam.startsWith('deck:')) {
       deckFilterId = setParamRaw!.slice(5);
     } else {
@@ -1470,16 +1468,6 @@ app.get('/api/cards', async (req: Request, res: Response) => {
 
   const defaultDeckId = await getDefaultDeckId();
   if (!deckFilterId) {
-    deckFilterId = defaultDeckId;
-  }
-
-  if (practiceSet === '9x9') {
-    if (!defaultDeckId) {
-      return res.status(500).json({ error: 'Default deck unavailable' });
-    }
-    if (deckFilterId && deckFilterId !== defaultDeckId) {
-      return res.status(400).json({ error: '9x9 practice is only available for the default deck' });
-    }
     deckFilterId = defaultDeckId;
   }
 
@@ -1501,16 +1489,6 @@ app.get('/api/cards', async (req: Request, res: Response) => {
     if (includeDeckFilter && deckFilterId) {
       const deckIndex = params.push(deckFilterId);
       whereParts.push(`(c.deck_id = $${deckIndex}::uuid OR c.deck_id IS NULL)`);
-    }
-
-    if (practiceSet === '9x9') {
-      const factorMatch = "regexp_match(lower(c.front), '(\\d+)\\D+(\\d+)')";
-      const factor1Expr = `COALESCE(((${factorMatch})[1])::integer, 100)`;
-      const factor2Expr = `COALESCE(((${factorMatch})[2])::integer, 100)`;
-      whereParts.push(`(
-        ${factor1Expr} <= 9
-        AND ${factor2Expr} <= 9
-      )`);
     }
 
     const whereSQL =

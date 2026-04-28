@@ -11,7 +11,7 @@ interface User {
   user_type: string;
 }
 
-type PracticeSet = '9x9' | 'full';
+type PracticeSet = 'full';
 type SessionLength = number | 'endless';
 
 interface SharedDeckInfo {
@@ -353,7 +353,7 @@ export default function App() {
         selectedDeckId={selectedDeckId}
         onDeckInputChange={handleDeckInputChange}
         onDeckSelect={(deckId) => {
-          if (deckId === 'default-12x12' || deckId === 'builtin-9x9') {
+          if (deckId === 'default-12x12') {
             setSelectedDeckId(deckId);
             setPendingDeckInput('');
             setPendingDeckInfo(null);
@@ -568,7 +568,7 @@ export default function App() {
             @{currentUser.username} • Student Account
           </div>
           <div style={{ fontSize: '14px', color: '#666' }}>
-            Practice Set: {practiceSet === '9x9' ? '9×9 Times Table' : 'Full Times Table'}
+            Practice Set: Full Times Table
           </div>
           {deckOverride && (
             <div style={{ fontSize: '14px', color: '#666' }}>
@@ -621,7 +621,7 @@ function SessionSetup({
 }) {
   const hasDeckOverride = normalizedDeckCode.length > 0;
   const deckCodeIsUuid = UUID_REGEX.test(normalizedDeckCode);
-  const isDefaultSelection = selectedDeckId === 'default-12x12' || selectedDeckId === 'builtin-9x9';
+  const isDefaultSelection = selectedDeckId === 'default-12x12';
   const deckReady =
     !hasDeckOverride ||
     isDefaultSelection ||
@@ -662,7 +662,6 @@ function SessionSetup({
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
               {[
                 { id: 'default-12x12', name: '12×12 deck (default)', info: 'Full table' },
-                { id: 'builtin-9x9', name: '9×9 deck', info: 'Default subset' },
                 ...availableDecks.map(deck => ({
                   id: deck.id,
                   name: deck.name,
@@ -757,17 +756,15 @@ function SessionSetup({
               key={String(option.id)}
               onClick={() => {
                 if (hasDeckOverride && !deckReady) return;
-                const isNineDeck = selectedDeckId === 'builtin-9x9';
-                const finalSet: PracticeSet = isNineDeck ? '9x9' : 'full';
                 const chosenDeckId =
                   selectedDeckId === 'manual-input'
                     ? normalizedDeckCode
-                    : selectedDeckId && selectedDeckId !== 'default-12x12' && selectedDeckId !== 'builtin-9x9'
+                    : selectedDeckId && selectedDeckId !== 'default-12x12'
                       ? selectedDeckId
                       : hasDeckOverride
                         ? normalizedDeckCode
                         : null;
-                onStart({ size: option.id, chosenSet: finalSet, deckId: chosenDeckId });
+                onStart({ size: option.id, chosenSet: 'full', deckId: chosenDeckId });
               }}
               disabled={hasDeckOverride && !deckReady}
               style={{
