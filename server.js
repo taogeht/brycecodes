@@ -45,6 +45,18 @@ app.use('/12x12/api', createProxyMiddleware({
     target: 'http://localhost:3002',
     changeOrigin: true,
     pathRewrite: { '^/12x12': '' },
+    on: {
+        // Without this handler, http-proxy-middleware v3 falls through to
+        // the next middleware on connection errors — which means the SPA
+        // fallback below would return index.html for failed API calls.
+        error: (err, req, res) => {
+            console.error(`[12x12 proxy] ${err.message}`);
+            if (res && !res.headersSent) {
+                res.writeHead(502, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: '12x12 backend unreachable', details: err.message }));
+            }
+        }
+    }
 }));
 
 // Body parser AFTER proxy routes so it doesn't consume the request stream
