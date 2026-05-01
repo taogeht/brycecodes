@@ -306,7 +306,7 @@
   <div class="container">
 
     <div class="week-nav">
-      <button class="week-nav-btn" onclick="navigateWeek(-1)">← Prev</button>
+      <button class="week-nav-btn" id="prev-week-btn" onclick="navigateWeek(-1)">← Prev</button>
       <div class="week-nav-label" id="week-nav-label"></div>
       <button class="week-nav-btn" id="next-week-btn" onclick="navigateWeek(1)">Next →</button>
     </div>
@@ -475,15 +475,19 @@
 const API_BASE = '';
 
 // ─── STATE ───────────────────────────────────────────────────────────────────
+// Weeks are stored as an ordered array — index 0 = Week 1, last = current.
+// Earlier versions keyed by date strings; that bred timezone bugs and made
+// "this week" ambiguous, so we dropped real dates entirely.
 let state = null;
-let viewingWeekKey = getCurrentWeekKey();
+let viewingWeekIdx = 0;
 let saveTimer = null;
 
 function defaultState() {
-  return {
-    chores: [],
-    weeks: {},
-  };
+  return { chores: [], weeks: [] };
+}
+
+function blankWeek() {
+  return { checks: {} };
 }
 
 // ─── API ─────────────────────────────────────────────────────────────────────
@@ -492,12 +496,29 @@ async function loadFromServer() {
     const res = await fetch(API_BASE + '/api/chores');
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
-    state = data || defaultState();
+    state = migrateState(data || defaultState());
   } catch (e) {
     console.error('Load failed:', e);
     state = defaultState();
     setSaveIndicator('error', 'offline');
   }
+  if (state.weeks.length === 0) state.weeks.push(blankWeek());
+  viewingWeekIdx = state.weeks.length - 1;
+}
+
+// One-time migration from the legacy date-keyed shape ({weeks: {"2026-04-13": {...}}})
+// to an ordered array. Drops empty placeholder entries so gap weeks don't
+// inflate the numbering.
+function migrateState(s) {
+  if (!s.chores) s.chores = [];
+  if (!s.weeks) s.weeks = [];
+  if (Array.isArray(s.weeks)) return s;
+  const ordered = Object.keys(s.weeks).sort()
+    .map(k => s.weeks[k])
+    .filter(w => (w.earned || 0) > 0 || Object.keys(w.checks || {}).length > 0);
+  s.weeks = ordered;
+  delete s.firstWeekMonday;
+  return s;
 }
 
 function setSaveIndicator(cls, text) {
@@ -528,63 +549,22 @@ async function pushToServer() {
   }
 }
 
-// ─── DATE / WEEK UTILS ───────────────────────────────────────────────────────
-function getMondayOf(date) {
-  const d = new Date(date);
-  const day = d.getDay();
-  d.setDate(d.getDate() + (day === 0 ? -6 : 1 - day));
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-function getCurrentWeekKey() {
-  return weekKey(getMondayOf(new Date()));
-}
-
-function weekKey(mondayDate) {
-  // Format as YYYY-MM-DD in LOCAL time. Earlier versions used toISOString()
-  // which converts to UTC, off-by-one'ing the date for users in UTC+
-  // timezones (the local Monday's UTC equivalent is the previous Sunday).
-  // That made week navigation jump by 8 days instead of 7 and made data
-  // lookups miss the SQL-backfilled keys (which use UTC Mondays).
-  const y = mondayDate.getFullYear();
-  const m = String(mondayDate.getMonth() + 1).padStart(2, '0');
-  const d = String(mondayDate.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
-
-function weekKeyToLabel(key) {
-  const monday = new Date(key + 'T00:00:00');
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-  const fmt = d => d.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' });
-  return fmt(monday) + ' – ' + fmt(sunday);
-}
-
-// Number a given week relative to state.firstWeekMonday (Week 1's Monday).
-// Used to keep "Week 15" stable even when intermediate weeks have no data.
-// Falls back to null when the anchor isn't set; renderHistory then numbers
-// by entry position instead.
-function weekNumberFor(wk) {
-  if (!state.firstWeekMonday) return null;
-  const wkDate = new Date(wk + 'T00:00:00');
-  const anchor = new Date(state.firstWeekMonday + 'T00:00:00');
-  const diffWeeks = Math.round((wkDate - anchor) / (7 * 86400000));
-  return diffWeeks + 1;
-}
+// ─── WEEK NAV ────────────────────────────────────────────────────────────────
+function weekLabel(idx) { return 'Week ' + (idx + 1); }
 
 function navigateWeek(dir) {
-  const d = new Date(viewingWeekKey + 'T00:00:00');
-  d.setDate(d.getDate() + dir * 7);
-  viewingWeekKey = weekKey(d);
+  const target = viewingWeekIdx + dir;
+  if (target < 0) return;
+  if (target >= state.weeks.length) {
+    state.weeks.push(blankWeek());
+    scheduleSave();
+  }
+  viewingWeekIdx = target;
   renderTracker();
 }
 
 // ─── DATA HELPERS ────────────────────────────────────────────────────────────
-function getWeekData(wk) {
-  if (!state.weeks[wk]) state.weeks[wk] = { checks: {} };
-  return state.weeks[wk];
-}
+function getWeekData(idx) { return state.weeks[idx]; }
 
 // Schedule type → number of slots in the row.
 // 'recycling' is kept as a backwards-compat alias of '4x'.
@@ -600,25 +580,25 @@ function slotCount(chore) {
 }
 
 // Raw stored value — number for quantity chores, true/false for checkbox chores.
-function getCheckValue(wk, choreId, slot) {
+function getCheckValue(idx, choreId, slot) {
   const key = slot !== undefined ? `${choreId}_${slot}` : choreId;
-  return getWeekData(wk).checks[key];
+  return getWeekData(idx).checks[key];
 }
 
-function getCheck(wk, choreId, slot) {
-  return !!getCheckValue(wk, choreId, slot);
+function getCheck(idx, choreId, slot) {
+  return !!getCheckValue(idx, choreId, slot);
 }
 
-function setCheck(wk, choreId, slot, val) {
+function setCheck(idx, choreId, slot, val) {
   const key = slot !== undefined ? `${choreId}_${slot}` : choreId;
-  getWeekData(wk).checks[key] = val;
-  updateWeekSnapshot(wk);
+  getWeekData(idx).checks[key] = val;
+  updateWeekSnapshot(idx);
   scheduleSave();
 }
 
-function updateWeekSnapshot(wk) {
-  const wd = getWeekData(wk);
-  const earned = totalEarned(wk);
+function updateWeekSnapshot(idx) {
+  const wd = getWeekData(idx);
+  const earned = totalEarned(idx);
   wd.earned = earned;
   wd.saved = Math.floor(earned / 2);
   wd.dailyStreakSnapshot = calcDailyStreak();
@@ -633,63 +613,61 @@ function slotUnits(chore, val) {
   return val ? 1 : 0;
 }
 
-function choreEarned(chore, wk) {
+function choreEarned(chore, idx) {
   let units = 0;
   if (chore.type === 'weekly') {
-    units = slotUnits(chore, getCheckValue(wk, chore.id));
+    units = slotUnits(chore, getCheckValue(idx, chore.id));
   } else {
     const slots = slotCount(chore);
     for (let i = 0; i < slots; i++) {
-      units += slotUnits(chore, getCheckValue(wk, chore.id, i));
+      units += slotUnits(chore, getCheckValue(idx, chore.id, i));
     }
   }
   return units * chore.nt;
 }
 
-function totalEarned(wk) {
-  return state.chores.reduce((sum, c) => sum + choreEarned(c, wk), 0);
+function totalEarned(idx) {
+  return state.chores.reduce((sum, c) => sum + choreEarned(c, idx), 0);
 }
 
 // ─── STREAKS ─────────────────────────────────────────────────────────────────
-function isDailyComplete(wk, dayIdx) {
+// Without real dates, streaks just walk weeks/days backward from the most
+// recent complete day/week and count the unbroken run leading up to it.
+function isDailyComplete(idx, dayIdx) {
   const dailies = state.chores.filter(c => c.type === 'daily');
-  return dailies.length > 0 && dailies.every(c => getCheck(wk, c.id, dayIdx));
+  return dailies.length > 0 && dailies.every(c => getCheck(idx, c.id, dayIdx));
 }
 
 function calcDailyStreak() {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
   let streak = 0;
-  for (let i = 0; i < 365; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - i);
-    const wk = weekKey(getMondayOf(d));
-    const dayIdx = (d.getDay() + 6) % 7;
-    if (isDailyComplete(wk, dayIdx)) {
-      streak++;
-    } else {
-      if (i > 0) break;
+  let started = false;
+  for (let wi = state.weeks.length - 1; wi >= 0; wi--) {
+    for (let di = 6; di >= 0; di--) {
+      if (isDailyComplete(wi, di)) {
+        streak++;
+        started = true;
+      } else if (started) {
+        return streak;
+      }
     }
   }
   return streak;
 }
 
-function isWeeklyComplete(wk) {
+function isWeeklyComplete(idx) {
   const weeklies = state.chores.filter(c => c.type === 'weekly');
-  return weeklies.length > 0 && weeklies.every(c => getCheck(wk, c.id));
+  return weeklies.length > 0 && weeklies.every(c => getCheck(idx, c.id));
 }
 
 function calcWeeklyStreak() {
-  const curMon = getMondayOf(new Date());
   let streak = 0;
-  for (let i = 0; i < 52; i++) {
-    const mon = new Date(curMon);
-    mon.setDate(curMon.getDate() - i * 7);
-    const wk = weekKey(mon);
-    if (isWeeklyComplete(wk)) {
+  let started = false;
+  for (let wi = state.weeks.length - 1; wi >= 0; wi--) {
+    if (isWeeklyComplete(wi)) {
       streak++;
-    } else {
-      if (i > 0) break;
+      started = true;
+    } else if (started) {
+      return streak;
     }
   }
   return streak;
@@ -697,14 +675,15 @@ function calcWeeklyStreak() {
 
 // ─── RENDER ───────────────────────────────────────────────────────────────────
 function renderTracker() {
-  const wk = viewingWeekKey;
-  const isCurrent = wk === getCurrentWeekKey();
+  const idx = viewingWeekIdx;
+  const isLatest = idx === state.weeks.length - 1;
 
   document.getElementById('week-nav-label').innerHTML =
-    weekKeyToLabel(wk) + (isCurrent ? '<span class="current-week-badge">NOW</span>' : '');
-  document.getElementById('next-week-btn').disabled = isCurrent;
+    weekLabel(idx) + (isLatest ? '<span class="current-week-badge">NOW</span>' : '');
+  document.getElementById('prev-week-btn').disabled = idx === 0;
+  document.getElementById('next-week-btn').textContent = isLatest ? '+ New Week' : 'Next →';
 
-  const earned = totalEarned(wk);
+  const earned = totalEarned(idx);
   const half = Math.floor(earned / 2);
   document.getElementById('stat-total').textContent = earned + ' NT';
   document.getElementById('stat-spend').textContent = half + ' NT';
@@ -712,7 +691,7 @@ function renderTracker() {
   document.getElementById('split-spend-amt').textContent = half + ' NT';
   document.getElementById('split-save-amt').textContent = half + ' NT';
 
-  const allTimeSaved = Object.values(state.weeks).reduce((s, w) => s + (w.saved || 0), 0);
+  const allTimeSaved = state.weeks.reduce((s, w) => s + (w.saved || 0), 0);
   document.getElementById('stat-alltime').textContent = allTimeSaved + ' NT';
 
   const ds = calcDailyStreak();
@@ -726,24 +705,24 @@ function renderTracker() {
   state.chores.forEach(c => {
     if (c.type === 'weekly') {
       totalPossible++;
-      if (getCheck(wk, c.id)) totalDone++;
+      if (getCheck(idx, c.id)) totalDone++;
     } else {
       const slots = slotCount(c);
       totalPossible += slots;
-      for (let i = 0; i < slots; i++) if (getCheck(wk, c.id, i)) totalDone++;
+      for (let i = 0; i < slots; i++) if (getCheck(idx, c.id, i)) totalDone++;
     }
   });
   const pct = totalPossible ? Math.round(totalDone / totalPossible * 100) : 0;
   document.getElementById('progress-fill').style.width = pct + '%';
   document.getElementById('progress-pct').textContent = pct + '%';
 
-  renderBody('daily-tbody', state.chores.filter(c => c.type === 'daily'), wk, 7);
-  renderBody('thrice-tbody', state.chores.filter(c => c.type === '3x'), wk, 3);
-  renderBody('fourx-tbody', state.chores.filter(c => c.type === '4x' || c.type === 'recycling'), wk, 4);
-  renderBody('weekly-tbody', state.chores.filter(c => c.type === 'weekly'), wk, 1);
+  renderBody('daily-tbody', state.chores.filter(c => c.type === 'daily'), idx, 7);
+  renderBody('thrice-tbody', state.chores.filter(c => c.type === '3x'), idx, 3);
+  renderBody('fourx-tbody', state.chores.filter(c => c.type === '4x' || c.type === 'recycling'), idx, 4);
+  renderBody('weekly-tbody', state.chores.filter(c => c.type === 'weekly'), idx, 1);
 }
 
-function renderBody(tbodyId, chores, wk, defaultSlots) {
+function renderBody(tbodyId, chores, idx, defaultSlots) {
   const tbody = document.getElementById(tbodyId);
   tbody.innerHTML = '';
   if (chores.length === 0) {
@@ -753,11 +732,11 @@ function renderBody(tbodyId, chores, wk, defaultSlots) {
     return;
   }
   chores.forEach(chore => {
-    tbody.appendChild(buildChoreRow(chore, wk, slotCount(chore) || defaultSlots));
+    tbody.appendChild(buildChoreRow(chore, idx, slotCount(chore) || defaultSlots));
   });
 }
 
-function buildChoreRow(chore, wk, slots) {
+function buildChoreRow(chore, idx, slots) {
   const tr = document.createElement('tr');
   tr.className = 'chore-row';
 
@@ -778,12 +757,12 @@ function buildChoreRow(chore, wk, slots) {
       input.type = 'number';
       input.min = '0';
       input.className = 'qty-input';
-      const v = getCheckValue(wk, chore.id, slotArg);
+      const v = getCheckValue(idx, chore.id, slotArg);
       input.value = (v && v > 0) ? v : '';
       input.addEventListener('change', () => {
         const n = parseInt(input.value, 10);
         const stored = (isNaN(n) || n < 0) ? 0 : n;
-        setCheck(wk, chore.id, slotArg, stored);
+        setCheck(idx, chore.id, slotArg, stored);
         renderTracker();
       });
       td.appendChild(input);
@@ -791,9 +770,9 @@ function buildChoreRow(chore, wk, slots) {
       const cb = document.createElement('input');
       cb.type = 'checkbox';
       cb.className = isWeekly ? 'weekly-cb' : 'cb';
-      if (getCheck(wk, chore.id, slotArg)) cb.checked = true;
+      if (getCheck(idx, chore.id, slotArg)) cb.checked = true;
       cb.addEventListener('change', () => {
-        setCheck(wk, chore.id, slotArg, cb.checked);
+        setCheck(idx, chore.id, slotArg, cb.checked);
         renderTracker();
       });
       td.appendChild(cb);
@@ -806,7 +785,7 @@ function buildChoreRow(chore, wk, slots) {
   for (let i = 0; i < fillerCount; i++) tr.appendChild(document.createElement('td'));
 
   const earnedTd = document.createElement('td');
-  const e = choreEarned(chore, wk);
+  const e = choreEarned(chore, idx);
   earnedTd.className = 'chore-earned' + (e === 0 ? ' zero' : '');
   earnedTd.textContent = e + ' NT';
   tr.appendChild(earnedTd);
@@ -848,9 +827,10 @@ function addChore() {
 // ─── HISTORY ─────────────────────────────────────────────────────────────────
 function renderHistory() {
   const list = document.getElementById('history-list');
-  const entries = Object.entries(state.weeks)
-    .filter(([, v]) => v.earned > 0 || Object.keys(v.checks || {}).length > 0)
-    .sort((a, b) => b[0].localeCompare(a[0]));
+  const entries = state.weeks
+    .map((w, i) => [i, w])
+    .filter(([, v]) => (v.earned || 0) > 0 || Object.keys(v.checks || {}).length > 0)
+    .reverse();
 
   if (entries.length === 0) {
     list.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">No history yet — complete some chores!</div></div>';
@@ -858,22 +838,17 @@ function renderHistory() {
   }
 
   list.innerHTML = '';
-  // entries are sorted newest-first. weekNumberFor() anchors on
-  // state.firstWeekMonday so "Week 15" stays Week 15 even when weeks
-  // 13/14 have no data (gaps don't reshuffle the numbers). Falls back
-  // to position-based numbering if no anchor is set yet.
-  entries.forEach(([wk, wd], i) => {
+  entries.forEach(([idx, wd]) => {
     const earned = wd.earned || 0;
     const saved = wd.saved || Math.floor(earned / 2);
-    const isCurrent = wk === getCurrentWeekKey();
-    const weekNum = weekNumberFor(wk) ?? (entries.length - i);
+    const isLatest = idx === state.weeks.length - 1;
 
     const card = document.createElement('div');
     card.className = 'week-card';
     card.innerHTML = `
       <div>
-        <div class="week-card-label">Week ${weekNum}${isCurrent ? '<span class="current-week-badge">NOW</span>' : ''}</div>
-        <div class="week-card-sub">${weekKeyToLabel(wk)}${isCurrent ? ' · in progress' : ''}</div>
+        <div class="week-card-label">${weekLabel(idx)}${isLatest ? '<span class="current-week-badge">NOW</span>' : ''}</div>
+        <div class="week-card-sub">${isLatest ? 'in progress' : 'complete'}</div>
       </div>
       <div style="text-align:right">
         <div class="week-card-total">${earned} NT</div>
