@@ -1520,8 +1520,7 @@ app.get('/api/cards', async (req: Request, res: Response) => {
           WHEN cs.id IS NULL THEN 1
           ELSE 2
         END,
-        COALESCE(cs.due_at, NOW()) ASC,
-        c.id ASC
+        RANDOM()
       ${limitClause}
     `;
 
