@@ -241,6 +241,8 @@
     background: var(--surface); border: 1px solid var(--border);
     padding: 7px 12px; border-radius: var(--radius-xs); flex: 1; text-align: center;
   }
+  .week-dates { color: var(--text3); margin-left: 6px; }
+  .chore-table thead th.today-col { color: var(--accent2); }
   .current-week-badge {
     font-size: 10px; background: var(--accent); color: #fff;
     padding: 1px 6px; border-radius: 100px; vertical-align: middle; margin-left: 6px; font-weight: 600;
@@ -356,9 +358,9 @@
       <div class="section-hint">Mon – Sun</div>
     </div>
     <table class="chore-table">
-      <thead><tr>
+      <thead id="daily-thead"><tr>
         <th class="chore-name-th">Chore</th>
-        <th>M</th><th>T</th><th>W</th><th>T</th><th>F</th><th>S</th><th>S</th>
+        <th class="day-th">M</th><th class="day-th">T</th><th class="day-th">W</th><th class="day-th">T</th><th class="day-th">F</th><th class="day-th">S</th><th class="day-th">S</th>
         <th style="text-align:right;padding-right:0">Earned</th><th></th>
       </tr></thead>
       <tbody id="daily-tbody"></tbody>
@@ -474,13 +476,21 @@
 // When self-hosting, this will be '' (same origin). During dev, set to your VPS URL.
 const API_BASE = '';
 
+// All dates run on a fixed GMT+8 clock (household timezone), never the
+// browser's local timezone — that's what caused the original date-key bugs.
+const TZ_OFFSET_MS = 8 * 3600 * 1000;
+const DAY_MS = 86400000;
+const WEEK_MS = 7 * DAY_MS;
+
 // ─── STATE ───────────────────────────────────────────────────────────────────
 // Weeks are stored as an ordered array — index 0 = Week 1, last = current.
-// Earlier versions keyed by date strings; that bred timezone bugs and made
-// "this week" ambiguous, so we dropped real dates entirely.
+// state.anchorMonday ('YYYY-MM-DD', a Monday in GMT+8) pins index 0 to the
+// calendar; the current week index is derived from it, so weeks roll over
+// automatically and the array is padded with blanks for any skipped weeks.
 let state = null;
 let viewingWeekIdx = 0;
 let saveTimer = null;
+let loadFailed = false;
 
 function defaultState() {
   return { chores: [], weeks: [] };
@@ -488,6 +498,75 @@ function defaultState() {
 
 function blankWeek() {
   return { checks: {} };
+}
+
+// ─── DATES (GMT+8) ───────────────────────────────────────────────────────────
+// Shift the clock by +8h and read with getUTC* — a poor man's fixed timezone.
+function nowTz() { return new Date(Date.now() + TZ_OFFSET_MS); }
+
+// Monday = 0 … Sunday = 6, matching the daily-table column order.
+function todayDayIdx() { return (nowTz().getUTCDay() + 6) % 7; }
+
+function isoDate(d) { return d.toISOString().slice(0, 10); }
+
+function parseISO(s) {
+  const [y, m, d] = s.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d));
+}
+
+function currentMondayISO() {
+  const t = nowTz();
+  return isoDate(new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate() - todayDayIdx())));
+}
+
+function mondayForIdx(idx) {
+  return new Date(parseISO(state.anchorMonday).getTime() + idx * WEEK_MS);
+}
+
+function currentWeekIdx() {
+  return Math.round((parseISO(currentMondayISO()) - parseISO(state.anchorMonday)) / WEEK_MS);
+}
+
+function weekDateLabel(idx) {
+  const mon = mondayForIdx(idx);
+  const sun = new Date(mon.getTime() + 6 * DAY_MS);
+  const fmt = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  return fmt(mon) + ' – ' + fmt(sun);
+}
+
+// Pins the anchor on first run and pads the weeks array up to the current
+// calendar week. Returns true if state changed (caller should save).
+function ensureCurrentWeek() {
+  let changed = false;
+  if (state.weeks.length === 0) {
+    state.weeks.push(blankWeek());
+    changed = true;
+  }
+  if (!state.anchorMonday) {
+    // Anchor so the last stored week IS this calendar week — existing data
+    // keeps its exact indices and nothing is rewritten.
+    const anchor = new Date(parseISO(currentMondayISO()).getTime() - (state.weeks.length - 1) * WEEK_MS);
+    state.anchorMonday = isoDate(anchor);
+    changed = true;
+  }
+  const cur = currentWeekIdx();
+  while (state.weeks.length <= cur) {
+    state.weeks.push(blankWeek());
+    changed = true;
+  }
+  return changed;
+}
+
+// Latest stored week — always the current calendar week after ensureCurrentWeek.
+function latestWeekIdx() { return state.weeks.length - 1; }
+
+// Rolls the week over while the tab sits open (e.g. across Sunday midnight).
+function checkRollover() {
+  if (!state) return;
+  if (ensureCurrentWeek()) {
+    scheduleSave();
+    renderTracker();
+  }
 }
 
 // ─── API ─────────────────────────────────────────────────────────────────────
@@ -499,11 +578,13 @@ async function loadFromServer() {
     state = migrateState(data || defaultState());
   } catch (e) {
     console.error('Load failed:', e);
+    // Never let a failed load turn into a save that wipes the server copy.
+    loadFailed = true;
     state = defaultState();
     setSaveIndicator('error', 'offline');
   }
-  if (state.weeks.length === 0) state.weeks.push(blankWeek());
-  viewingWeekIdx = state.weeks.length - 1;
+  if (ensureCurrentWeek() && !loadFailed) scheduleSave();
+  viewingWeekIdx = latestWeekIdx();
 }
 
 // One-time migration from the legacy date-keyed shape ({weeks: {"2026-04-13": {...}}})
@@ -534,6 +615,10 @@ function scheduleSave() {
 }
 
 async function pushToServer() {
+  if (loadFailed) {
+    setSaveIndicator('error', 'offline — reload to save');
+    return;
+  }
   try {
     const res = await fetch(API_BASE + '/api/chores', {
       method: 'POST',
@@ -552,13 +637,11 @@ async function pushToServer() {
 // ─── WEEK NAV ────────────────────────────────────────────────────────────────
 function weekLabel(idx) { return 'Week ' + (idx + 1); }
 
+// Navigation is clamped to [Week 1, current week] — new weeks only appear
+// when the GMT+8 calendar actually reaches them (see ensureCurrentWeek).
 function navigateWeek(dir) {
   const target = viewingWeekIdx + dir;
-  if (target < 0) return;
-  if (target >= state.weeks.length) {
-    state.weeks.push(blankWeek());
-    scheduleSave();
-  }
+  if (target < 0 || target > latestWeekIdx()) return;
   viewingWeekIdx = target;
   renderTracker();
 }
@@ -601,8 +684,12 @@ function updateWeekSnapshot(idx) {
   const earned = totalEarned(idx);
   wd.earned = earned;
   wd.saved = Math.floor(earned / 2);
-  wd.dailyStreakSnapshot = calcDailyStreak();
-  wd.weeklyStreakSnapshot = calcWeeklyStreak();
+  // Streak snapshots only belong to the current week — stamping them on a
+  // past week being corrected would falsify its history.
+  if (idx === latestWeekIdx()) {
+    wd.dailyStreakSnapshot = calcDailyStreak();
+    wd.weeklyStreakSnapshot = calcWeeklyStreak();
+  }
 }
 
 // ─── EARNINGS ────────────────────────────────────────────────────────────────
@@ -631,8 +718,9 @@ function totalEarned(idx) {
 }
 
 // ─── STREAKS ─────────────────────────────────────────────────────────────────
-// Without real dates, streaks just walk weeks/days backward from the most
-// recent complete day/week and count the unbroken run leading up to it.
+// Streaks walk strictly backward from today (GMT+8) and break at the first
+// missed day/week. The in-progress day/week doesn't break the streak while
+// it's still incomplete — but it also doesn't count until it's done.
 function isDailyComplete(idx, dayIdx) {
   const dailies = state.chores.filter(c => c.type === 'daily');
   return dailies.length > 0 && dailies.every(c => getCheck(idx, c.id, dayIdx));
@@ -640,16 +728,15 @@ function isDailyComplete(idx, dayIdx) {
 
 function calcDailyStreak() {
   let streak = 0;
-  let started = false;
-  for (let wi = state.weeks.length - 1; wi >= 0; wi--) {
-    for (let di = 6; di >= 0; di--) {
-      if (isDailyComplete(wi, di)) {
-        streak++;
-        started = true;
-      } else if (started) {
-        return streak;
-      }
-    }
+  let wi = latestWeekIdx();
+  let di = todayDayIdx();
+  if (isDailyComplete(wi, di)) streak++; // today, if already done
+  for (;;) {
+    di--;
+    if (di < 0) { di = 6; wi--; }
+    if (wi < 0) break;
+    if (!isDailyComplete(wi, di)) break;
+    streak++;
   }
   return streak;
 }
@@ -661,14 +748,11 @@ function isWeeklyComplete(idx) {
 
 function calcWeeklyStreak() {
   let streak = 0;
-  let started = false;
-  for (let wi = state.weeks.length - 1; wi >= 0; wi--) {
-    if (isWeeklyComplete(wi)) {
-      streak++;
-      started = true;
-    } else if (started) {
-      return streak;
-    }
+  const cur = latestWeekIdx();
+  if (isWeeklyComplete(cur)) streak++; // this week, if already done
+  for (let wi = cur - 1; wi >= 0; wi--) {
+    if (!isWeeklyComplete(wi)) break;
+    streak++;
   }
   return streak;
 }
@@ -676,12 +760,17 @@ function calcWeeklyStreak() {
 // ─── RENDER ───────────────────────────────────────────────────────────────────
 function renderTracker() {
   const idx = viewingWeekIdx;
-  const isLatest = idx === state.weeks.length - 1;
+  const isLatest = idx === latestWeekIdx();
 
   document.getElementById('week-nav-label').innerHTML =
-    weekLabel(idx) + (isLatest ? '<span class="current-week-badge">NOW</span>' : '');
+    weekLabel(idx) + ' <span class="week-dates">' + weekDateLabel(idx) + '</span>' +
+    (isLatest ? '<span class="current-week-badge">NOW</span>' : '');
   document.getElementById('prev-week-btn').disabled = idx === 0;
-  document.getElementById('next-week-btn').textContent = isLatest ? '+ New Week' : 'Next →';
+  document.getElementById('next-week-btn').disabled = isLatest;
+
+  // Highlight today's column in the daily table (current week only).
+  const dayThs = document.querySelectorAll('#daily-thead th.day-th');
+  dayThs.forEach((th, i) => th.classList.toggle('today-col', isLatest && i === todayDayIdx()));
 
   const earned = totalEarned(idx);
   const half = Math.floor(earned / 2);
@@ -841,14 +930,14 @@ function renderHistory() {
   entries.forEach(([idx, wd]) => {
     const earned = wd.earned || 0;
     const saved = wd.saved || Math.floor(earned / 2);
-    const isLatest = idx === state.weeks.length - 1;
+    const isLatest = idx === latestWeekIdx();
 
     const card = document.createElement('div');
     card.className = 'week-card';
     card.innerHTML = `
       <div>
         <div class="week-card-label">${weekLabel(idx)}${isLatest ? '<span class="current-week-badge">NOW</span>' : ''}</div>
-        <div class="week-card-sub">${isLatest ? 'in progress' : 'complete'}</div>
+        <div class="week-card-sub">${weekDateLabel(idx)} · ${isLatest ? 'in progress' : 'complete'}</div>
       </div>
       <div style="text-align:right">
         <div class="week-card-total">${earned} NT</div>
@@ -895,6 +984,11 @@ function showPage(name, btn) {
   await loadFromServer();
   document.getElementById('loading-screen').style.display = 'none';
   renderTracker();
+  // Roll the week over even if the tab stays open across Monday 00:00 GMT+8.
+  setInterval(checkRollover, 60 * 1000);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) checkRollover();
+  });
 })();
 </script>
 </body>
