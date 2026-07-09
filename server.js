@@ -22,8 +22,8 @@ if (!fs.existsSync(timesheetDataDir)) {
     fs.mkdirSync(timesheetDataDir, { recursive: true });
 }
 
-// Postgres pool for chores persistence (uses DATABASE_URL).
-// Bootstraps its own schema/table on first start — no separate migration step.
+// Postgres pool for chores + invoice persistence (uses DATABASE_URL).
+// Bootstraps its own schemas/tables on first start — no separate migration step.
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 pool.query(`
     CREATE SCHEMA IF NOT EXISTS chores;
@@ -32,7 +32,28 @@ pool.query(`
         data JSONB NOT NULL,
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
-`).catch(err => console.error('Chores schema bootstrap failed:', err.message));
+
+    CREATE EXTENSION IF NOT EXISTS pgcrypto;
+    CREATE SCHEMA IF NOT EXISTS invoice;
+    CREATE TABLE IF NOT EXISTS invoice.students (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        name TEXT NOT NULL,
+        active BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE TABLE IF NOT EXISTS invoice.bookings (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        student_name TEXT NOT NULL,
+        booking_date DATE NOT NULL,
+        start_time TIME NOT NULL,
+        end_time TIME NOT NULL,
+        duration_hours NUMERIC NOT NULL,
+        amount NUMERIC NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS invoice_bookings_date_idx ON invoice.bookings (booking_date);
+    CREATE INDEX IF NOT EXISTS invoice_bookings_student_name_idx ON invoice.bookings (student_name);
+`).catch(err => console.error('Schema bootstrap failed:', err.message));
 
 app.use(cors());
 
@@ -168,6 +189,248 @@ app.post('/api/chores', async (req, res) => {
     } catch (err) {
         console.error("Error writing chores state:", err.message);
         res.status(500).json({ error: 'Write failed' });
+    }
+});
+
+// API for Invoice persistence — bookings + students in the invoice schema.
+// Open endpoints (no auth), matching the frontend's original Supabase anon-key
+// posture; the UI gates entry with a localStorage access code.
+const INVOICE_BOOKING_FIELDS = [
+    'student_name', 'booking_date', 'start_time',
+    'end_time', 'duration_hours', 'amount'
+];
+
+app.get('/api/invoice/bookings', async (req, res) => {
+    try {
+        const { rows } = await pool.query('SELECT * FROM invoice.bookings');
+        res.json(rows);
+    } catch (err) {
+        console.error('Error reading invoice bookings:', err.message);
+        res.status(500).json({ error: 'Read failed' });
+    }
+});
+
+app.post('/api/invoice/bookings', async (req, res) => {
+    const body = req.body;
+    const items = Array.isArray(body)
+        ? body
+        : (Array.isArray(body && body.bookings) ? body.bookings : [body]);
+    if (!items.length || items.some(b => !b || typeof b !== 'object')) {
+        return res.status(400).json({ error: 'Invalid payload' });
+    }
+    const valuesSql = [];
+    const params = [];
+    items.forEach((item, i) => {
+        const offset = i * INVOICE_BOOKING_FIELDS.length;
+        const placeholders = INVOICE_BOOKING_FIELDS.map((_, j) => `$${offset + j + 1}`);
+        valuesSql.push(`(${placeholders.join(', ')})`);
+        INVOICE_BOOKING_FIELDS.forEach(f => params.push(item[f]));
+    });
+    try {
+        const { rows } = await pool.query(
+            `INSERT INTO invoice.bookings (${INVOICE_BOOKING_FIELDS.join(', ')})
+             VALUES ${valuesSql.join(', ')}
+             RETURNING *`,
+            params
+        );
+        res.json(rows);
+    } catch (err) {
+        console.error('Error inserting invoice bookings:', err.message);
+        res.status(500).json({ error: 'Insert failed' });
+    }
+});
+
+app.patch('/api/invoice/bookings/:id', async (req, res) => {
+    const updates = req.body || {};
+    const fields = INVOICE_BOOKING_FIELDS.filter(f => f in updates);
+    if (fields.length === 0) {
+        return res.status(400).json({ error: 'No fields to update' });
+    }
+    const setClause = fields.map((f, i) => `${f} = $${i + 1}`).join(', ');
+    const params = fields.map(f => updates[f]);
+    params.push(req.params.id);
+    try {
+        const { rows } = await pool.query(
+            `UPDATE invoice.bookings SET ${setClause}
+             WHERE id = $${params.length}
+             RETURNING *`,
+            params
+        );
+        if (rows.length === 0) return res.status(404).json({ error: 'Not found' });
+        res.json(rows[0]);
+    } catch (err) {
+        console.error('Error updating invoice booking:', err.message);
+        res.status(500).json({ error: 'Update failed' });
+    }
+});
+
+app.delete('/api/invoice/bookings/:id', async (req, res) => {
+    try {
+        const { rowCount } = await pool.query(
+            'DELETE FROM invoice.bookings WHERE id = $1',
+            [req.params.id]
+        );
+        if (rowCount === 0) return res.status(404).json({ error: 'Not found' });
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Error deleting invoice booking:', err.message);
+        res.status(500).json({ error: 'Delete failed' });
+    }
+});
+
+app.post('/api/invoice/bookings/bulk', async (req, res) => {
+    const { delete: deleteIds, update: updateRows } = req.body || {};
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const updated = [];
+        if (Array.isArray(updateRows)) {
+            for (const row of updateRows) {
+                if (!row || !row.id) continue;
+                const fields = INVOICE_BOOKING_FIELDS.filter(f => f in row);
+                if (fields.length === 0) continue;
+                const setClause = fields.map((f, i) => `${f} = $${i + 1}`).join(', ');
+                const params = fields.map(f => row[f]);
+                params.push(row.id);
+                const { rows } = await client.query(
+                    `UPDATE invoice.bookings SET ${setClause}
+                     WHERE id = $${params.length}
+                     RETURNING *`,
+                    params
+                );
+                if (rows.length) updated.push(rows[0]);
+            }
+        }
+        let deleted = 0;
+        if (Array.isArray(deleteIds) && deleteIds.length > 0) {
+            const { rowCount } = await client.query(
+                'DELETE FROM invoice.bookings WHERE id = ANY($1::uuid[])',
+                [deleteIds]
+            );
+            deleted = rowCount;
+        }
+        await client.query('COMMIT');
+        res.json({ updated, deleted });
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error('Error in invoice bookings bulk op:', err.message);
+        res.status(500).json({ error: 'Bulk op failed' });
+    } finally {
+        client.release();
+    }
+});
+
+app.get('/api/invoice/students', async (req, res) => {
+    try {
+        const { rows } = await pool.query(
+            'SELECT * FROM invoice.students ORDER BY name ASC'
+        );
+        res.json(rows);
+    } catch (err) {
+        console.error('Error reading invoice students:', err.message);
+        res.status(500).json({ error: 'Read failed' });
+    }
+});
+
+app.post('/api/invoice/students', async (req, res) => {
+    const name = (req.body && typeof req.body.name === 'string') ? req.body.name.trim() : '';
+    if (!name) return res.status(400).json({ error: 'Name is required' });
+    try {
+        const { rows } = await pool.query(
+            `INSERT INTO invoice.students (name, active)
+             VALUES ($1, TRUE)
+             RETURNING *`,
+            [name]
+        );
+        res.json(rows[0]);
+    } catch (err) {
+        console.error('Error inserting invoice student:', err.message);
+        res.status(500).json({ error: 'Insert failed' });
+    }
+});
+
+app.patch('/api/invoice/students/:id', async (req, res) => {
+    const { name, active } = req.body || {};
+    if (name === undefined && active === undefined) {
+        return res.status(400).json({ error: 'No fields to update' });
+    }
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        // Read current name first so a rename can cascade to bookings in the same txn.
+        const existing = await client.query(
+            'SELECT name FROM invoice.students WHERE id = $1',
+            [req.params.id]
+        );
+        if (existing.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ error: 'Not found' });
+        }
+        const oldName = existing.rows[0].name;
+        const setParts = [];
+        const params = [];
+        let newName;
+        if (name !== undefined) {
+            newName = String(name).trim();
+            params.push(newName);
+            setParts.push(`name = $${params.length}`);
+        }
+        if (active !== undefined) {
+            params.push(!!active);
+            setParts.push(`active = $${params.length}`);
+        }
+        params.push(req.params.id);
+        const { rows } = await client.query(
+            `UPDATE invoice.students SET ${setParts.join(', ')}
+             WHERE id = $${params.length}
+             RETURNING *`,
+            params
+        );
+        if (newName !== undefined && newName !== oldName) {
+            await client.query(
+                'UPDATE invoice.bookings SET student_name = $1 WHERE student_name = $2',
+                [newName, oldName]
+            );
+        }
+        await client.query('COMMIT');
+        res.json(rows[0]);
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error('Error updating invoice student:', err.message);
+        res.status(500).json({ error: 'Update failed' });
+    } finally {
+        client.release();
+    }
+});
+
+app.delete('/api/invoice/students/:id', async (req, res) => {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const existing = await client.query(
+            'SELECT name FROM invoice.students WHERE id = $1',
+            [req.params.id]
+        );
+        if (existing.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ error: 'Not found' });
+        }
+        await client.query(
+            'DELETE FROM invoice.bookings WHERE student_name = $1',
+            [existing.rows[0].name]
+        );
+        await client.query(
+            'DELETE FROM invoice.students WHERE id = $1',
+            [req.params.id]
+        );
+        await client.query('COMMIT');
+        res.json({ success: true });
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error('Error deleting invoice student:', err.message);
+        res.status(500).json({ error: 'Delete failed' });
+    } finally {
+        client.release();
     }
 });
 
