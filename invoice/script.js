@@ -45,28 +45,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     try {
+        // Initialize Supabase Client
+        window.supabaseClient = window.supabase.createClient(
+            window.config.supabaseUrl,
+            window.config.supabaseKey
+        );
+
+        console.log('Supabase client initialized');
+
+        // Initialize the application
         await init();
+
         console.log('Application initialized successfully');
     } catch (error) {
         console.error('Fatal error during application startup:', error);
         alert('Failed to start the application. Please refresh the page.');
     }
 });
-
-// Tiny wrapper around fetch that throws on non-2xx and parses JSON.
-async function apiFetch(method, path, body) {
-    const opts = { method };
-    if (body !== undefined) {
-        opts.headers = { 'Content-Type': 'application/json' };
-        opts.body = JSON.stringify(body);
-    }
-    const res = await fetch(path, opts);
-    if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        throw new Error(`HTTP ${res.status}${text ? ': ' + text : ''}`);
-    }
-    return res.json();
-}
 
 // Time slot generation
 const timeOptions = generateTimeOptions();
@@ -166,7 +161,13 @@ function formatDateForDatabase(date) {
 // Booking Management
 async function fetchBookings() {
     try {
-        bookings = await apiFetch('GET', '/api/invoice/bookings');
+        const { data, error } = await supabaseClient
+            .from('bookings')
+            .select('*');
+
+        if (error) throw error;
+
+        bookings = data;
         console.log('Fetched bookings:', bookings);
 
         generateCalendar();
@@ -261,13 +262,19 @@ async function deleteBooking(bookingId) {
     const bookingToDelete = bookings.find(b => b.id === bookingId);
     if (!bookingToDelete) return;
 
-    // Related bookings (same student + same time window) come from the
-    // already-loaded list — no round-trip needed.
-    const relatedBookings = bookings.filter(b =>
-        b.student_name === bookingToDelete.student_name &&
-        b.start_time === bookingToDelete.start_time &&
-        b.end_time === bookingToDelete.end_time
-    );
+    // Check if it's part of a recurring series
+    const { data: relatedBookings, error: findError } = await supabaseClient
+        .from('bookings')
+        .select('*')
+        .eq('student_name', bookingToDelete.student_name)
+        .eq('start_time', bookingToDelete.start_time)
+        .eq('end_time', bookingToDelete.end_time);
+
+    if (findError) {
+        console.error('Error checking for recurring bookings:', findError);
+        alert('Failed to check recurring bookings. Please try again.');
+        return;
+    }
 
     // If there are related bookings (more than 1), ask user what to delete
     if (relatedBookings.length > 1) {
@@ -281,12 +288,21 @@ async function deleteBooking(bookingId) {
         if (isRecurring) {
             // Delete all related bookings
             try {
-                const ids = relatedBookings.map(b => b.id);
-                await apiFetch('POST', '/api/invoice/bookings/bulk', { delete: ids });
+                const { error } = await supabaseClient
+                    .from('bookings')
+                    .delete()
+                    .eq('student_name', bookingToDelete.student_name)
+                    .eq('start_time', bookingToDelete.start_time)
+                    .eq('end_time', bookingToDelete.end_time);
+
+                if (error) throw error;
 
                 // Update local bookings array to remove all related bookings
-                const idSet = new Set(ids);
-                bookings = bookings.filter(booking => !idSet.has(booking.id));
+                bookings = bookings.filter(booking =>
+                    booking.student_name !== bookingToDelete.student_name ||
+                    booking.start_time !== bookingToDelete.start_time ||
+                    booking.end_time !== bookingToDelete.end_time
+                );
 
                 alert(`Successfully deleted ${relatedBookings.length} recurring bookings.`);
             } catch (error) {
@@ -297,7 +313,12 @@ async function deleteBooking(bookingId) {
         } else {
             // Delete only the selected booking
             try {
-                await apiFetch('DELETE', `/api/invoice/bookings/${bookingId}`);
+                const { error } = await supabaseClient
+                    .from('bookings')
+                    .delete()
+                    .eq('id', bookingId);
+
+                if (error) throw error;
 
                 // Update local bookings array
                 bookings = bookings.filter(booking => booking.id !== bookingId);
@@ -316,7 +337,12 @@ async function deleteBooking(bookingId) {
         }
 
         try {
-            await apiFetch('DELETE', `/api/invoice/bookings/${bookingId}`);
+            const { error } = await supabaseClient
+                .from('bookings')
+                .delete()
+                .eq('id', bookingId);
+
+            if (error) throw error;
 
             // Update local bookings array
             bookings = bookings.filter(booking => booking.id !== bookingId);
@@ -393,12 +419,17 @@ async function editBooking(bookingId) {
 
 async function checkIfRecurring(booking) {
     // Find all bookings with same student, start time, and end time
-    // (read from the already-loaded in-memory list).
-    const data = bookings.filter(b =>
-        b.student_name === booking.student_name &&
-        b.start_time === booking.start_time &&
-        b.end_time === booking.end_time
-    );
+    const { data, error } = await supabaseClient
+        .from('bookings')
+        .select('*')
+        .eq('student_name', booking.student_name)
+        .eq('start_time', booking.start_time)
+        .eq('end_time', booking.end_time);
+
+    if (error) {
+        console.error('Error checking recurring bookings:', error);
+        return false;
+    }
 
     // If there's more than one booking with these characteristics,
     // and they're spaced weekly apart, consider it recurring
@@ -514,7 +545,13 @@ async function createRecurringBookings(bookingData, selectedDate) {
             throw new Error('Booking cancelled by user');
         }
 
-        return await apiFetch('POST', '/api/invoice/bookings', { bookings });
+        const { data, error } = await supabaseClient
+            .from('bookings')
+            .insert(bookings)
+            .select();
+
+        if (error) throw error;
+        return data;
     } catch (error) {
         console.error('Error creating recurring bookings:', error);
         throw error;
@@ -581,12 +618,15 @@ document.getElementById('bookButton').addEventListener('click', async function (
                 // Get the original booking
                 const originalBooking = bookings.find(b => b.id === editingId);
 
-                // Find all related recurring bookings from the in-memory list.
-                const relatedBookings = bookings.filter(b =>
-                    b.student_name === originalBooking.student_name &&
-                    b.start_time === originalBooking.start_time &&
-                    b.end_time === originalBooking.end_time
-                );
+                // Find all related recurring bookings
+                const { data: relatedBookings, error: findError } = await supabaseClient
+                    .from('bookings')
+                    .select('*')
+                    .eq('student_name', originalBooking.student_name)
+                    .eq('start_time', originalBooking.start_time)
+                    .eq('end_time', originalBooking.end_time);
+
+                if (findError) throw findError;
 
                 if (confirm(`Update all ${relatedBookings.length} recurring bookings in this series?`)) {
                     // Update all related bookings
@@ -600,18 +640,29 @@ document.getElementById('bookButton').addEventListener('click', async function (
                         amount: classAmount
                     }));
 
-                    const result = await apiFetch('POST', '/api/invoice/bookings/bulk', { update: updates });
-                    response = result.updated;
+                    const { data, error } = await supabaseClient
+                        .from('bookings')
+                        .upsert(updates)
+                        .select();
+
+                    if (error) throw error;
+                    response = data;
 
                     // Update local bookings array
                     bookings = bookings.map(booking => {
                         const update = updates.find(u => u.id === booking.id);
-                        return update ? { ...booking, ...update } : booking;
+                        return update || booking;
                     });
                 } else {
                     // Update single booking only
-                    const updated = await apiFetch('PATCH', `/api/invoice/bookings/${editingId}`, bookingData);
-                    response = [updated];
+                    const { data, error } = await supabaseClient
+                        .from('bookings')
+                        .update(bookingData)
+                        .eq('id', editingId)
+                        .select();
+
+                    if (error) throw error;
+                    response = data;
 
                     // Update local bookings array
                     const index = bookings.findIndex(b => b.id === editingId);
@@ -621,8 +672,14 @@ document.getElementById('bookButton').addEventListener('click', async function (
                 }
             } else {
                 // Regular single booking update
-                const updated = await apiFetch('PATCH', `/api/invoice/bookings/${editingId}`, bookingData);
-                response = [updated];
+                const { data, error } = await supabaseClient
+                    .from('bookings')
+                    .update(bookingData)
+                    .eq('id', editingId)
+                    .select();
+
+                if (error) throw error;
+                response = data;
 
                 // Update local bookings array
                 const index = bookings.findIndex(b => b.id === editingId);
@@ -633,7 +690,13 @@ document.getElementById('bookButton').addEventListener('click', async function (
         } else if (isRecurring) {
             response = await createRecurringBookings(bookingData, selectedDate);
         } else {
-            response = await apiFetch('POST', '/api/invoice/bookings', bookingData);
+            const { data, error } = await supabaseClient
+                .from('bookings')
+                .insert([bookingData])
+                .select();
+
+            if (error) throw error;
+            response = data;
 
             // Update local bookings array
             if (response) {
@@ -759,7 +822,13 @@ async function setupStudentManagement() {
 async function loadStudentsList() {
     const studentsList = document.getElementById('studentsList');
     try {
-        const students = await apiFetch('GET', '/api/invoice/students');
+        // Changed to order by 'name' instead of 'last_name'
+        const { data: students, error } = await supabaseClient
+            .from('students')
+            .select('*')
+            .order('name', { ascending: true });  // Changed this line
+
+        if (error) throw error;
 
         studentsList.innerHTML = students.map(student => `
             <div class="student-item" data-id="${student.id}">
@@ -789,7 +858,16 @@ async function addStudent(name) {
     }
 
     try {
-        return await apiFetch('POST', '/api/invoice/students', { name: name.trim() });
+        const { data, error } = await supabaseClient
+            .from('students')
+            .insert([{
+                name: name.trim(),
+                active: true
+            }])
+            .select();
+
+        if (error) throw error;
+        return data[0];
     } catch (error) {
         console.error('Error adding student:', error);
         throw new Error('Failed to add student');
@@ -799,8 +877,14 @@ async function addStudent(name) {
 async function updateStudentSelect() {
     const studentSelect = document.getElementById('studentSelect');
     try {
-        const allStudents = await apiFetch('GET', '/api/invoice/students');
-        const students = allStudents.filter(s => s.active);
+        // Changed to order by 'name' instead of 'last_name'
+        const { data: students, error } = await supabaseClient
+            .from('students')
+            .select('*')
+            .eq('active', true)
+            .order('name', { ascending: true });  // Changed this line
+
+        if (error) throw error;
 
         const currentValue = studentSelect.value;
 
@@ -822,16 +906,31 @@ async function updateStudentSelect() {
 
 async function editStudent(studentId) {
     try {
-        const allStudents = await apiFetch('GET', '/api/invoice/students');
-        const student = allStudents.find(s => s.id === studentId);
+        const { data: student } = await supabaseClient
+            .from('students')
+            .select('id, name, active')  // Only select columns that exist
+            .eq('id', studentId)
+            .single();
 
         if (!student) throw new Error('Student not found');
 
         const newName = prompt('Enter new name:', student.name);
         if (!newName || newName === student.name) return;
 
-        // Server cascades the rename to invoice.bookings.student_name in one txn.
-        await apiFetch('PATCH', `/api/invoice/students/${studentId}`, { name: newName.trim() });
+        const { error } = await supabaseClient
+            .from('students')
+            .update({ name: newName.trim() })
+            .eq('id', studentId);
+
+        if (error) throw error;
+
+        // Update any existing bookings with the new name
+        const { error: bookingError } = await supabaseClient
+            .from('bookings')
+            .update({ student_name: newName.trim() })
+            .eq('student_name', student.name);
+
+        if (bookingError) throw bookingError;
 
         await Promise.all([
             loadStudentsList(),
@@ -848,8 +947,11 @@ async function editStudent(studentId) {
 
 async function deleteStudent(studentId) {
     try {
-        const allStudents = await apiFetch('GET', '/api/invoice/students');
-        const student = allStudents.find(s => s.id === studentId);
+        const { data: student } = await supabaseClient
+            .from('students')
+            .select('name')
+            .eq('id', studentId)
+            .single();
 
         if (!student) throw new Error('Student not found');
 
@@ -861,10 +963,23 @@ async function deleteStudent(studentId) {
                 'Deleting will remove all their booking history. Continue?'
             );
             if (!shouldProceed) return;
+
+            // Delete bookings first
+            const { error: bookingsError } = await supabaseClient
+                .from('bookings')
+                .delete()
+                .eq('student_name', student.name);
+
+            if (bookingsError) throw bookingsError;
         }
 
-        // Server cascades booking deletion (by student_name) in the same txn.
-        await apiFetch('DELETE', `/api/invoice/students/${studentId}`);
+        // Delete student
+        const { error } = await supabaseClient
+            .from('students')
+            .delete()
+            .eq('id', studentId);
+
+        if (error) throw error;
 
         await Promise.all([
             loadStudentsList(),
@@ -881,7 +996,12 @@ async function deleteStudent(studentId) {
 
 async function toggleStudentStatus(studentId, newStatus) {
     try {
-        await apiFetch('PATCH', `/api/invoice/students/${studentId}`, { active: newStatus });
+        const { error } = await supabaseClient
+            .from('students')
+            .update({ active: newStatus })
+            .eq('id', studentId);
+
+        if (error) throw error;
 
         await Promise.all([
             loadStudentsList(),
