@@ -1449,11 +1449,11 @@ app.get('/api/cards', async (req: Request, res: Response) => {
 
   const setParamRaw = typeof req.query.set === 'string' ? req.query.set.trim() : null;
   const setParam = setParamRaw ? setParamRaw.toLowerCase() : null;
-  const practiceSet: 'full' = 'full';
+  const practiceSet = setParam === '9x9' ? '9x9' : 'full';
   let deckFilterId: string | null = null;
 
   if (setParam) {
-    if (setParam === 'full') {
+    if (setParam === 'full' || setParam === '9x9') {
       // default
     } else if (setParam.startsWith('deck:')) {
       deckFilterId = setParamRaw!.slice(5);
@@ -1485,6 +1485,11 @@ app.get('/api/cards', async (req: Request, res: Response) => {
   const buildWhereAndParams = (includeDeckFilter: boolean) => {
     const params: (string | number)[] = [userId];
     const whereParts: string[] = [];
+
+    // Filter before LIMIT, including fallback queries, so a round contains only 1–9 facts.
+    if (practiceSet === '9x9') {
+      whereParts.push(`c.front ~ '^[[:space:]]*[1-9][[:space:]]*[×x*][[:space:]]*[1-9][[:space:]]*$'`);
+    }
 
     if (includeDeckFilter && deckFilterId) {
       const deckIndex = params.push(deckFilterId);
