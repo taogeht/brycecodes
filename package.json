@@ -4,7 +4,9 @@
   "description": "Simple Node.js server for static sites and English Angel persistence",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "alphabet:start": "bun alphabet-help/server.ts",
+    "alphabet:test": "cd alphabet-help && bun test"
   },
   "dependencies": {
     "body-parser": "^1.20.2",

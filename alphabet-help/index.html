@@ -1,0 +1,4816 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Alphabet Time</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  /* =====================================================
+     Tokens
+     ===================================================== */
+  :root {
+    /* Warm cream paper palette, all OKLCH, no pure black/white */
+    --bg:           oklch(0.972 0.018 85);
+    --bg-2:         oklch(0.955 0.022 80);
+    --surface:      oklch(0.992 0.008 85);
+    --surface-2:    oklch(0.985 0.012 82);
+
+    --ink:          oklch(0.245 0.022 55);
+    --ink-2:        oklch(0.43  0.028 58);
+    --ink-3:        oklch(0.60  0.022 65);
+    --ink-4:        oklch(0.75  0.018 70);
+
+    --line:         oklch(0.91  0.018 75);
+    --line-2:       oklch(0.86  0.022 72);
+
+    /* Full palette: each mastery state owns a color */
+    --sage:         oklch(0.66 0.13 150);
+    --sage-soft:    oklch(0.94 0.045 150);
+    --sage-ink:     oklch(0.36 0.10 150);
+
+    --coral:        oklch(0.70 0.155 35);
+    --coral-soft:   oklch(0.94 0.045 35);
+    --coral-ink:    oklch(0.45 0.13 35);
+
+    --teal:         oklch(0.72 0.10 195);
+    --teal-soft:    oklch(0.94 0.04 195);
+    --teal-ink:     oklch(0.42 0.09 200);
+
+    --plum:         oklch(0.58 0.13 295);
+    --plum-soft:    oklch(0.93 0.04 295);
+    --plum-ink:     oklch(0.38 0.12 295);
+
+    --sun:          oklch(0.83 0.135 88);
+    --sun-soft:     oklch(0.95 0.06 88);
+    --sun-ink:      oklch(0.48 0.10 70);
+
+    --radius-lg: 28px;
+    --radius:    18px;
+    --radius-sm: 12px;
+    --radius-xs: 8px;
+
+    /* Tinted shadows, never black */
+    --shadow-soft: 0 1px 0 oklch(1 0 0 / .6) inset,
+                   0 1px 2px oklch(0.3 0.04 60 / .04),
+                   0 8px 24px -16px oklch(0.3 0.04 60 / .18);
+    --shadow-pop:  0 1px 0 oklch(1 0 0 / .7) inset,
+                   0 14px 40px -20px oklch(0.3 0.05 60 / .35);
+
+    /* Emil's easings, customised for the warmth of this app */
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    --ease-out-soft: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    background-image:
+      radial-gradient(60vw 60vw at 12% -10%, oklch(0.92 0.06 80 / .55), transparent 60%),
+      radial-gradient(50vw 50vw at 110% 10%, oklch(0.93 0.055 165 / .35), transparent 55%),
+      radial-gradient(40vw 40vw at 50% 110%, oklch(0.92 0.06 30 / .35), transparent 55%);
+    color: var(--ink);
+    font-family: 'Nunito', system-ui, -apple-system, sans-serif;
+    font-weight: 600;
+    font-size: 17px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    min-height: 100dvh;
+  }
+  button { font-family: inherit; cursor: pointer; border: 0; background: none; color: inherit; }
+  button:focus-visible {
+    outline: 3px solid var(--sun);
+    outline-offset: 3px;
+    border-radius: var(--radius-sm);
+  }
+  input, select { font-family: inherit; font-size: 17px; color: var(--ink); font-weight: 600; }
+  ::selection { background: var(--sun-soft); color: var(--ink); }
+
+  /* =====================================================
+     Layout
+     ===================================================== */
+  .app {
+    min-height: 100dvh;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+  }
+
+  header.bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px 28px;
+    max-width: 1480px;
+    margin: 0 auto;
+    width: 100%;
+  }
+  .brand {
+    display: inline-flex; align-items: center; gap: 12px;
+  }
+  .brand-mark {
+    width: 48px; height: 48px;
+    border-radius: 14px;
+    background: var(--ink);
+    color: var(--surface);
+    display: grid; place-items: center;
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 600;
+    font-size: 26px;
+    letter-spacing: -0.02em;
+    box-shadow: var(--shadow-soft);
+    transform: rotate(-3deg);
+    transition: transform 180ms var(--ease-spring);
+  }
+  .brand:hover .brand-mark { transform: rotate(0deg); }
+  .brand-text {
+    display: flex; flex-direction: column; line-height: 1;
+  }
+  .brand-text .title {
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 600;
+    font-size: 24px;
+    letter-spacing: -0.015em;
+    color: var(--ink);
+  }
+  .brand-text .sub {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ink-3);
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    margin-top: 4px;
+  }
+
+  .student-area { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .student-select {
+    appearance: none;
+    background: var(--surface);
+    border: 1.5px solid var(--line);
+    border-radius: 999px;
+    padding: 10px 38px 10px 18px;
+    font-weight: 700;
+    color: var(--ink);
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14'><path d='M3 5l4 4 4-4' stroke='%23736a55' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    min-width: 200px;
+    cursor: pointer;
+    transition: border-color 180ms var(--ease-out), background-color 180ms var(--ease-out);
+  }
+  .student-select:hover { border-color: var(--line-2); background-color: var(--surface-2); }
+  .class-select { min-width: 120px; }
+  .class-select[hidden] { display: none; }
+
+  .icon-btn {
+    width: 42px; height: 42px;
+    border-radius: 14px;
+    border: 1.5px solid var(--line);
+    background: var(--surface);
+    color: var(--ink-2);
+    display: inline-flex; align-items: center; justify-content: center;
+    transition: transform 140ms var(--ease-out),
+                background 180ms var(--ease-out),
+                color 180ms var(--ease-out),
+                border-color 180ms var(--ease-out);
+  }
+  .icon-btn:hover { background: var(--surface-2); color: var(--ink); border-color: var(--line-2); }
+  .icon-btn:active { transform: scale(0.94); }
+
+  /* =====================================================
+     Main grid
+     ===================================================== */
+  main {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    gap: 24px;
+    padding: 8px 28px 28px;
+    max-width: 1480px;
+    width: 100%;
+    margin: 0 auto;
+  }
+  @media (max-width: 980px) {
+    main { grid-template-columns: 1fr; padding: 8px 16px 16px; gap: 16px; }
+    header.bar { padding: 16px; flex-wrap: wrap; }
+    .student-select { min-width: 160px; }
+  }
+
+  /* =====================================================
+     Practice surface (the star)
+     ===================================================== */
+  .practice {
+    position: relative;
+    background: var(--surface);
+    border: 1.5px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    min-height: 660px;
+    box-shadow: var(--shadow-soft);
+    overflow: hidden;
+  }
+  .practice::before {
+    /* tiny paper grain */
+    content: '';
+    position: absolute; inset: 0;
+    pointer-events: none;
+    background-image: radial-gradient(oklch(0.6 0.05 60 / .04) 1px, transparent 1px);
+    background-size: 3px 3px;
+    opacity: .35;
+    mix-blend-mode: multiply;
+  }
+
+  .practice-head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px;
+    position: relative;
+  }
+  .chip-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 7px 14px;
+    background: var(--surface-2);
+    border: 1.5px solid var(--line);
+    color: var(--ink-2);
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+  }
+  .chip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-4); }
+  .chip.sun { background: var(--sun-soft); border-color: oklch(0.85 0.1 88 / .6); color: var(--sun-ink); }
+  .chip.sun .dot { background: var(--sun); }
+  .chip.sage { background: var(--sage-soft); border-color: oklch(0.85 0.07 150 / .6); color: var(--sage-ink); }
+  .chip.sage .dot { background: var(--sage); }
+  .chip.coral { background: var(--coral-soft); border-color: oklch(0.85 0.07 35 / .6); color: var(--coral-ink); }
+  .chip.coral .dot { background: var(--coral); }
+
+  .streak-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 12px 7px 10px;
+    border-radius: 999px;
+    background: var(--sun-soft);
+    color: var(--sun-ink);
+    font-weight: 800; font-size: 14px;
+    letter-spacing: 0.04em;
+    border: 1.5px solid oklch(0.85 0.1 88 / .5);
+    transition: transform 200ms var(--ease-spring);
+  }
+  .streak-badge.bumped { transform: scale(1.08) rotate(-2deg); }
+  .streak-badge svg { color: var(--sun-ink); }
+
+  .stage {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    padding: 36px 12px 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .letter-frame {
+    position: relative;
+    padding: 24px 40px;
+    border-radius: 40px;
+    background: var(--surface-2);
+    border: 1.5px dashed var(--line-2);
+    transition: background 280ms var(--ease-out), border-color 280ms var(--ease-out);
+  }
+  .letter-frame.flash-yes { background: var(--sage-soft); border-color: oklch(0.78 0.1 150); }
+  .letter-frame.flash-no  { background: var(--sun-soft); border-color: oklch(0.82 0.13 88); }
+
+  .letter {
+    font-family: 'Comic Sans MS', 'Comic Sans', 'Chalkboard SE', cursive;
+    font-weight: 700;
+    font-size: max(180px, min(40vw, 46vh, 520px));
+    line-height: 0.88;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    user-select: none;
+    display: block;
+  }
+  .letter.shake { animation: shake 280ms var(--ease-out); }
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-6px) rotate(-1deg); }
+    50% { transform: translateX(5px) rotate(1deg); }
+    75% { transform: translateX(-3px); }
+  }
+  /* Success gets an equally kinetic answer to the wrong-answer shake: a gentle
+     spring pop that peaks early, so it still reads even when the next card's
+     entry animation takes over. Neutralised by the global reduced-motion rule. */
+  .letter.pop { animation: pop 300ms cubic-bezier(0.34, 1.4, 0.64, 1); }
+  @keyframes pop {
+    0%   { transform: scale(1); }
+    40%  { transform: scale(1.08) translateY(-2px); }
+    100% { transform: scale(1); }
+  }
+
+  .letter-caption {
+    display: flex; align-items: center; gap: 12px;
+    color: var(--ink-3);
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+  .letter-caption .pellet { width: 4px; height: 4px; border-radius: 50%; background: var(--ink-4); }
+
+  /* Entry animation, no scale(0) per Emil */
+  .letter-frame[data-enter] {
+    opacity: 0;
+    transform: scale(0.96);
+    animation: letterIn 320ms var(--ease-out-soft) forwards;
+  }
+  @keyframes letterIn {
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  /* =====================================================
+     Answer buttons — tactile, kid-friendly, asymmetric press
+     ===================================================== */
+  .answers {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-top: 8px;
+    position: relative;
+    z-index: 1;
+  }
+  .answer {
+    --bg-c: var(--sage);
+    --bg-soft: var(--sage-soft);
+    --ink-c: var(--sage-ink);
+    position: relative;
+    padding: 28px 26px;
+    border-radius: 22px;
+    background: var(--bg-soft);
+    border: 1.5px solid color-mix(in oklch, var(--bg-c), white 55%);
+    color: var(--ink-c);
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 600;
+    font-size: 24px;
+    letter-spacing: -0.005em;
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+    box-shadow: 0 1px 0 oklch(1 0 0 / .8) inset,
+                0 8px 0 -2px color-mix(in oklch, var(--bg-c), white 70%);
+    transition: transform 140ms var(--ease-out),
+                background 180ms var(--ease-out),
+                box-shadow 140ms var(--ease-out);
+  }
+  .answer:hover {
+    background: color-mix(in oklch, var(--bg-soft), var(--bg-c) 12%);
+  }
+  .answer:active {
+    transform: translateY(2px) scale(0.985);
+    box-shadow: 0 1px 0 oklch(1 0 0 / .8) inset,
+                0 4px 0 -2px color-mix(in oklch, var(--bg-c), white 70%);
+  }
+  .answer .icon {
+    width: 32px; height: 32px;
+    border-radius: 999px;
+    background: var(--bg-c);
+    color: var(--surface);
+    display: grid; place-items: center;
+    flex-shrink: 0;
+  }
+  .answer .kbd {
+    font-family: 'Nunito', sans-serif;
+    font-size: 13px;
+    font-weight: 800;
+    padding: 3px 8px;
+    border-radius: 8px;
+    background: oklch(1 0 0 / .55);
+    color: var(--ink-c);
+    margin-left: auto;
+    letter-spacing: 0.06em;
+    border: 1px solid color-mix(in oklch, var(--bg-c), white 55%);
+  }
+
+  .answer.no {
+    --bg-c: var(--coral);
+    --bg-soft: var(--coral-soft);
+    --ink-c: var(--coral-ink);
+  }
+
+  /* =====================================================
+     Practice footer (case toggle, undo)
+     ===================================================== */
+  .practice-foot {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px;
+    margin-top: 22px;
+    padding-top: 18px;
+    border-top: 1.5px dashed var(--line);
+    flex-wrap: wrap;
+    position: relative;
+    z-index: 1;
+  }
+  .case-toggle {
+    display: inline-flex;
+    background: var(--surface-2);
+    border: 1.5px solid var(--line);
+    border-radius: 999px;
+    padding: 4px;
+    gap: 2px;
+  }
+  .case-toggle button {
+    padding: 7px 16px;
+    border-radius: 999px;
+    color: var(--ink-3);
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    font-family: 'Fredoka', sans-serif;
+    transition: background 180ms var(--ease-out), color 180ms var(--ease-out);
+  }
+  .case-toggle button:hover { color: var(--ink); }
+  .case-toggle button.active {
+    background: var(--ink);
+    color: var(--surface);
+  }
+  .undo-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 14px;
+    border-radius: 12px;
+    color: var(--ink-2);
+    font-size: 15px;
+    font-weight: 700;
+    border: 1.5px solid transparent;
+    transition: background 180ms var(--ease-out), border-color 180ms var(--ease-out);
+  }
+  .undo-btn:hover:not(:disabled) { background: var(--surface-2); border-color: var(--line); }
+  .undo-btn:disabled { opacity: .35; cursor: not-allowed; }
+
+  /* =====================================================
+     Sidebar
+     ===================================================== */
+  aside {
+    display: flex; flex-direction: column;
+    gap: 20px;
+  }
+  .panel {
+    background: var(--surface);
+    border: 1.5px solid var(--line);
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: var(--shadow-soft);
+  }
+  .panel.tight { padding: 16px 18px; }
+  .panel-head {
+    display: flex; align-items: baseline; gap: 10px;
+    margin-bottom: 14px;
+    cursor: pointer; user-select: none;
+  }
+  .panel-head h3 {
+    margin: 0; flex: 1; min-width: 0;
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 600;
+    font-size: 19px;
+    letter-spacing: -0.015em;
+    color: var(--ink);
+  }
+  .panel-head .meta {
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  /* Collapsible panels — click the header to fold a panel away. */
+  .panel-head .chevron {
+    align-self: center; flex: none; width: 12px; height: 12px;
+    color: var(--ink-4); transition: transform 220ms var(--ease-out);
+  }
+  .panel-head:hover .chevron { color: var(--ink-2); }
+  .panel.collapsed .panel-head { margin-bottom: 0; }
+  .panel.collapsed .panel-head .chevron { transform: rotate(-90deg); }
+  .panel.collapsed > :not(.panel-head) { display: none; }
+  .sidebar-controls {
+    display: flex; align-items: center; gap: 8px; justify-content: flex-end;
+    margin: -2px 2px 2px;
+  }
+  .sidebar-controls button {
+    background: none; border: none; cursor: pointer; padding: 4px 2px;
+    font-family: inherit; font-size: 12px; font-weight: 800;
+    letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-3);
+  }
+  .sidebar-controls button:hover { color: var(--ink); }
+  .sidebar-controls .sep { color: var(--ink-4); font-weight: 700; }
+
+  .stats {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .stat {
+    padding: 14px;
+    border-radius: 14px;
+    background: var(--surface-2);
+    border: 1.5px solid var(--line);
+  }
+  .stat.sage  { background: var(--sage-soft);  border-color: color-mix(in oklch, var(--sage), white 60%); }
+  .stat.sun   { background: var(--sun-soft);   border-color: color-mix(in oklch, var(--sun), white 60%); }
+  .stat .label {
+    font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase;
+    font-weight: 800;
+    color: var(--ink-3);
+  }
+  .stat.sage .label { color: var(--sage-ink); opacity: .85; }
+  .stat.sun .label { color: var(--sun-ink); opacity: .85; }
+  .stat .value {
+    font-family: 'Fredoka', sans-serif;
+    font-size: 40px;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    margin-top: 4px;
+    line-height: 1;
+    color: var(--ink);
+  }
+  .stat.sage .value { color: var(--sage-ink); }
+  .stat.sun .value { color: var(--sun-ink); }
+  .stat .delta {
+    font-size: 14px; color: var(--ink-3);
+    margin-top: 6px;
+    font-weight: 700;
+  }
+  .stat.sage .delta { color: var(--sage-ink); opacity: .8; }
+  .stat.sun .delta { color: var(--sun-ink); opacity: .8; }
+
+  /* Mastery bar */
+  .mastery-bar {
+    height: 10px;
+    border-radius: 999px;
+    background: var(--line);
+    display: flex;
+    overflow: hidden;
+    gap: 2px;
+    padding: 2px;
+  }
+  .mastery-bar > span {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    transition: width 320ms var(--ease-out);
+  }
+  .mb-new      { background: var(--ink-4); }
+  .mb-learning { background: var(--coral); }
+  .mb-young    { background: var(--teal); }
+  .mb-mature   { background: var(--plum); }
+  /* Per-area mastery breakdown (sidebar) */
+  .area-mastery { display: flex; flex-direction: column; gap: 14px; }
+  .area-row { display: flex; flex-direction: column; gap: 5px; }
+  .area-row-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .area-name { font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: 14px; color: var(--ink); }
+  .area-count { font-size: 12px; font-weight: 700; color: var(--ink-3); white-space: nowrap; }
+  .area-count b { color: var(--plum); }
+  .area-bar { margin: 0; }
+  .area-sub { font-size: 11px; font-weight: 700; color: var(--ink-4); }
+  /* Trouble spots (sidebar) — the cards a student keeps missing */
+  .trouble-list { display: flex; flex-direction: column; gap: 6px; }
+  .trouble-row {
+    display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px;
+    padding: 7px 10px; border-radius: 10px;
+    background: var(--coral-soft); border: 1px solid color-mix(in oklch, var(--coral), white 65%);
+  }
+  .trouble-glyph {
+    font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: 18px;
+    color: var(--coral-ink); min-width: 1.4em; text-align: center;
+  }
+  .trouble-area { font-size: 12px; font-weight: 700; color: var(--ink-4); text-transform: uppercase; letter-spacing: 0.03em; }
+  .trouble-stat { font-size: 12px; font-weight: 800; color: var(--coral-ink); white-space: nowrap; }
+  .trouble-empty { font-size: 13px; font-weight: 700; color: var(--sage-ink); padding: 8px 4px; }
+  /* Quick placement modal */
+  .place-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 14px; }
+  .place-tab {
+    font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: 14px;
+    padding: 7px 14px; border-radius: 999px; cursor: pointer;
+    background: var(--surface-2); border: 1.5px solid var(--line-2); color: var(--ink-2);
+  }
+  .place-tab:hover { border-color: var(--ink-4); }
+  .place-tab.active { background: var(--ink); border-color: var(--ink); color: var(--surface); }
+  .place-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(68px, 1fr));
+    gap: 8px; max-height: 50vh; overflow: auto; padding: 2px;
+  }
+  .place-chip {
+    font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: 17px;
+    padding: 12px 8px; border-radius: 12px; cursor: pointer;
+    background: var(--surface-2); border: 1.5px solid var(--line-2); color: var(--ink-2);
+    text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    transition: background 140ms var(--ease-out), border-color 140ms var(--ease-out), transform 100ms var(--ease-out);
+  }
+  .place-chip:hover { border-color: var(--ink-4); }
+  .place-chip:active { transform: scale(0.96); }
+  .place-chip.known { background: var(--sage-soft); border-color: var(--sage); color: var(--sage-ink); }
+  .place-chip.known::after { content: ' ✓'; font-size: 13px; }
+  .place-empty { padding: 24px; text-align: center; color: var(--ink-3); font-weight: 700; }
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 8px 14px;
+    margin-top: 12px;
+    font-size: 13px; font-weight: 700;
+    color: var(--ink-2);
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 8px; height: 8px; border-radius: 3px; display: inline-block; }
+
+  /* Letter blocks (wooden alphabet feel) */
+  .letters {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+  }
+  .cell {
+    aspect-ratio: 1;
+    border-radius: 12px;
+    display: grid; place-items: center;
+    font-family: 'Comic Sans MS', 'Comic Sans', 'Chalkboard SE', cursive;
+    font-weight: 700;
+    font-size: 21px;
+    color: var(--ink-2);
+    background: var(--surface-2);
+    border: 1.5px solid var(--line);
+    position: relative;
+    cursor: help;
+    transition: transform 180ms var(--ease-spring),
+                background 240ms var(--ease-out),
+                color 240ms var(--ease-out),
+                border-color 240ms var(--ease-out);
+  }
+  .cell:hover { transform: translateY(-2px); }
+  .cell.s-new      { background: var(--surface-2); color: var(--ink-3); }
+  .cell.s-learning { background: var(--coral-soft); color: var(--coral-ink); border-color: color-mix(in oklch, var(--coral), white 60%); }
+  .cell.s-young    { background: var(--teal-soft); color: var(--teal-ink); border-color: color-mix(in oklch, var(--teal), white 60%); }
+  .cell.s-mature   {
+    background: var(--plum);
+    color: oklch(0.97 0.02 295);
+    border-color: var(--plum);
+  }
+  .cell.is-due::after {
+    content: '';
+    position: absolute; top: 4px; right: 4px;
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--sun);
+    box-shadow: 0 0 0 2px var(--surface);
+  }
+  .cell.is-current {
+    transform: translateY(-2px);
+    box-shadow: 0 0 0 3px var(--sun);
+  }
+
+  /* Stagger reveal on initial paint */
+  .cell[data-enter] {
+    opacity: 0;
+    transform: translateY(6px);
+    animation: cellIn 340ms var(--ease-out) forwards;
+    animation-delay: calc(var(--i, 0) * 18ms);
+  }
+  @keyframes cellIn {
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* =====================================================
+     Scroll regions
+     ===================================================== */
+  /* macOS hides overlay scrollbars until you actually scroll, so a clipped
+     list reads as a list that simply ends. Styling the scrollbar opts these
+     regions into persistent, always-visible ones. Note: setting
+     scrollbar-width/-color would make Chrome ignore the ::-webkit- rules, so
+     the standard properties live in the @supports fallback below. */
+  .class-list, .sound-list, .roster-list, .report-scroll, .place-grid {
+    overscroll-behavior: contain;
+  }
+  .class-list::-webkit-scrollbar,
+  .sound-list::-webkit-scrollbar,
+  .roster-list::-webkit-scrollbar,
+  .report-scroll::-webkit-scrollbar,
+  .place-grid::-webkit-scrollbar {
+    width: 12px;
+  }
+  .class-list::-webkit-scrollbar-track,
+  .sound-list::-webkit-scrollbar-track,
+  .roster-list::-webkit-scrollbar-track,
+  .report-scroll::-webkit-scrollbar-track,
+  .place-grid::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .class-list::-webkit-scrollbar-thumb,
+  .sound-list::-webkit-scrollbar-thumb,
+  .roster-list::-webkit-scrollbar-thumb,
+  .report-scroll::-webkit-scrollbar-thumb,
+  .place-grid::-webkit-scrollbar-thumb {
+    background: var(--line-2);
+    border-radius: 999px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+  .class-list::-webkit-scrollbar-thumb:hover,
+  .sound-list::-webkit-scrollbar-thumb:hover,
+  .roster-list::-webkit-scrollbar-thumb:hover,
+  .report-scroll::-webkit-scrollbar-thumb:hover,
+  .place-grid::-webkit-scrollbar-thumb:hover {
+    background: var(--ink-4);
+    background-clip: content-box;
+  }
+  @supports not selector(::-webkit-scrollbar) {
+    .class-list, .sound-list, .roster-list, .report-scroll, .place-grid {
+      scrollbar-width: thin;
+      scrollbar-color: var(--line-2) transparent;
+    }
+  }
+
+  /* =====================================================
+     Modals
+     ===================================================== */
+  .modal-backdrop {
+    position: fixed; inset: 0;
+    background: oklch(0.3 0.04 60 / .35);
+    display: none;
+    align-items: center; justify-content: center;
+    z-index: 50;
+    padding: 20px;
+    opacity: 0;
+    transition: opacity 180ms var(--ease-out);
+  }
+  .modal-backdrop.open { display: flex; opacity: 1; }
+  .modal {
+    background: var(--surface);
+    border: 1.5px solid var(--line);
+    border-radius: 22px;
+    padding: 24px;
+    width: min(440px, 100%);
+    box-shadow: 0 30px 80px -30px oklch(0.3 0.05 60 / .45);
+    transform: scale(0.96);
+    opacity: 0;
+    transition: transform 220ms var(--ease-out), opacity 180ms var(--ease-out);
+    /* Never taller than the viewport (20px backdrop padding each side). The
+       modal is a flex column so its one scrollable region takes the overflow
+       and the actions row can't be pushed off-screen. */
+    max-height: calc(100dvh - 40px);
+    display: flex;
+    flex-direction: column;
+  }
+  .modal-backdrop.open .modal {
+    transform: scale(1);
+    opacity: 1;
+  }
+  .modal h2 {
+    margin: 0 0 4px;
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 600;
+    font-size: 26px;
+    letter-spacing: -0.02em;
+  }
+  .modal p { color: var(--ink-3); margin: 0 0 18px; font-size: 16px; font-weight: 600; }
+  .field { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+  .field label {
+    font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--ink-3); font-weight: 800;
+  }
+  .field input, .field select {
+    padding: 12px 14px;
+    border: 1.5px solid var(--line-2);
+    border-radius: 12px;
+    background: var(--bg);
+    color: var(--ink);
+    transition: border-color 180ms var(--ease-out), background 180ms var(--ease-out);
+  }
+  .field input:focus, .field select:focus {
+    outline: none;
+    border-color: var(--ink);
+    background: var(--surface);
+  }
+  .modal-actions {
+    display: flex; justify-content: flex-end; gap: 10px;
+  }
+  .btn {
+    padding: 11px 18px;
+    border-radius: 12px;
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 500;
+    font-size: 17px;
+    border: 1.5px solid var(--line-2);
+    background: var(--bg);
+    color: var(--ink-2);
+    transition: background 180ms var(--ease-out),
+                border-color 180ms var(--ease-out),
+                transform 120ms var(--ease-out),
+                color 180ms var(--ease-out);
+  }
+  .btn:hover { background: var(--surface-2); color: var(--ink); }
+  .btn:active { transform: scale(0.97); }
+  .btn.primary {
+    background: var(--ink);
+    color: var(--surface);
+    border-color: var(--ink);
+  }
+  .btn.primary:hover { background: oklch(0.18 0.022 55); color: var(--surface); }
+  .btn.danger {
+    color: var(--coral-ink);
+    border-color: color-mix(in oklch, var(--coral), white 55%);
+    background: var(--coral-soft);
+  }
+  .btn.danger:hover { background: color-mix(in oklch, var(--coral-soft), var(--coral) 12%); }
+  .btn.ghost {
+    border-color: var(--line);
+    background: transparent;
+  }
+
+  .data-section {
+    margin-top: 18px;
+    padding-top: 18px;
+    border-top: 1.5px dashed var(--line);
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+  .data-section h3 {
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 600;
+    font-size: 16px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--ink-3);
+    margin: 0 0 10px;
+  }
+  .data-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .danger-zone {
+    margin-top: 18px;
+    padding-top: 18px;
+    border-top: 1.5px dashed var(--line);
+    display: flex; justify-content: space-between; gap: 10px;
+  }
+
+  /* =====================================================
+     Empty state
+     ===================================================== */
+  .empty {
+    text-align: center;
+    color: var(--ink-3);
+    padding: 60px 16px;
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+  }
+  .empty .glyph {
+    width: 80px; height: 80px;
+    border-radius: 24px;
+    background: var(--sun-soft);
+    border: 1.5px solid color-mix(in oklch, var(--sun), white 55%);
+    color: var(--sun-ink);
+    font-family: 'Fredoka', sans-serif;
+    font-size: 52px;
+    font-weight: 500;
+    display: grid; place-items: center;
+    margin-bottom: 8px;
+    transform: rotate(-4deg);
+  }
+  .empty .big {
+    font-family: 'Fredoka', sans-serif;
+    font-size: 33px;
+    color: var(--ink);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  /* =====================================================
+     Toast (Sonner-inspired, transitions not keyframes)
+     ===================================================== */
+  .toast {
+    position: fixed; left: 50%; bottom: 32px;
+    transform: translate(-50%, 10px) scale(0.97);
+    background: var(--ink);
+    color: var(--surface);
+    padding: 12px 18px;
+    border-radius: 14px;
+    font-size: 16px; font-weight: 700;
+    opacity: 0; pointer-events: none;
+    transition: opacity 200ms var(--ease-out),
+                transform 220ms var(--ease-out);
+    z-index: 100;
+    box-shadow: 0 18px 40px -16px oklch(0.2 0.04 60 / .5);
+    border: 1.5px solid oklch(0.18 0.02 55);
+    display: inline-flex; align-items: center; gap: 10px;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+  .toast .dot {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--sage);
+  }
+
+  /* =====================================================
+     Footer
+     ===================================================== */
+  footer.foot {
+    padding: 16px 28px 24px;
+    text-align: center;
+    font-size: 14px;
+    color: var(--ink-3);
+    font-weight: 700;
+  }
+
+  /* =====================================================
+     Reduced motion respect
+     ===================================================== */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 1ms !important;
+      transition-duration: 1ms !important;
+    }
+  }
+
+  @media (hover: none) {
+    .answer:hover { background: var(--bg-soft); }
+    .cell:hover { transform: none; }
+  }
+
+  /* =====================================================
+     Phonics additions
+     ===================================================== */
+  .foot-toggles {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  }
+  .mode-toggle {
+    display: inline-flex;
+    background: var(--surface-2);
+    border: 1.5px solid var(--line);
+    border-radius: 999px;
+    padding: 4px;
+    gap: 2px;
+    /* Seven modes don't fit one line on a small laptop, and this row can't
+       shrink past its labels — let it reflow instead of spilling out of the
+       practice footer. Softer radius so a wrapped block doesn't read as a
+       stretched pill. */
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 100%;
+  }
+  @media (max-width: 1180px) {
+    .mode-toggle { border-radius: 20px; }
+  }
+  .mode-toggle button {
+    padding: 7px 14px;
+    border-radius: 999px;
+    color: var(--ink-3);
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    font-family: 'Fredoka', sans-serif;
+    transition: background 180ms var(--ease-out), color 180ms var(--ease-out);
+  }
+  .mode-toggle button:hover { color: var(--ink); }
+  .mode-toggle button.active {
+    background: var(--plum);
+    color: oklch(0.97 0.02 295);
+  }
+  .case-toggle[hidden] { display: none; }
+
+  /* Phonics caption under giant letter */
+  .letter.is-phonics {
+    /* shrink for multi-char sounds */
+    font-size: max(140px, min(30vw, 40vh, 440px));
+  }
+
+  /* Sight words go up to 6 characters ("people", "number") — needs
+     a meaningfully smaller scale so the word fits the practice card */
+  .letter.is-sight {
+    font-size: max(64px, min(15vw, 22vh, 200px));
+    letter-spacing: -0.015em;
+  }
+
+  /* CVC / CVCe words are short (3–5 chars) — sit between sounds and sight. */
+  .letter.is-cvc {
+    font-size: max(110px, min(26vw, 34vh, 360px));
+    letter-spacing: -0.01em;
+  }
+  .example-caption {
+    margin-top: 12px;
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 500;
+    font-size: 17px;
+    color: var(--ink-3);
+    letter-spacing: 0.02em;
+  }
+  .example-caption b {
+    font-weight: 600;
+    color: var(--ink-2);
+  }
+
+  /* Left-to-right reading cue, sits under the sound/word inside the frame.
+     Dot marks where to start, line + arrowhead show the reading direction. */
+  .read-arrow {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    margin-top: 24px;
+    color: var(--plum);
+  }
+  .read-arrow .dot {
+    width: 17px; height: 17px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+  }
+  .read-arrow .line {
+    flex: 1;
+    height: 9px;
+    border-radius: 999px;
+    background: currentColor;
+  }
+  .read-arrow .head {
+    width: 0; height: 0;
+    border-top: 17px solid transparent;
+    border-bottom: 17px solid transparent;
+    border-left: 28px solid currentColor;
+    flex-shrink: 0;
+    margin-left: -2px;
+  }
+  /* Glowing dot that sweeps start → arrowhead, fading at each end so the
+     loop's return jump is invisible. Travels the full width of the sound. */
+  /* Glowing dot the script glides letter-to-letter (position/opacity set
+     inline). Hidden until the sequence runs and after it ends, so the
+     static dot/line/head stay behind as a quiet directional guide. */
+  .read-arrow .tracer {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: var(--plum);
+    box-shadow:
+      0 0 0 5px color-mix(in oklch, var(--plum), white 72%),
+      0 0 18px 3px color-mix(in oklch, var(--plum), white 45%);
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    opacity: 0;
+  }
+  /* Tracer gives a little pulse during the final blend flash. */
+  .read-arrow.blend .tracer {
+    transform: translate(-50%, -50%) scale(1.35);
+  }
+
+  /* Each letter pops (plum + lift) when the tracer reaches it. The script
+     adds .flash one at a time in reading order, then to all at once
+     (with .blend) for the blended sound. */
+  .letter .glyph {
+    display: inline-block;
+    transition: color 150ms var(--ease-out),
+                transform 240ms var(--ease-spring);
+  }
+  .letter .glyph.flash {
+    color: var(--plum);
+    transform: translateY(-0.08em) scale(1.1);
+  }
+  .letter .glyph.flash.blend {
+    transform: translateY(-0.1em) scale(1.17);
+  }
+
+  /* Sound pills sidebar grid */
+  .sound-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .sound-pill {
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: var(--surface-2);
+    border: 1.5px solid var(--line);
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 500;
+    font-size: 17px;
+    color: var(--ink-2);
+    cursor: help;
+    transition: transform 180ms var(--ease-spring),
+                background 240ms var(--ease-out),
+                color 240ms var(--ease-out),
+                border-color 240ms var(--ease-out);
+    position: relative;
+  }
+  .sound-pill.s-new      { background: var(--surface-2); color: var(--ink-3); }
+  .sound-pill.s-learning { background: var(--coral-soft); color: var(--coral-ink); border-color: color-mix(in oklch, var(--coral), white 60%); }
+  .sound-pill.s-young    { background: var(--teal-soft); color: var(--teal-ink); border-color: color-mix(in oklch, var(--teal), white 60%); }
+  .sound-pill.s-mature   { background: var(--plum); color: oklch(0.97 0.02 295); border-color: var(--plum); }
+  .sound-pill.is-due::after {
+    content: '';
+    position: absolute; top: -3px; right: -3px;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--sun);
+    box-shadow: 0 0 0 2px var(--surface);
+  }
+  .sound-pill.is-current {
+    box-shadow: 0 0 0 3px var(--sun);
+  }
+
+  /* Sight word panel — groups stacked, pills reuse .sound-pill styles */
+  .sight-groups {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .sight-group-label {
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: 6px;
+  }
+  .sight-group .sound-pills {
+    gap: 5px;
+  }
+  .sight-group .sound-pill {
+    font-size: 16px;
+    padding: 6px 11px;
+  }
+
+  .manage-link {
+    margin-top: 12px;
+    width: 100%;
+    padding: 8px 12px;
+    border: 1.5px dashed var(--line-2);
+    border-radius: 10px;
+    background: transparent;
+    color: var(--ink-3);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    transition: color 180ms var(--ease-out), border-color 180ms var(--ease-out), background 180ms var(--ease-out);
+  }
+  .manage-link:hover {
+    color: var(--ink);
+    border-color: var(--line);
+    background: var(--surface-2);
+  }
+
+  /* Word builder modal: kind tabs + live preview */
+  .kind-tabs {
+    display: inline-flex;
+    background: var(--surface-2);
+    border: 1.5px solid var(--line);
+    border-radius: 999px;
+    padding: 4px;
+    gap: 2px;
+    margin-bottom: 16px;
+  }
+  .kind-tabs button {
+    padding: 7px 16px;
+    border-radius: 999px;
+    color: var(--ink-3);
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    font-family: 'Fredoka', sans-serif;
+    transition: background 180ms var(--ease-out), color 180ms var(--ease-out);
+  }
+  .kind-tabs button:hover { color: var(--ink); }
+  .kind-tabs button.active { background: var(--plum); color: oklch(0.97 0.02 295); }
+  .cvc-preview {
+    display: flex; align-items: baseline; gap: 2px;
+    min-width: 84px;
+    font-family: 'Comic Sans MS', 'Comic Sans', 'Chalkboard SE', cursive;
+    font-weight: 700;
+    font-size: 30px;
+    color: var(--ink-3);
+    line-height: 1;
+  }
+  .cvc-preview .on { color: var(--plum); }
+  .cvc-preview .ri { color: var(--teal-ink); }
+  /* Word builder add row: Beginning / Ending / Preview / Add */
+  .cvc-add { grid-template-columns: 92px 110px 1fr auto; }
+  @media (max-width: 540px) { .cvc-add { grid-template-columns: 1fr; } }
+  /* Word list rows reuse .sound-item; show the onset·rime split quietly. */
+  .sound-item .split {
+    flex: 1;
+    color: var(--ink-3);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    cursor: text;
+    padding: 4px 8px;
+    margin: -4px -8px;
+    border-radius: 8px;
+    transition: background 160ms var(--ease-out), color 160ms var(--ease-out);
+  }
+  .sound-item .split:hover { background: var(--surface); color: var(--ink-2); }
+  .sound-item .split-edit {
+    width: 3.4em;
+    padding: 4px 6px;
+    border: 1.5px solid var(--ink);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    outline: none;
+  }
+
+  /* Class roster modal */
+  .roster-summary {
+    font-size: 15px;
+    color: var(--ink-2);
+    font-weight: 700;
+    margin: 4px 0 14px;
+    display: flex; gap: 14px; flex-wrap: wrap;
+  }
+  .roster-summary .dot {
+    display: inline-block; width: 8px; height: 8px; border-radius: 999px;
+    margin-right: 6px; vertical-align: 1px;
+  }
+  .roster-summary .dot.sage { background: var(--sage); }
+  .roster-summary .dot.sun  { background: var(--sun); }
+  .roster-summary .dot.muted { background: var(--ink-4); }
+  .roster-list {
+    list-style: none; margin: 0; padding: 0;
+    max-height: 60vh; overflow: auto;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .roster-item {
+    width: 100%;
+    text-align: left;
+    padding: 12px 14px;
+    border: 1.5px solid var(--line);
+    background: var(--surface-2);
+    border-radius: 14px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 4px 12px;
+    align-items: center;
+    cursor: pointer;
+    transition: background 180ms var(--ease-out),
+                border-color 180ms var(--ease-out),
+                transform 120ms var(--ease-out);
+    font-family: inherit; color: inherit;
+  }
+  .roster-item:hover { background: var(--surface); border-color: var(--line-2); }
+  .roster-item:active { transform: scale(0.99); }
+  .roster-item.is-current { border-color: var(--ink); }
+  .roster-item.is-done { background: var(--sage-soft); border-color: color-mix(in oklch, var(--sage), white 55%); }
+  .roster-item.is-progress { background: var(--sun-soft); border-color: color-mix(in oklch, var(--sun), white 55%); }
+  .roster-name {
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 600;
+    font-size: 19px;
+    color: var(--ink);
+  }
+  .roster-badge {
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--ink-2);
+    border: 1px solid var(--line-2);
+    white-space: nowrap;
+  }
+  .roster-badge.done { background: var(--sage); color: white; border-color: transparent; }
+  .roster-badge.progress { background: var(--sun); color: var(--sun-ink); border-color: transparent; }
+  .roster-sub {
+    grid-column: 1 / -1;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--ink-3);
+  }
+  .roster-empty {
+    padding: 20px;
+    text-align: center;
+    color: var(--ink-3);
+    font-size: 16px;
+    font-weight: 700;
+    background: var(--surface-2);
+    border-radius: 14px;
+    border: 1.5px dashed var(--line-2);
+  }
+
+  /* ===========================================================
+     Home (class picker) + Class (student picker) screens
+     =========================================================== */
+  main[hidden] { display: none !important; }
+  .screen[hidden] { display: none !important; }
+  .back-btn[hidden] { display: none !important; }
+
+  .screen {
+    max-width: 1480px; width: 100%; margin: 0 auto;
+    padding: 8px 28px 36px;
+    display: flex; flex-direction: column; gap: 24px;
+    animation: letterIn 320ms var(--ease-out-soft);
+  }
+  .screen-head { text-align: center; margin-top: 8px; }
+  .screen-title {
+    font-family: 'Fredoka', sans-serif; font-weight: 600;
+    font-size: clamp(26px, 5vw, 38px); color: var(--ink); margin: 0;
+  }
+  .screen-sub { color: var(--ink-3); font-weight: 700; font-size: 15px; margin: 6px 0 0; }
+
+  .pick-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 14px;
+    width: min(760px, 100%); margin: 0 auto; align-content: start;
+  }
+  .pick-card {
+    display: flex; flex-direction: column; gap: 6px;
+    text-align: left; padding: 20px; min-height: 118px;
+    border-radius: 22px; border: 1.5px solid var(--line-2);
+    background: var(--surface-2); color: inherit; font-family: inherit; cursor: pointer;
+    box-shadow: 0 1px 0 oklch(1 0 0 / .7) inset, 0 8px 0 -3px var(--line);
+    transition: transform 140ms var(--ease-out), background 180ms var(--ease-out),
+                border-color 180ms var(--ease-out), box-shadow 180ms var(--ease-out);
+  }
+  .pick-card:hover { background: var(--surface); border-color: var(--ink-4); transform: translateY(-2px); }
+  .pick-card:active { transform: translateY(2px); box-shadow: 0 1px 0 oklch(1 0 0 / .7) inset, 0 3px 0 -3px var(--line); }
+  .pick-card:focus-visible { outline: 3px solid var(--sun); outline-offset: 2px; }
+  .pick-name { font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: 22px; color: var(--ink); line-height: 1.1; }
+  .pick-meta { font-size: 12px; font-weight: 800; color: var(--ink-4); text-transform: uppercase; letter-spacing: 0.04em; }
+  .pick-status { font-size: 14px; font-weight: 700; color: var(--ink-3); margin-top: auto; }
+  .pick-status.done { color: var(--sage-ink); }
+  .class-card.is-all { border-style: dashed; }
+
+  .student-card { flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; min-height: 92px; }
+  .student-card .pick-name { font-size: 24px; }
+  .student-card.is-done { background: var(--sage-soft); border-color: color-mix(in oklch, var(--sage), white 55%); }
+  .student-card.is-progress { background: var(--sun-soft); border-color: color-mix(in oklch, var(--sun), white 55%); }
+  .student-card.is-current { outline: 2px solid var(--ink); outline-offset: 1px; }
+  .pick-badge {
+    font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: 14px;
+    padding: 5px 12px; border-radius: 999px; white-space: nowrap;
+    background: var(--surface); color: var(--ink-2); border: 1px solid var(--line-2);
+  }
+  .pick-badge.done { background: var(--sage); color: white; border-color: transparent; }
+  .pick-badge.progress { background: var(--sun); color: var(--sun-ink); border-color: transparent; }
+  .pick-empty {
+    width: min(560px, 100%); margin: 8px auto 0; padding: 28px 20px; text-align: center;
+    color: var(--ink-3); font-size: 16px; font-weight: 700;
+    background: var(--surface-2); border-radius: 18px; border: 1.5px dashed var(--line-2);
+  }
+
+  .needs-panel {
+    width: min(760px, 100%); margin: 0 auto -6px;
+    background: var(--surface-2); border: 1.5px solid var(--line-2);
+    border-radius: 20px; padding: 16px 18px;
+  }
+  .needs-title {
+    font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: 14px;
+    text-transform: uppercase; letter-spacing: 0.05em; color: var(--coral-ink); margin: 0 0 10px;
+  }
+  .needs-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  .needs-item {
+    display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px;
+    padding: 9px 12px; border-radius: 12px; cursor: pointer;
+    background: var(--surface); border: 1px solid var(--line);
+    transition: background 160ms var(--ease-out), border-color 160ms var(--ease-out);
+    text-align: left; font-family: inherit; color: inherit; width: 100%;
+  }
+  .needs-item:hover { background: var(--coral-soft); border-color: color-mix(in oklch, var(--coral), white 60%); }
+  .needs-item:focus-visible { outline: 3px solid var(--sun); outline-offset: 2px; }
+  .needs-dots { letter-spacing: 1px; font-size: 13px; color: var(--coral); }
+  .needs-name { font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: 17px; color: var(--ink); }
+  .needs-stats { font-size: 13px; font-weight: 700; color: var(--ink-3); white-space: nowrap; text-align: right; }
+  @media (max-width: 520px) {
+    .needs-item { grid-template-columns: auto 1fr; }
+    .needs-stats { grid-column: 2; text-align: left; }
+  }
+
+  .brand.is-link { cursor: pointer; border-radius: 12px; }
+  .brand.is-link:hover { opacity: 0.82; }
+  .brand.is-link:focus-visible { outline: 3px solid var(--sun); outline-offset: 3px; }
+
+  /* Header controls scoped to the practice view */
+  #class-filter { display: none !important; }   /* the home screen is the class picker now */
+  body:not([data-view="practice"]) #student-select,
+  body:not([data-view="practice"]) #manage-btn { display: none; }
+  @media (max-width: 980px) { .screen { padding: 8px 16px 24px; } }
+
+  /* Progress report */
+  .report-modal { width: min(680px, 100%); }
+  .report-meta { color: var(--ink-3); font-weight: 700; font-size: 14px; margin: 2px 0 12px; }
+  .report-summary {
+    font-size: 15px; color: var(--ink-2); font-weight: 700;
+    margin: 4px 0 14px; display: flex; gap: 16px; flex-wrap: wrap;
+  }
+  .report-summary .dot {
+    display: inline-block; width: 8px; height: 8px; border-radius: 999px;
+    margin-right: 6px; vertical-align: 1px; background: var(--ink-4);
+  }
+  .report-summary .dot.plum { background: var(--plum); }
+  .report-scroll { max-height: 58vh; overflow: auto; }
+  .report-table { width: 100%; border-collapse: collapse; font-family: inherit; }
+  .report-table th {
+    text-align: left; font-size: 12px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-3);
+    padding: 6px 10px; border-bottom: 1.5px solid var(--line);
+    position: sticky; top: 0; background: var(--surface);
+  }
+  .report-table td {
+    padding: 10px; border-bottom: 1px solid var(--line);
+    font-size: 15px; color: var(--ink-2); vertical-align: middle;
+  }
+  .report-table .num { text-align: right; white-space: nowrap; }
+  .report-table .r-name {
+    font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: 17px; color: var(--ink);
+  }
+  .report-table .r-mode { color: var(--ink-3); font-weight: 700; font-size: 14px; }
+  .report-table .bar-col { width: 34%; }
+  .report-bar { background: var(--line); margin: 0; min-width: 80px; }
+  .report-actions { gap: 10px; }
+
+  @media print {
+    body > *:not(#report-modal) { display: none !important; }
+    #report-modal {
+      position: static !important; display: block !important;
+      opacity: 1 !important; background: #fff !important; padding: 0 !important;
+    }
+    #report-modal .modal {
+      box-shadow: none !important; border: none !important;
+      width: 100% !important; max-width: none !important; max-height: none !important;
+      padding: 0 !important; animation: none !important; transform: none !important;
+    }
+    .no-print { display: none !important; }
+    .report-scroll { max-height: none !important; overflow: visible !important; }
+    .report-table th { position: static; }
+  }
+
+  /* Sounds modal */
+  .modal-wide { width: min(520px, 100%); }
+  .modal-wide .field { margin-bottom: 0; }
+  .sound-add {
+    display: grid;
+    grid-template-columns: 110px 1fr auto;
+    gap: 10px;
+    align-items: end;
+    margin-bottom: 4px;
+  }
+  .sound-add .grow { width: 100%; }
+  .sound-add .btn { height: 44px; padding: 0 18px; }
+  @media (max-width: 540px) {
+    .sound-add { grid-template-columns: 1fr; }
+    .sound-add .btn { width: 100%; }
+  }
+
+  .sound-list {
+    list-style: none;
+    padding: 0;
+    margin: 6px 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 260px;
+    overflow-y: auto;
+  }
+  .sound-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: var(--surface-2);
+    border: 1.5px solid var(--line);
+  }
+  .sound-item .text {
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 600;
+    font-size: 21px;
+    color: var(--ink);
+    min-width: 44px;
+  }
+  .sound-item .example {
+    color: var(--ink-3);
+    font-size: 15px;
+    font-weight: 600;
+    flex: 1;
+    cursor: text;
+    padding: 4px 8px;
+    margin: -4px -8px;
+    border-radius: 8px;
+    transition: background 160ms var(--ease-out), color 160ms var(--ease-out);
+  }
+  .sound-item .example:hover { background: var(--surface); color: var(--ink-2); }
+  .sound-item .example em {
+    color: var(--ink-4);
+    font-style: normal;
+  }
+  .sound-item .example.empty em { color: var(--ink-4); font-style: italic; }
+  .sound-item .example-edit {
+    width: 100%;
+    padding: 4px 8px;
+    margin: -4px -8px;
+    border: 1.5px solid var(--ink);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 15px;
+    font-weight: 600;
+    font-family: inherit;
+    outline: none;
+  }
+  .sound-item .actions { display: inline-flex; gap: 4px; }
+  .sound-item button {
+    width: 32px; height: 32px;
+    border-radius: 10px;
+    color: var(--ink-3);
+    transition: background 180ms var(--ease-out), color 180ms var(--ease-out);
+  }
+  .sound-item button:hover { background: var(--surface); color: var(--ink); }
+  .sound-item button.remove:hover { color: var(--coral-ink); background: var(--coral-soft); }
+
+  .sound-empty {
+    color: var(--ink-3);
+    font-size: 15px;
+    padding: 14px;
+    text-align: center;
+    border: 1.5px dashed var(--line-2);
+    border-radius: 12px;
+    margin-top: 6px;
+  }
+
+  #sound-count {
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ink-3);
+    letter-spacing: 0.08em;
+  }
+
+  /* =====================================================
+     Classes
+     ===================================================== */
+  .class-add { grid-template-columns: 1fr auto; }
+
+  .class-list {
+    display: flex; flex-direction: column; gap: 12px;
+    flex: 1 1 auto;
+    min-height: 140px; max-height: 52vh; overflow-y: auto;
+    margin-top: 8px;
+  }
+  .class-group {
+    border: 1.5px solid var(--line);
+    border-radius: 14px;
+    background: var(--surface-2);
+    overflow: hidden;
+    /* Keep full height inside the flex column of .class-list. Without this the
+       group is a shrinkable flex item whose `overflow: hidden` zeroes its auto
+       min-height, so a big class gets squashed and its rows are clipped away
+       instead of overflowing — which left .class-list with nothing to scroll. */
+    flex: none;
+  }
+  .class-group.is-unassigned { background: var(--bg); }
+  .class-group-head {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px;
+  }
+  .class-group-name {
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 600; font-size: 17px;
+    color: var(--ink);
+  }
+  .class-group-name input.class-name-edit {
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 600; font-size: 17px;
+    color: var(--ink);
+    border: 1.5px solid var(--ink);
+    border-radius: 8px;
+    padding: 2px 8px; margin: -3px 0;
+    background: var(--surface);
+    outline: none;
+    width: 200px; max-width: 100%;
+  }
+  .class-group-count {
+    font-size: 12px; font-weight: 800;
+    color: var(--ink-3);
+    background: var(--surface);
+    border: 1px solid var(--line-2);
+    border-radius: 999px;
+    padding: 2px 9px;
+  }
+  .class-group-actions { margin-left: auto; display: inline-flex; gap: 4px; }
+  .class-group-actions button {
+    width: 30px; height: 30px;
+    border-radius: 9px;
+    color: var(--ink-3);
+    display: inline-grid; place-items: center;
+    transition: background 180ms var(--ease-out), color 180ms var(--ease-out);
+  }
+  .class-group-actions button:hover { background: var(--surface); color: var(--ink); }
+  .class-group-actions button.remove:hover { background: var(--coral-soft); color: var(--coral-ink); }
+  .class-students {
+    border-top: 1.5px dashed var(--line);
+    display: flex; flex-direction: column;
+  }
+  .class-student {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px;
+  }
+  .class-student + .class-student { border-top: 1px solid var(--line); }
+  .class-student-name { flex: 1; font-weight: 700; color: var(--ink-2); }
+  .class-empty-row {
+    padding: 10px 12px;
+    font-size: 14px; font-weight: 600;
+    color: var(--ink-3);
+  }
+  .assign-select {
+    appearance: none;
+    background: var(--surface);
+    border: 1.5px solid var(--line);
+    border-radius: 999px;
+    padding: 6px 30px 6px 13px;
+    font-weight: 700; font-size: 14px;
+    color: var(--ink);
+    cursor: pointer;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14'><path d='M3 5l4 4 4-4' stroke='%23736a55' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 11px center;
+    transition: border-color 160ms var(--ease-out), background-color 160ms var(--ease-out);
+  }
+  .assign-select:hover { border-color: var(--line-2); background-color: var(--surface-2); }
+
+  .class-check { display: inline-flex; align-items: center; }
+  .class-check input {
+    width: 18px; height: 18px;
+    margin: 0;
+    accent-color: var(--plum);
+    cursor: pointer;
+  }
+  .bulk-bar {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    margin: 2px 0 12px;
+    padding: 10px 12px;
+    background: var(--plum-soft);
+    border: 1.5px solid color-mix(in oklch, var(--plum), white 62%);
+    border-radius: 12px;
+  }
+  .bulk-bar[hidden] { display: none; }
+  .bulk-count { font-weight: 800; font-size: 14px; color: var(--plum-ink); }
+  .bulk-bar #bulk-target { margin-left: auto; }
+  .bulk-bar .btn { padding: 8px 14px; }
+
+  /* =====================================================
+     Weekly report
+     ===================================================== */
+  .week-strip {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+    align-items: end;
+  }
+  .week-day {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    min-width: 0;
+  }
+  .week-stack {
+    width: 100%;
+    height: 64px;
+    display: flex;
+    flex-direction: column-reverse;
+    background: var(--surface-2);
+    border-radius: 8px;
+    border: 1.5px solid var(--line);
+    overflow: hidden;
+    position: relative;
+  }
+  .week-stack.empty {
+    background:
+      repeating-linear-gradient(45deg,
+        var(--surface-2) 0 4px,
+        var(--bg) 4px 8px);
+  }
+  .week-correct {
+    background: var(--sage);
+    transition: height 320ms var(--ease-out);
+  }
+  .week-incorrect {
+    background: var(--sun);
+    transition: height 320ms var(--ease-out);
+  }
+  .week-day.today .week-stack {
+    border-color: var(--ink);
+    border-width: 2px;
+  }
+  .week-day.today .week-label {
+    color: var(--ink);
+  }
+  .week-label {
+    font-size: 12px;
+    font-weight: 800;
+    color: var(--ink-3);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .week-summary {
+    display: flex; gap: 14px; flex-wrap: wrap;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1.5px dashed var(--line);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--ink-3);
+  }
+  .week-summary b { color: var(--ink); font-weight: 800; }
+  .week-summary .dot {
+    display: inline-block;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    margin-right: 5px;
+    vertical-align: 1px;
+  }
+  .week-summary .dot.sage { background: var(--sage); }
+  .week-summary .dot.coral { background: var(--sun); }
+
+  /* =====================================================
+     Done-for-the-day celebration
+     ===================================================== */
+  .done-modal { text-align: center; }
+  .done-modal h2 {
+    font-size: 30px;
+    margin: 4px 0 6px;
+  }
+  .done-modal #done-name { color: var(--sun-ink); }
+  .done-modal p {
+    font-size: 17px;
+    color: var(--ink-2);
+    margin: 0 0 22px;
+  }
+  .done-actions {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .done-burst {
+    position: relative;
+    width: 140px; height: 140px;
+    margin: 6px auto 14px;
+    display: grid; place-items: center;
+  }
+  .done-burst svg {
+    color: var(--sun);
+    filter: drop-shadow(0 8px 20px oklch(0.85 0.13 88 / .55));
+  }
+  .modal-backdrop.open .done-burst svg {
+    animation: starPop 560ms var(--ease-spring);
+    transform-origin: center;
+  }
+  .done-burst .confetti {
+    position: absolute;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .modal-backdrop.open .done-burst .confetti {
+    animation: confettiOut 950ms var(--ease-out) 140ms forwards;
+  }
+  .done-burst .c1 { background: var(--sage);  --tx:  44px; --ty: -58px; }
+  .done-burst .c2 { background: var(--coral); --tx: -52px; --ty: -42px; }
+  .done-burst .c3 { background: var(--teal);  --tx:  64px; --ty:  18px; width: 8px; height: 8px; }
+  .done-burst .c4 { background: var(--plum);  --tx: -62px; --ty:  28px; }
+  .done-burst .c5 { background: var(--sun);   --tx:  10px; --ty: -70px; width: 12px; height: 12px; }
+  .done-burst .c6 { background: var(--sage);  --tx: -22px; --ty:  64px; width: 8px; height: 8px; }
+  .done-burst .c7 { background: var(--coral); --tx:  38px; --ty:  56px; }
+  .done-burst .c8 { background: var(--teal);  --tx: -68px; --ty: -10px; width: 7px; height: 7px; }
+
+  @keyframes starPop {
+    0%   { transform: scale(0.4) rotate(-24deg); }
+    55%  { transform: scale(1.12) rotate(2deg); }
+    100% { transform: scale(1) rotate(0); }
+  }
+  @keyframes confettiOut {
+    0%   { opacity: 0; transform: translate(0,0) scale(0.5); }
+    20%  { opacity: 1; }
+    100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(1); }
+  }
+
+  /* Done-empty state on the practice surface */
+  .empty.done-empty .glyph {
+    background: var(--sage-soft);
+    border-color: color-mix(in oklch, var(--sage), white 55%);
+    color: var(--sage-ink);
+    transform: rotate(-6deg);
+  }
+  .empty .practice-anyway {
+    margin-top: 16px;
+    border-color: var(--line);
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="bar">
+    <button class="icon-btn back-btn" id="back-btn" title="Back" aria-label="Back" hidden>
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M11 4l-5 5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <div class="brand is-link" id="home-link" role="button" tabindex="0" title="Home — pick a class">
+      <div class="brand-mark">Aa</div>
+      <div class="brand-text">
+        <span class="title">Alphabet Time</span>
+        <span class="sub">Spaced practice for new readers</span>
+      </div>
+    </div>
+
+    <div class="student-area">
+      <select id="class-filter" class="student-select class-select" aria-label="Show one class" title="Show one class"></select>
+      <select id="student-select" class="student-select" aria-label="Choose student"></select>
+      <button class="icon-btn" id="add-student-btn" title="Add a student" aria-label="Add a student">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 3v12M3 9h12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+      </button>
+      <button class="icon-btn" id="classes-btn" title="Manage classes" aria-label="Manage classes">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <path d="M9 2.5l6 3-6 3-6-3 6-3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" fill="none"/>
+          <path d="M3 9l6 3 6-3" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" fill="none"/>
+          <path d="M3 12l6 3 6-3" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" fill="none"/>
+        </svg>
+      </button>
+      <button class="icon-btn" id="roster-btn" title="Class today — who's done" aria-label="Class today">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <rect x="4" y="3" width="10" height="12" rx="1.6" stroke="currentColor" stroke-width="1.6" fill="none"/>
+          <rect x="6.5" y="2" width="5" height="2.6" rx="0.7" stroke="currentColor" stroke-width="1.6" fill="none"/>
+          <path d="M6.6 8l1 1 2-2.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M6.6 12l1 1 2-2.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <button class="icon-btn" id="report-btn" title="Progress report" aria-label="Progress report">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <path d="M3 15h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          <rect x="4" y="9" width="2.4" height="4" rx="0.6" fill="currentColor"/>
+          <rect x="7.8" y="6" width="2.4" height="7" rx="0.6" fill="currentColor"/>
+          <rect x="11.6" y="3.5" width="2.4" height="9.5" rx="0.6" fill="currentColor"/>
+        </svg>
+      </button>
+      <button class="icon-btn" id="sounds-btn" title="Manage phonics sounds" aria-label="Manage phonics sounds">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <path d="M3 11V7h3l4-3v10l-4-3H3z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" fill="none"/>
+          <path d="M13 6.5c.9 1 .9 4 0 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" fill="none"/>
+        </svg>
+      </button>
+      <button class="icon-btn" id="words-btn" title="Word builder — CVC & CVCe words" aria-label="Word builder">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <rect x="2.5" y="5" width="6" height="8" rx="1.2" stroke="currentColor" stroke-width="1.6" fill="none"/>
+          <rect x="9.5" y="5" width="6" height="8" rx="1.2" stroke="currentColor" stroke-width="1.6" fill="none"/>
+          <path d="M5.5 8.5h0M12.5 8.5h0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <button class="icon-btn" id="manage-btn" title="Student settings" aria-label="Student settings">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <circle cx="4" cy="9" r="1.6" fill="currentColor"/>
+          <circle cx="9" cy="9" r="1.6" fill="currentColor"/>
+          <circle cx="14" cy="9" r="1.6" fill="currentColor"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <main hidden>
+    <section class="practice" id="practice">
+      <div class="practice-head">
+        <div class="chip-row">
+          <span class="chip sun" id="due-pill"><span class="dot"></span><span id="due-count">0 to review</span></span>
+          <span class="chip" id="session-pill"><span class="dot"></span><span id="reviewed-count">0 reviewed</span></span>
+          <span class="chip" id="new-pill"><span class="dot"></span><span id="new-count">0 / 10 today</span></span>
+        </div>
+        <div class="streak-badge" id="streak-badge" title="Current streak in this session">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M7 1l1.6 3.4 3.4.5-2.5 2.4.6 3.4L7 9.1 3.9 10.7l.6-3.4L2 4.9l3.4-.5z" fill="currentColor"/>
+          </svg>
+          <span id="streak-label">0</span>
+        </div>
+      </div>
+
+      <div class="stage" id="stage">
+        <!-- letter renders here -->
+      </div>
+
+      <div class="answers" id="answers">
+        <button class="answer no" id="btn-no">
+          <span class="icon">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7h10" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+          </span>
+          <span>Needs practice</span>
+          <span class="kbd">N</span>
+        </button>
+        <button class="answer" id="btn-yes">
+          <span class="icon">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 7.2l3 3 5-6.4" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </span>
+          <span>Got it</span>
+          <span class="kbd">Y</span>
+        </button>
+      </div>
+
+      <div class="practice-foot">
+        <div class="foot-toggles">
+          <div class="mode-toggle" role="group" aria-label="What to practice">
+            <button data-mode="alphabet" class="active" title="Letters only">Letters</button>
+            <button data-mode="mixed" title="Letters and sounds">Mixed</button>
+            <button data-mode="phonics" title="Sounds only">Sounds</button>
+            <button data-mode="sight" title="Sight words (Fry first 100)">Words</button>
+            <button data-mode="cvc" title="CVC words (c-at)">CVC</button>
+            <button data-mode="cvce" title="CVCe / magic-e words (c-ake)">CVCe</button>
+            <button data-mode="book" title="Phonics Kids 4 — words from the level reader (sh-ip)">Phonics Kids 4</button>
+          </div>
+          <div class="case-toggle" id="case-toggle" role="group" aria-label="Case to practice">
+            <button data-case="upper" class="active">A B C</button>
+            <button data-case="lower">a b c</button>
+            <button data-case="both">Aa</button>
+          </div>
+        </div>
+        <button class="undo-btn" id="undo-btn" disabled>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M5 4L2 7l3 3M2 7h7a3 3 0 0 1 0 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+          Undo last
+        </button>
+      </div>
+    </section>
+
+    <aside>
+      <div class="sidebar-controls">
+        <button id="expand-all" type="button">Expand all</button>
+        <span class="sep" aria-hidden="true">·</span>
+        <button id="collapse-all" type="button">Collapse all</button>
+      </div>
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Today</h3>
+          <span class="meta" id="today-label"></span>
+        </div>
+        <div class="stats">
+          <div class="stat sage">
+            <div class="label">Got it</div>
+            <div class="value" id="stat-correct">0</div>
+            <div class="delta" id="stat-accuracy">No reviews yet</div>
+          </div>
+          <div class="stat sun">
+            <div class="label">To review</div>
+            <div class="value" id="stat-due">0</div>
+            <div class="delta" id="stat-next">All caught up</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" id="week-panel">
+        <div class="panel-head">
+          <h3>This week</h3>
+          <span class="meta" id="week-meta"></span>
+        </div>
+        <div class="week-strip" id="week-strip"></div>
+        <div class="week-summary" id="week-summary"></div>
+      </div>
+
+      <div class="panel" id="mastery-panel">
+        <div class="panel-head">
+          <h3>Mastery by area</h3>
+          <span class="meta" id="mastery-count"></span>
+        </div>
+        <div class="area-mastery" id="area-mastery"></div>
+        <div class="legend">
+          <span><i class="mb-new"></i>New</span>
+          <span><i class="mb-learning"></i>Learning</span>
+          <span><i class="mb-young"></i>Young</span>
+          <span><i class="mb-mature"></i>Mature</span>
+        </div>
+      </div>
+
+      <div class="panel" id="trouble-panel" hidden>
+        <div class="panel-head">
+          <h3>Trouble spots</h3>
+          <span class="meta">most missed</span>
+        </div>
+        <div class="trouble-list" id="trouble-list"></div>
+      </div>
+
+      <div class="panel tight" id="alphabet-panel">
+        <div class="panel-head">
+          <h3>Alphabet</h3>
+          <span class="meta" id="case-meta"></span>
+        </div>
+        <div class="letters" id="letter-grid"></div>
+      </div>
+
+      <div class="panel tight" id="phonics-panel" hidden>
+        <div class="panel-head">
+          <h3>Sounds</h3>
+          <span class="meta" id="phonics-meta"></span>
+        </div>
+        <div class="sound-pills" id="phonics-grid"></div>
+        <button class="manage-link" id="open-sounds-from-panel">Manage sounds</button>
+      </div>
+
+      <div class="panel tight" id="sight-panel" hidden>
+        <div class="panel-head">
+          <h3>Sight words</h3>
+          <span class="meta" id="sight-meta"></span>
+        </div>
+        <div class="sight-groups" id="sight-grid"></div>
+      </div>
+
+      <div class="panel tight" id="cvc-panel" hidden>
+        <div class="panel-head">
+          <h3>CVC words</h3>
+          <span class="meta" id="cvc-meta"></span>
+        </div>
+        <div class="sound-pills" id="cvc-grid"></div>
+        <button class="manage-link" id="open-cvc-from-panel">Manage words</button>
+      </div>
+
+      <div class="panel tight" id="cvce-panel" hidden>
+        <div class="panel-head">
+          <h3>CVCe words</h3>
+          <span class="meta" id="cvce-meta"></span>
+        </div>
+        <div class="sound-pills" id="cvce-grid"></div>
+        <button class="manage-link" id="open-cvce-from-panel">Manage words</button>
+      </div>
+
+      <div class="panel tight" id="book-panel" hidden>
+        <div class="panel-head">
+          <h3>Phonics Kids 4</h3>
+          <span class="meta" id="book-meta"></span>
+        </div>
+        <div class="sound-pills" id="book-grid"></div>
+        <button class="manage-link" id="open-book-from-panel">Manage words</button>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Home screen: pick a class -->
+  <section class="screen home-screen" id="home-screen" hidden>
+    <div class="screen-head">
+      <h1 class="screen-title">Pick a class</h1>
+      <p class="screen-sub" id="home-sub">Tap a class to see its students.</p>
+    </div>
+    <div class="pick-grid" id="home-grid"></div>
+    <div class="pick-empty" id="home-empty" hidden></div>
+  </section>
+
+  <!-- Class screen: pick a student -->
+  <section class="screen class-screen" id="class-screen" hidden>
+    <div class="screen-head">
+      <h1 class="screen-title" id="class-title">Class</h1>
+      <p class="screen-sub" id="class-sub">Tap a student to start practice.</p>
+    </div>
+    <div class="needs-panel" id="needs-panel" hidden>
+      <h2 class="needs-title">Needs the most work</h2>
+      <ul class="needs-list" id="needs-list"></ul>
+    </div>
+    <div class="pick-grid" id="class-grid"></div>
+    <div class="pick-empty" id="class-empty" hidden>No students in this class yet. Tap + to add one.</div>
+  </section>
+
+  <footer class="foot">
+    Saved on the server. Back up by copying alphabet.db.
+  </footer>
+</div>
+
+<!-- Add student modal -->
+<div class="modal-backdrop" id="add-modal" aria-hidden="true">
+  <div class="modal" role="dialog" aria-labelledby="add-title">
+    <h2 id="add-title">New student</h2>
+    <p>Each student gets their own practice history.</p>
+    <div class="field">
+      <label for="new-name">Name</label>
+      <input id="new-name" type="text" placeholder="e.g. Mira" autocomplete="off" maxlength="40" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn ghost" data-close>Cancel</button>
+      <button class="btn primary" id="create-student">Add student</button>
+    </div>
+  </div>
+</div>
+
+<!-- Manage modal -->
+<div class="modal-backdrop" id="manage-modal" aria-hidden="true">
+  <div class="modal" role="dialog" aria-labelledby="manage-title">
+    <h2 id="manage-title">Settings</h2>
+    <p>Update this student, back up their data, or start fresh.</p>
+
+    <div class="field">
+      <label for="rename-input">Name</label>
+      <input id="rename-input" type="text" autocomplete="off" maxlength="40" />
+    </div>
+    <div class="field">
+      <label for="session-size-input">Cards per session (most impactful first)</label>
+      <input id="session-size-input" type="number" min="1" max="100" step="1" />
+    </div>
+    <div class="field">
+      <label for="new-per-day-input">New letters / sounds per day</label>
+      <input id="new-per-day-input" type="number" min="1" max="52" step="1" />
+    </div>
+    <div class="field">
+      <label>Placement</label>
+      <button class="btn" id="open-placement" type="button">Quick placement check…</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn ghost" data-close>Close</button>
+      <button class="btn primary" id="rename-student">Save</button>
+    </div>
+
+    <div class="danger-zone">
+      <button class="btn" id="reset-stats">Reset stats</button>
+      <button class="btn danger" id="delete-student">Delete student</button>
+    </div>
+  </div>
+</div>
+
+<!-- Quick placement modal -->
+<div class="modal-backdrop" id="place-modal" aria-hidden="true">
+  <div class="modal modal-wide" role="dialog" aria-labelledby="place-title">
+    <h2 id="place-title">Quick placement</h2>
+    <p>Tap everything this student already knows. Marked cards start a few days ahead instead of from scratch — everything else is introduced normally.</p>
+    <div class="place-tabs" id="place-tabs"></div>
+    <div class="place-grid" id="place-grid"></div>
+    <div class="place-empty" id="place-empty" hidden>No cards in this area yet.</div>
+    <div class="modal-actions">
+      <button class="btn ghost" data-close>Cancel</button>
+      <button class="btn primary" id="save-placement" disabled>Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Manage classes modal -->
+<div class="modal-backdrop" id="classes-modal" aria-hidden="true">
+  <div class="modal modal-wide" role="dialog" aria-labelledby="classes-title">
+    <h2 id="classes-title">Classes</h2>
+    <p>Group your learners. Moving a student keeps all of their progress.</p>
+
+    <div class="sound-add class-add">
+      <div class="field grow">
+        <label for="class-name">New class</label>
+        <input id="class-name" type="text" placeholder="e.g. Room 1" autocomplete="off" maxlength="40" />
+      </div>
+      <button class="btn primary" id="add-class">Add</button>
+    </div>
+
+    <div class="data-section">
+      <h3>Classes &amp; students <span id="class-count"></span></h3>
+      <div class="bulk-bar" id="bulk-bar" hidden>
+        <span class="bulk-count" id="bulk-count">0 selected</span>
+        <select class="assign-select" id="bulk-target" aria-label="Move selected students to">
+          <option value="" disabled selected>Move to…</option>
+        </select>
+        <button class="btn primary" id="bulk-move">Move</button>
+        <button class="btn ghost" id="bulk-clear">Clear</button>
+      </div>
+      <div class="class-list" id="class-list"></div>
+      <div class="sound-empty" id="class-empty" hidden>
+        No classes yet. Add one above, then assign students with the dropdowns.
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn primary" data-close>Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Class roster modal -->
+<div class="modal-backdrop" id="roster-modal" aria-hidden="true">
+  <div class="modal modal-wide" role="dialog" aria-labelledby="roster-title">
+    <h2 id="roster-title">Class today</h2>
+    <p>Who has finished today's practice. Tap a name to switch to that student.</p>
+    <div class="roster-summary" id="roster-summary"></div>
+    <ul class="roster-list" id="roster-list"></ul>
+    <div class="roster-empty" id="roster-empty" hidden>No students yet. Add one to get started.</div>
+    <div class="modal-actions">
+      <button class="btn primary" data-close>Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Progress report modal -->
+<div class="modal-backdrop" id="report-modal" aria-hidden="true">
+  <div class="modal modal-wide report-modal" role="dialog" aria-labelledby="report-title">
+    <h2 id="report-title">Progress report</h2>
+    <p class="report-meta" id="report-sub"></p>
+    <div class="report-summary" id="report-summary"></div>
+    <div class="report-scroll">
+      <table class="report-table" id="report-table"></table>
+    </div>
+    <div class="report-empty roster-empty" id="report-empty" hidden>No students to report.</div>
+    <div class="modal-actions report-actions no-print">
+      <button class="btn ghost" id="report-csv">Download CSV</button>
+      <button class="btn ghost" id="report-print">Print</button>
+      <button class="btn primary" data-close>Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Phonics sounds modal -->
+<div class="modal-backdrop" id="phonics-modal" aria-hidden="true">
+  <div class="modal modal-wide" role="dialog" aria-labelledby="phonics-title">
+    <h2 id="phonics-title">Phonics sounds</h2>
+    <p>Shared across all students. Each new sound starts fresh in everyone's deck.</p>
+
+    <div class="sound-add">
+      <div class="field">
+        <label for="sound-text">Sound</label>
+        <input id="sound-text" type="text" placeholder="sh" autocomplete="off" maxlength="8" />
+      </div>
+      <div class="field grow">
+        <label for="sound-example">Example word (optional)</label>
+        <input id="sound-example" type="text" placeholder="ship" autocomplete="off" maxlength="40" />
+      </div>
+      <button class="btn primary" id="add-sound">Add</button>
+    </div>
+
+    <div class="data-section">
+      <h3>Current sounds <span id="sound-count"></span></h3>
+      <ul class="sound-list" id="sound-list"></ul>
+      <div class="sound-empty" id="sound-empty" hidden>
+        No sounds yet. Add common ones like sh, th, ch, oo, ai.
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn primary" data-close>Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Word builder modal (CVC / CVCe) -->
+<div class="modal-backdrop" id="cvc-modal" aria-hidden="true">
+  <div class="modal modal-wide" role="dialog" aria-labelledby="cvc-title">
+    <h2 id="cvc-title">Word builder</h2>
+    <p>Build words from a beginning sound + ending. Shared across all students; each new word starts fresh in everyone's deck.</p>
+
+    <div class="kind-tabs" role="group" aria-label="Word type">
+      <button data-kind="cvc" class="active">CVC · c‑at</button>
+      <button data-kind="cvce">CVCe · c‑ake</button>
+      <button data-kind="book">Phonics Kids 4 · sh‑ip</button>
+    </div>
+
+    <div class="sound-add cvc-add">
+      <div class="field">
+        <label for="cvc-onset">Beginning</label>
+        <input id="cvc-onset" type="text" placeholder="c" autocomplete="off" maxlength="4" />
+      </div>
+      <div class="field">
+        <label for="cvc-rime">Ending</label>
+        <input id="cvc-rime" type="text" placeholder="at" autocomplete="off" maxlength="6" />
+      </div>
+      <div class="field">
+        <label>Preview</label>
+        <div class="cvc-preview" id="cvc-preview" aria-hidden="true"></div>
+      </div>
+      <button class="btn primary" id="add-cvc-word">Add</button>
+    </div>
+
+    <div class="data-section">
+      <h3>Current words <span id="cvc-word-count"></span></h3>
+      <ul class="sound-list" id="cvc-word-list"></ul>
+      <div class="sound-empty" id="cvc-word-empty" hidden>
+        No words yet. Add some like c + at, sh + ip, or (CVCe) c + ake.
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn primary" data-close>Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Done-for-the-day celebration -->
+<div class="modal-backdrop" id="done-modal" aria-hidden="true">
+  <div class="modal done-modal" role="dialog" aria-labelledby="done-title">
+    <div class="done-burst" aria-hidden="true">
+      <svg viewBox="0 0 80 80" width="84" height="84">
+        <path d="M40 6l8.5 19.5L70 28 53 42l5 22-18-11.5L22 64l5-22L10 28l21.5-2.5z" fill="currentColor"/>
+      </svg>
+      <span class="confetti c1"></span>
+      <span class="confetti c2"></span>
+      <span class="confetti c3"></span>
+      <span class="confetti c4"></span>
+      <span class="confetti c5"></span>
+      <span class="confetti c6"></span>
+      <span class="confetti c7"></span>
+      <span class="confetti c8"></span>
+    </div>
+    <h2 id="done-title">Great job, <span id="done-name">friend</span>!</h2>
+    <p id="done-sub">You learned 10 new today.</p>
+    <div class="modal-actions done-actions">
+      <button class="btn" id="keep-going-btn">Keep going</button>
+      <button class="btn primary" id="all-done-btn">All done for today</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite">
+  <span class="dot"></span>
+  <span id="toast-text">Saved</span>
+</div>
+
+<script>
+/* =====================================================
+   Alphabet Time — client
+   Items = letters + phonics, unified by SRS card state.
+   ===================================================== */
+
+const UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+const LOWER = 'abcdefghijklmnopqrstuvwxyz'.split('');
+const DAY_MS = 24 * 60 * 60 * 1000;
+const $ = (s) => document.querySelector(s);
+
+const ICON_PENCIL = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M10.6 2.4a1.4 1.4 0 0 1 2 2L5.6 11.4l-2.7.6.6-2.7 7.1-6.9z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/></svg>';
+const ICON_TRASH = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 4h8M5 4V3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1M5 4v7a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1V4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+let students = [];
+let student = null;
+let phonics = [];
+let cvcWords = [];
+let classes = [];
+let classFilter = localStorage.getItem('alphabet:classFilter') || 'all';
+let selectedStudents = new Set();
+let activeId = localStorage.getItem('alphabet:lastActiveId') || null;
+let lastShownKey = null;
+let lastShownType = null;
+let lastStreak = 0;
+let canUndo = false;
+let busy = false;
+let dueRefreshTimer = null;
+let readAnim = null;
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
+const todayStamp = () => new Date().toISOString().slice(0, 10);
+/* Each practice area (main = letters/sounds, sight = sight words) gets its
+ * own done-for-today state so finishing one doesn't dismiss the other. */
+/* Practice areas with their own daily progress: sight words, CVC, CVCe and
+ * book words each stand alone; letters/sounds share 'main'. */
+const WORD_MODES = new Set(['cvc', 'cvce', 'book']);
+const areaOfMode = (mode) =>
+  mode === 'sight' ? 'sight' : WORD_MODES.has(mode) ? mode : 'main';
+/* The onset+rime word list backing a word mode, all from the same table. */
+const wordsOfKind = (stu, kind) =>
+  ((kind === 'cvc' ? stu.cvcWords : kind === 'cvce' ? stu.cvceWords : stu.bookWords) || []);
+const doneArea = () => student ? areaOfMode(student.settings.mode) : 'main';
+const doneKey = () => student ? 'alphabet:done:' + student.id + ':' + doneArea() + ':' + todayStamp() : null;
+const isDoneForToday = () => {
+  const k = doneKey();
+  return !!k && localStorage.getItem(k) === '1';
+};
+const markDoneForToday = () => { const k = doneKey(); if (k) localStorage.setItem(k, '1'); };
+const clearDoneForToday = () => { const k = doneKey(); if (k) localStorage.removeItem(k); };
+/* Keep-going lets a student practice past their newPerDay cap for the rest
+ * of the day. Sticky in localStorage so a refresh doesn't reset it, and
+ * scoped per (student, area, day) — same shape as doneKey. */
+const keepGoingKey = () => student ? 'alphabet:keepgoing:' + student.id + ':' + doneArea() + ':' + todayStamp() : null;
+const isKeepGoing = () => {
+  const k = keepGoingKey();
+  return !!k && localStorage.getItem(k) === '1';
+};
+const enableKeepGoing = () => { const k = keepGoingKey(); if (k) localStorage.setItem(k, '1'); };
+function pruneDoneKeys() {
+  const today = todayStamp();
+  for (let i = localStorage.length - 1; i >= 0; i--) {
+    const k = localStorage.key(i);
+    const stale = k && (k.startsWith('alphabet:done:') || k.startsWith('alphabet:keepgoing:'))
+                  && !k.endsWith(':' + today);
+    if (stale) localStorage.removeItem(k);
+  }
+}
+
+const API_BASE = window.location.pathname.startsWith('/alphabet-help') ? '/alphabet-help' : '';
+
+async function api(path, opts = {}) {
+  const init = {
+    method: opts.method || 'GET',
+    headers: { 'Content-Type': 'application/json' },
+  };
+  if (opts.body !== undefined) init.body = JSON.stringify(opts.body);
+  const res = await fetch(API_BASE + path, init);
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  if (res.status === 204) return null;
+  return res.json();
+}
+
+/* ---------- Pure helpers ---------- */
+function bucketOf(card) {
+  if (card.totalSeen === 0) return 'new';
+  if (card.intervalDays < 1) return 'learning';
+  if (card.intervalDays < 7) return 'young';
+  return 'mature';
+}
+
+/* Sight words have their own session and weekly history. Everything else
+ * (letters, sounds, mixed) shares the main session. Pull the right one based
+ * on the student's current mode so stats, streaks, and the new-per-day cap
+ * stay isolated to the area being practiced. */
+const EMPTY_SESSION = () => ({ date: todayStamp(), reviewed: 0, correct: 0, streak: 0, newIntroduced: 0 });
+function currentSession(stu) {
+  if (!stu) return EMPTY_SESSION();
+  const area = areaOfMode(stu.settings.mode);
+  const sess = area === 'sight' ? stu.sightSession
+    : area === 'cvc' ? stu.cvcSession
+    : area === 'cvce' ? stu.cvceSession
+    : area === 'book' ? stu.bookSession
+    : stu.session;
+  return sess || EMPTY_SESSION();
+}
+function currentRecentSessions(stu) {
+  if (!stu) return [];
+  const area = areaOfMode(stu.settings.mode);
+  return (area === 'sight' ? stu.recentSightSessions
+    : area === 'cvc' ? stu.recentCvcSessions
+    : area === 'cvce' ? stu.recentCvceSessions
+    : area === 'book' ? stu.recentBookSessions
+    : stu.recentSessions) || [];
+}
+
+function activeItems(stu) {
+  const seen = [];
+  const freshLetters = [];
+  const freshSounds = [];
+  const freshWords = [];
+  const push = (it) => {
+    if (it.card.totalSeen > 0) { seen.push(it); return; }
+    if (it.type === 'letter') freshLetters.push(it);
+    else if (it.type === 'phonics') freshSounds.push(it);
+    else freshWords.push(it);
+  };
+  const mode = (stu.settings && stu.settings.mode) || 'alphabet';
+  if (mode === 'alphabet' || mode === 'mixed') {
+    const want = stu.settings.case;
+    const set = want === 'upper' ? UPPER : want === 'lower' ? LOWER : [...UPPER, ...LOWER];
+    set.forEach(l => {
+      const c = stu.cards[l];
+      if (c) push({ type: 'letter', key: l, display: l, example: null, card: c });
+    });
+  }
+  if (mode === 'phonics' || mode === 'mixed') {
+    (stu.phonics || []).forEach(p => {
+      push({ type: 'phonics', key: p.id, display: p.text, example: p.example, card: p.card });
+    });
+  }
+  if (mode === 'sight') {
+    (stu.sightWords || []).forEach(w => {
+      push({ type: 'sight', key: w.id, display: w.text, example: null, card: w.card });
+    });
+  }
+  /* CVC / CVCe / book: flash the onset then the rime, so segments drive the
+     read. The 'book' kind (shown as "Phonics Kids 4") often has digraph
+     onsets (sh-ip), which reveal as one chunk rather than letter by letter. */
+  if (WORD_MODES.has(mode)) {
+    const words = wordsOfKind(stu, mode);
+    words.forEach(w => {
+      push({ type: mode, key: w.id, display: w.text, example: null,
+             segments: [w.onset, w.rime], card: w.card });
+    });
+  }
+  /* Round-robin fresh items so the daily new-cap is shared fairly. In sight
+   * mode only freshWords is non-empty, so this collapses to position order. */
+  const fresh = [];
+  const max = Math.max(freshLetters.length, freshSounds.length, freshWords.length);
+  for (let i = 0; i < max; i++) {
+    if (i < freshLetters.length) fresh.push(freshLetters[i]);
+    if (i < freshSounds.length) fresh.push(freshSounds[i]);
+    if (i < freshWords.length) fresh.push(freshWords[i]);
+  }
+  const cap = stu.settings.newPerDay ?? 10;
+  const introduced = currentSession(stu).newIntroduced || 0;
+  /* When "keep going" is on, the cap stops gating fresh items — the kid can
+   * blast through more new cards for the rest of the day if they want. */
+  const remaining = isKeepGoing() ? fresh.length : Math.max(0, cap - introduced);
+  return [...seen, ...fresh.slice(0, remaining)];
+}
+
+/* ---- Daily session cap ----------------------------------------------------
+ * SRS lets review cards pile up: skip a few days and every overdue card comes
+ * due at once (the "36 to review" problem). Rather than dump the whole backlog
+ * on a child, each day surfaces only the most impactful handful.
+ *
+ * activeItems() is the full active pool (still honours the new-per-day cap);
+ * sessionQueue() ranks that pool and keeps at most `sessionSize` DISTINCT items
+ * per day, weakest-and-most-overdue first. Brand-new cards rank last, so a
+ * child who's behind clears reviews before meeting new letters. */
+const startOfTodayMs = () => Date.parse(todayStamp() + 'T00:00:00Z');
+
+function impactScore(it, t) {
+  const c = it.card;
+  if (c.totalSeen === 0) return -1; // brand-new: introduced only after reviews
+  const overdueDays = Math.max(0, (t - c.dueAt) / DAY_MS);
+  const miss = 1 - (c.totalCorrect / c.totalSeen);  // 0 perfect … 1 always wrong
+  const relearning = c.intervalDays < 1 ? 1 : 0;    // fragile, just lapsed
+  return 0.5 + c.lapses * 3 + miss * 5 + overdueDays + relearning * 2;
+}
+
+function sessionQueue(stu) {
+  const items = activeItems(stu);
+  const t = Date.now();
+  const todayStart = startOfTodayMs();
+  const cap = stu.settings.sessionSize ?? 10;
+  /* Items already started today stay in the session regardless of the cap, so a
+   * card missed earlier can come back and the count never grows past the cap. */
+  const touched = items.filter(it => (it.card.lastSeenAt || 0) >= todayStart);
+  const untouched = items.filter(it => (it.card.lastSeenAt || 0) < todayStart);
+  const budget = isKeepGoing() ? untouched.length : Math.max(0, cap - touched.length);
+  /* Fill the day's budget in priority order so a caught-up student keeps making
+   * progress through new material:
+   *   1. due reviews     — the real backlog, weakest & most overdue first
+   *   2. new cards       — introduce new letters/sounds (already capped to the
+   *                        day's allowance by newPerDay in activeItems; kept in
+   *                        their introduction order)
+   *   3. resting reviews — seen cards not yet due; they fill leftover budget but
+   *                        must never block introductions
+   * Earlier this ranked every seen card (due or not) above new cards purely by
+   * impactScore, so once a student had `sessionSize` seen cards those slots
+   * stayed saturated by them and later letters were never introduced. */
+  const byImpact = (a, b) => impactScore(b, t) - impactScore(a, t);
+  const dueReviews     = untouched.filter(it => it.card.totalSeen > 0 && it.card.dueAt <= t).sort(byImpact);
+  const newCards       = untouched.filter(it => it.card.totalSeen === 0);
+  const restingReviews = untouched.filter(it => it.card.totalSeen > 0 && it.card.dueAt > t).sort(byImpact);
+  const chosen = [...dueReviews, ...newCards, ...restingReviews].slice(0, budget);
+  return [...touched, ...chosen];
+}
+
+/* True once the day's session is cleared: practiced at least once, nothing in
+ * the session due now or in the 60s relearn loop, and nothing left to pick. */
+function shouldCelebrate(stu) {
+  if (!stu || isKeepGoing()) return false;
+  if ((currentSession(stu).reviewed || 0) < 1) return false;
+  const t = Date.now();
+  const todayStart = startOfTodayMs();
+  const touched = activeItems(stu).filter(it => (it.card.lastSeenAt || 0) >= todayStart);
+  if (touched.some(it => it.card.dueAt <= t || it.card.intervalDays === 0)) return false;
+  return pickNext(stu) === null;
+}
+
+function pickNext(stu) {
+  const queue = sessionQueue(stu);
+  if (queue.length === 0) return null;
+  const t = Date.now();
+  let pool = queue.filter(it => it.card.dueAt <= t);
+  /* Keep-going mode: once the day's session is cleared, pull from the
+   * earliest-due cards in the whole pool so practice can continue past the
+   * cap and past the "all caught up" wall. */
+  if (pool.length === 0) {
+    if (!isKeepGoing()) return null;
+    pool = [...activeItems(stu)].sort((a, b) => a.card.dueAt - b.card.dueAt).slice(0, 5);
+    if (pool.length === 0) return null;
+  }
+  if (pool.length > 1 && lastShownKey) {
+    const filtered = pool.filter(it => !(it.type === lastShownType && it.key === lastShownKey));
+    if (filtered.length) pool = filtered;
+  }
+  /* Weakest & most overdue first, with a small top-K shuffle for variety. */
+  pool.sort((a, b) => impactScore(b, t) - impactScore(a, t));
+  const topK = Math.min(3, pool.length);
+  return pool[Math.floor(Math.random() * topK)];
+}
+
+/* =====================================================
+   Render
+   ===================================================== */
+const stage = $('#stage');
+const studentSelect = $('#student-select');
+
+function renderAll(withStagger = true) {
+  renderClassFilter();
+  renderStudentSelect();
+  if (!student) { renderEmpty(); return; }
+  renderToggles();
+  renderLetter();
+  renderStats();
+  renderAreaMastery();
+  renderTrouble();
+  renderWeek();
+  renderPanels(withStagger);
+}
+
+/* ---------- Classes: filter + grouping helpers ---------- */
+function normalizeClassFilter() {
+  if (classFilter !== 'all' && classFilter !== 'unassigned' &&
+      !classes.some(c => c.id === classFilter)) {
+    classFilter = 'all';
+    localStorage.setItem('alphabet:classFilter', 'all');
+  }
+}
+
+function classNameOf(id) {
+  const c = classes.find(x => x.id === id);
+  return c ? c.name : null;
+}
+
+function filteredStudents() {
+  if (classFilter === 'unassigned') return students.filter(s => !s.classId);
+  if (classFilter !== 'all') return students.filter(s => s.classId === classFilter);
+  return students;
+}
+
+/* Keep the class filter consistent with whoever is on screen, so the picker's
+ * highlighted option always matches the active student. */
+function syncFilterToActive() {
+  if (!student || classFilter === 'all') return;
+  const matches = classFilter === 'unassigned'
+    ? student.classId == null
+    : student.classId === classFilter;
+  if (!matches) {
+    classFilter = 'all';
+    localStorage.setItem('alphabet:classFilter', 'all');
+  }
+}
+
+function renderClassFilter() {
+  normalizeClassFilter();
+  const sel = $('#class-filter');
+  sel.innerHTML = '';
+  const add = (val, label) => {
+    const o = document.createElement('option');
+    o.value = val; o.textContent = label;
+    if (val === classFilter) o.selected = true;
+    sel.appendChild(o);
+  };
+  add('all', classes.length ? 'All classes' : 'All students');
+  classes.forEach(c => add(c.id, c.name + ' (' + (c.studentCount ?? 0) + ')'));
+  if (students.some(s => !s.classId)) add('unassigned', 'Unassigned');
+  /* Hide the filter until there is at least one class to filter by. */
+  sel.hidden = classes.length === 0;
+}
+
+function renderStudentSelect() {
+  studentSelect.innerHTML = '';
+  const list = filteredStudents();
+  if (list.length === 0) {
+    const opt = document.createElement('option');
+    opt.textContent = students.length === 0 ? 'No students yet' : 'No students in this class';
+    opt.disabled = true;
+    opt.selected = true;
+    studentSelect.appendChild(opt);
+    return;
+  }
+  const addOpt = (s, parent) => {
+    const opt = document.createElement('option');
+    opt.value = s.id;
+    opt.textContent = s.name;
+    if (s.id === activeId) opt.selected = true;
+    parent.appendChild(opt);
+  };
+  /* Viewing everyone → group under class headings, then Unassigned.
+   * Filtered to one class → a plain list of that class. */
+  if (classFilter === 'all' && classes.length) {
+    classes.forEach(c => {
+      const inC = list.filter(s => s.classId === c.id);
+      if (!inC.length) return;
+      const og = document.createElement('optgroup');
+      og.label = c.name;
+      inC.forEach(s => addOpt(s, og));
+      studentSelect.appendChild(og);
+    });
+    const none = list.filter(s => !s.classId);
+    if (none.length) {
+      const og = document.createElement('optgroup');
+      og.label = 'Unassigned';
+      none.forEach(s => addOpt(s, og));
+      studentSelect.appendChild(og);
+    }
+  } else {
+    list.forEach(s => addOpt(s, studentSelect));
+  }
+}
+
+function renderEmpty() {
+  stage.innerHTML = `
+    <div class="empty">
+      <div class="glyph">+</div>
+      <div class="big">Add a student to start</div>
+      <div>Tap the + at the top to create their first profile.</div>
+    </div>`;
+  $('#answers').style.visibility = 'hidden';
+  $('#due-count').textContent = '0 to review';
+  $('#reviewed-count').textContent = '0 reviewed';
+  $('#new-count').textContent = '0 / 10 today';
+  $('#streak-label').textContent = '0';
+  $('#stat-correct').textContent = '0';
+  $('#stat-due').textContent = '0';
+  $('#stat-accuracy').textContent = 'No reviews yet';
+  $('#stat-next').textContent = 'All caught up';
+  $('#area-mastery').innerHTML = '';
+  $('#trouble-panel').hidden = true;
+  $('#week-strip').innerHTML = '';
+  $('#week-summary').innerHTML = '';
+  $('#week-meta').textContent = '';
+  $('#letter-grid').innerHTML = '';
+  $('#phonics-grid').innerHTML = '';
+  $('#sight-grid').innerHTML = '';
+  $('#mastery-count').textContent = '';
+  $('#case-meta').textContent = '';
+  $('#phonics-meta').textContent = '';
+  $('#sight-meta').textContent = '';
+  $('#alphabet-panel').hidden = true;
+  $('#phonics-panel').hidden = true;
+  $('#sight-panel').hidden = true;
+  $('#cvc-panel').hidden = true;
+  $('#cvce-panel').hidden = true;
+  $('#book-panel').hidden = true;
+}
+
+/* ---- Reading-direction choreography --------------------------------------
+ * Multi-letter sounds & words read left→right: a glowing tracer glides from
+ * letter to letter; each letter pops as the tracer reaches it; then the whole
+ * thing flashes together (the blended sound) and everything settles. Runs once
+ * per card — not on a loop — so it teaches the read, then gets out of the way. */
+function stopReadingAnimation() {
+  if (!readAnim) return;
+  readAnim.cancelled = true;
+  readAnim.timers.forEach(clearTimeout);
+  readAnim = null;
+  const arrow = stage.querySelector('.read-arrow');
+  if (arrow) arrow.classList.remove('blend');
+  stage.querySelectorAll('.glyph.flash').forEach(g => g.classList.remove('flash', 'blend'));
+  const tracer = stage.querySelector('.read-arrow .tracer');
+  if (tracer) tracer.style.opacity = '0';
+}
+
+function playReadingAnimation() {
+  stopReadingAnimation();
+  const letterEl = document.getElementById('letter-el');
+  const arrow = stage.querySelector('.read-arrow');
+  if (!letterEl || !arrow) return;
+  const glyphs = [...letterEl.querySelectorAll('.glyph')];
+  const tracer = arrow.querySelector('.tracer');
+  if (glyphs.length < 2 || !tracer) return;             // nothing to blend
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+  const ctl = { cancelled: false, timers: [] };
+  readAnim = ctl;
+  const after = (ms, fn) => { ctl.timers.push(setTimeout(() => { if (!ctl.cancelled) fn(); }, ms)); };
+
+  const STEP = 560;   // ms from one letter to the next
+  const MOVE = 340;   // ms the tracer takes to glide
+  const FLASH = 440;  // ms a single letter stays popped
+  const ENTRY = 340;  // wait out the card's entry animation before measuring
+  const EASE = 'cubic-bezier(0.16, 1, 0.3, 1)';
+  const SPRING = 'cubic-bezier(0.34, 1.4, 0.64, 1)';
+
+  // park the tracer at the start, hidden, with no transition
+  tracer.style.transition = 'none';
+  tracer.style.left = '0px';
+  tracer.style.opacity = '0';
+
+  after(ENTRY, () => {
+    // entry animation has settled — measure the real glyph centres now, so the
+    // tracer lands exactly under each letter regardless of font widths.
+    const arrowRect = arrow.getBoundingClientRect();
+    const centers = glyphs.map(g => {
+      const r = g.getBoundingClientRect();
+      return (r.left + r.width / 2) - arrowRect.left;
+    });
+    const endX = arrowRect.width;
+
+    void tracer.offsetWidth;  // commit the parked position before transitioning
+    tracer.style.transition =
+      `left ${MOVE}ms ${EASE}, transform 240ms ${SPRING}, opacity 200ms linear`;
+    tracer.style.opacity = '1';
+
+    glyphs.forEach((g, i) => {
+      const arrive = i * STEP;
+      after(arrive, () => { tracer.style.left = centers[i] + 'px'; });   // glide to letter
+      after(arrive + MOVE, () => g.classList.add('flash'));              // pop on arrival
+      after(arrive + MOVE + FLASH, () => g.classList.remove('flash'));
+    });
+
+    // after the last letter: slide to the arrowhead, then flash the whole sound
+    const blendAt = glyphs.length * STEP;
+    after(blendAt, () => { tracer.style.left = endX + 'px'; });
+    after(blendAt + MOVE, () => {
+      arrow.classList.add('blend');
+      glyphs.forEach(g => g.classList.add('flash', 'blend'));
+    });
+    after(blendAt + MOVE + 760, () => {
+      arrow.classList.remove('blend');
+      glyphs.forEach(g => g.classList.remove('flash', 'blend'));
+      tracer.style.opacity = '0';   // tracer leaves; the static arrow remains
+      readAnim = null;
+    });
+  });
+}
+
+function renderLetter() {
+  if (dueRefreshTimer) { clearTimeout(dueRefreshTimer); dueRefreshTimer = null; }
+  stopReadingAnimation();
+  if (isDoneForToday()) {
+    const todayStart = startOfTodayMs();
+    const done = activeItems(student).filter(it => (it.card.lastSeenAt || 0) >= todayStart).length;
+    stage.innerHTML = `
+      <div class="empty done-empty">
+        <div class="glyph">
+          <svg width="44" height="44" viewBox="0 0 44 44" fill="none" aria-hidden="true">
+            <path d="M22 4l5 11 12 1.5-9 8 3 12-11-7-11 7 3-12-9-8 12-1.5z" fill="currentColor"/>
+          </svg>
+        </div>
+        <div class="big">See you tomorrow, ${escapeHtml(student.name)}!</div>
+        <div>${done} done today. Time to rest your brain.</div>
+        <button class="btn ghost practice-anyway" id="practice-anyway-btn">Practice anyway</button>
+      </div>`;
+    $('#answers').style.visibility = 'hidden';
+    delete stage.dataset.currentKey;
+    delete stage.dataset.currentType;
+    $('#practice-anyway-btn').addEventListener('click', () => {
+      clearDoneForToday();
+      enableKeepGoing();
+      renderLetter();
+      renderStats();
+    });
+    return;
+  }
+  $('#answers').style.visibility = 'visible';
+  const item = pickNext(student);
+  if (!item) {
+    const mode = student.settings.mode;
+    const noPhonics = mode === 'phonics' && (student.phonics || []).length === 0;
+    const noWords   = mode === 'sight'   && (student.sightWords || []).length === 0;
+    const noCvc     = mode === 'cvc'     && (student.cvcWords || []).length === 0;
+    const noCvce    = mode === 'cvce'    && (student.cvceWords || []).length === 0;
+    const noBook    = mode === 'book'    && (student.bookWords || []).length === 0;
+    const empties   = noPhonics || noWords || noCvc || noCvce || noBook;
+    const big = noPhonics ? 'No sounds yet'
+              : noWords   ? 'No sight words yet'
+              : noCvc     ? 'No CVC words yet'
+              : noCvce    ? 'No CVCe words yet'
+              : noBook    ? 'No Phonics Kids 4 words yet'
+              : 'All caught up';
+    const sub = noPhonics ? 'Open Sounds to add some.'
+              : noWords   ? 'Restart the server to seed the Fry list.'
+              : (noCvc || noCvce || noBook) ? 'Open Word builder to add some.'
+              : 'Switch case or come back later.';
+    const glyph = empties ? '+' : '✓';
+    /* If the only reason we're empty is the cap or waiting intervals, offer
+     * a way out — keep-going pulls more new items and, failing that, the
+     * earliest-due cards regardless of timestamp. */
+    const canKeepGoing = !empties && !isKeepGoing();
+    const keepBtn = canKeepGoing
+      ? '<button class="btn ghost practice-anyway" id="keep-going-empty-btn">Keep going anyway</button>'
+      : '';
+    stage.innerHTML = `
+      <div class="empty">
+        <div class="glyph">${glyph}</div>
+        <div class="big">${big}</div>
+        <div>${sub}</div>
+        ${keepBtn}
+      </div>`;
+    if (canKeepGoing) {
+      $('#keep-going-empty-btn').addEventListener('click', () => {
+        enableKeepGoing();
+        renderLetter();
+        renderStats();
+      });
+    }
+    delete stage.dataset.currentKey;
+    delete stage.dataset.currentType;
+    const queued = sessionQueue(student);
+    if (queued.length > 0) {
+      const t = Date.now();
+      const nextDue = queued.reduce((m, it) => Math.min(m, it.card.dueAt), Infinity);
+      const wait = nextDue - t;
+      if (wait > 0 && wait < 10 * 60 * 1000) {
+        dueRefreshTimer = setTimeout(() => {
+          dueRefreshTimer = null;
+          renderLetter();
+          renderStats();
+        }, wait + 50);
+      }
+    }
+    return;
+  }
+  lastShownKey = item.key;
+  lastShownType = item.type;
+  const isPhonics = item.type === 'phonics';
+  const isSight = item.type === 'sight';
+  const isCvc = WORD_MODES.has(item.type);
+  const exampleHtml = isPhonics && item.example
+    ? `<div class="example-caption">as in <b>${escapeHtml(item.example)}</b></div>`
+    : '';
+  /* Segments flashed in reading order: CVC/CVCe flash onset then rime; multi-
+     char sounds & words flash letter by letter; a lone glyph has no direction. */
+  const segments = isCvc ? item.segments
+    : (isPhonics || isSight) ? [...item.display]
+    : null;
+  const isMulti = !!segments && segments.length > 1;
+  const baseClass = isPhonics ? 'is-phonics' : isSight ? 'is-sight' : isCvc ? 'is-cvc' : '';
+  const letterClass = (baseClass + (isMulti ? ' wave' : '')).trim();
+  /* Wrap each segment so the highlight can pop across them in sequence. */
+  const letterInner = isMulti
+    ? segments.map((ch, gi) => `<span class="glyph" style="--gi:${gi}">${escapeHtml(ch)}</span>`).join('')
+    : escapeHtml(item.display);
+  /* Reading-direction cue under sounds & words: read me left → right.
+     .tracer is a glowing dot that glides along the arrow on a loop. */
+  const arrowHtml = (isPhonics || isSight || isCvc)
+    ? `<div class="read-arrow" aria-hidden="true"><span class="dot"></span><span class="line"></span><span class="head"></span><span class="tracer"></span></div>`
+    : '';
+  stage.innerHTML = `
+    <div class="letter-frame" data-enter>
+      <div class="letter ${letterClass}" id="letter-el">${letterInner}</div>
+      ${arrowHtml}
+    </div>
+    ${exampleHtml}
+    <div class="letter-caption">
+      <span>${labelFor(item)}</span>
+      <span class="pellet"></span>
+      <span>Seen ${item.card.totalSeen}${item.card.totalSeen ? ' · ' + Math.round((item.card.totalCorrect / item.card.totalSeen) * 100) + '%' : ''}</span>
+    </div>
+  `;
+  stage.dataset.currentType = item.type;
+  stage.dataset.currentKey = item.key;
+  renderPanels(false);
+  playReadingAnimation();
+}
+
+function labelFor(item) {
+  const c = item.card;
+  const noun = item.type === 'phonics' ? 'sound'
+             : (item.type === 'sight' || WORD_MODES.has(item.type)) ? 'word'
+             : 'letter';
+  if (c.totalSeen === 0) return 'New ' + noun;
+  const b = bucketOf(c);
+  if (b === 'learning') return 'Learning';
+  if (b === 'young')    return c.intervalDays + ' day interval';
+  return 'Mature · ' + c.intervalDays + ' days';
+}
+
+function renderStats() {
+  const all = activeItems(student);
+  const session = sessionQueue(student);
+  const t = Date.now();
+  const sessionDue = session.filter(it => it.card.dueAt <= t).length;
+  const allDue = all.filter(it => it.card.dueAt <= t).length;
+  const backlog = Math.max(0, allDue - sessionDue);
+  const cap = student.settings.sessionSize ?? 10;
+  const todayStart = startOfTodayMs();
+  const touched = all.filter(it => (it.card.lastSeenAt || 0) >= todayStart).length;
+  const sess = currentSession(student);
+  $('#stat-correct').textContent = sess.correct;
+  $('#stat-due').textContent = sessionDue;
+  $('#due-count').textContent = sessionDue + ' to review';
+  $('#reviewed-count').textContent = sess.reviewed + ' reviewed';
+  $('#new-count').textContent = touched + ' / ' + cap + ' today';
+  $('#streak-label').textContent = sess.streak;
+
+  if (sess.streak > lastStreak && sess.streak > 0) {
+    const badge = $('#streak-badge');
+    badge.classList.add('bumped');
+    setTimeout(() => badge.classList.remove('bumped'), 240);
+  }
+  lastStreak = sess.streak;
+
+  $('#today-label').textContent = new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+
+  if (sess.reviewed > 0) {
+    const pct = Math.round((sess.correct / sess.reviewed) * 100);
+    $('#stat-accuracy').textContent = pct + '% accuracy';
+  } else {
+    $('#stat-accuracy').textContent = 'No reviews yet';
+  }
+
+  if (sessionDue > 0) {
+    /* Mid-session: flag any backlog beyond today's slice so the teacher still
+     * sees it, otherwise show how many cards are resting. */
+    $('#stat-next').textContent = backlog > 0 ? backlog + ' more due' : (all.length - allDue) + ' resting';
+  } else if (backlog > 0) {
+    $('#stat-next').textContent = backlog + ' for next time';
+  } else {
+    const next = [...all].sort((a, b) => a.card.dueAt - b.card.dueAt)[0];
+    if (next && next.card.dueAt > t) {
+      const mins = Math.max(1, Math.round((next.card.dueAt - t) / 60000));
+      const text = mins < 60 ? 'Next in ' + mins + 'm'
+                : mins < 1440 ? 'Next in ' + Math.round(mins / 60) + 'h'
+                : 'Next in ' + Math.round(mins / 1440) + 'd';
+      $('#stat-next').textContent = text;
+    } else {
+      $('#stat-next').textContent = all.length === 0 ? 'Nothing to practice' : 'All caught up';
+    }
+  }
+
+}
+
+/* Per-area mastery, all areas side by side, so a teacher can see at a glance
+ * which sections a student is strong/weak in and how much has been started.
+ * The full snapshot always carries every area's cards, regardless of mode. */
+function renderAreaMastery() {
+  const container = $('#area-mastery');
+  if (!container) return;
+  container.innerHTML = '';
+  const areas = [
+    ['Letters', Object.values(student.cards || {})],
+    ['Sounds', (student.phonics || []).map(p => p.card)],
+    ['Sight words', (student.sightWords || []).map(w => w.card)],
+    ['CVC words', (student.cvcWords || []).map(w => w.card)],
+    ['CVCe words', (student.cvceWords || []).map(w => w.card)],
+    ['Phonics Kids 4', (student.bookWords || []).map(w => w.card)],
+  ].filter(([, cards]) => cards.length > 0);
+
+  let grandMature = 0, grandTotal = 0;
+  areas.forEach(([name, cards]) => {
+    const buckets = { new: 0, learning: 0, young: 0, mature: 0 };
+    let started = 0;
+    cards.forEach(c => { buckets[bucketOf(c)]++; if ((c.totalSeen || 0) > 0) started++; });
+    const total = cards.length;
+    grandMature += buckets.mature; grandTotal += total;
+    const bar = ['new', 'learning', 'young', 'mature'].map(k => {
+      const w = (buckets[k] / total) * 100;
+      return w > 0 ? '<span class="mb-' + k + '" style="width:' + w + '%" title="' + k + ': ' + buckets[k] + '"></span>' : '';
+    }).join('');
+    const row = document.createElement('div');
+    row.className = 'area-row';
+    row.title = name + ': ' + started + ' of ' + total + ' started · ' + buckets.mature + ' mastered';
+    row.innerHTML =
+      '<div class="area-row-head">' +
+        '<span class="area-name">' + name + '</span>' +
+        '<span class="area-count"><b>' + buckets.mature + '</b> / ' + total + ' mastered</span>' +
+      '</div>' +
+      '<div class="mastery-bar area-bar">' + bar + '</div>' +
+      '<div class="area-sub">' + started + ' of ' + total + ' started</div>';
+    container.appendChild(row);
+  });
+  $('#mastery-count').textContent = grandTotal > 0 ? (grandMature + ' / ' + grandTotal + ' mastered') : '—';
+}
+
+/* Per-student trouble spots — the specific seen cards a child keeps missing
+ * (lapses + low accuracy + low ease), across every area, worst first. Gives the
+ * teacher an at-a-glance "drill these next" list. */
+function renderTrouble() {
+  const panel = $('#trouble-panel');
+  const listEl = $('#trouble-list');
+  if (!panel) return;
+  const all = [
+    ...Object.values(student.cards || {}).map(c => ({ label: c.letter, area: 'Letters', card: c })),
+    ...(student.phonics || []).map(p => ({ label: p.text, area: 'Sounds', card: p.card })),
+    ...(student.sightWords || []).map(w => ({ label: w.text, area: 'Sight', card: w.card })),
+    ...(student.cvcWords || []).map(w => ({ label: w.text, area: 'CVC', card: w.card })),
+    ...(student.cvceWords || []).map(w => ({ label: w.text, area: 'CVCe', card: w.card })),
+    ...(student.bookWords || []).map(w => ({ label: w.text, area: 'PK4', card: w.card })),
+  ];
+  const seen = all.filter(it => (it.card.totalSeen || 0) > 0);
+  if (!seen.length) { panel.hidden = true; return; }
+  panel.hidden = false;
+
+  const trouble = seen.map(it => {
+    const c = it.card;
+    const accuracy = c.totalSeen ? c.totalCorrect / c.totalSeen : 1;
+    const struggle = (c.lapses || 0) + (1 - accuracy) * 2 + (2 - Math.min(2, c.ease)) * 0.5;
+    return { label: it.label, area: it.area, lapses: c.lapses || 0, accuracy: Math.round(accuracy * 100), struggle };
+  })
+  .filter(it => it.lapses >= 1 || it.accuracy < 80)
+  .sort((a, b) => b.struggle - a.struggle)
+  .slice(0, 6);
+
+  if (!trouble.length) {
+    listEl.innerHTML = '<div class="trouble-empty">No trouble spots — going strong! 🎉</div>';
+    return;
+  }
+  listEl.innerHTML = trouble.map(it => {
+    const miss = it.lapses === 1 ? '1 miss' : it.lapses + ' misses';
+    return '<div class="trouble-row" title="' + escapeHtml(it.area) + ' · ' + miss + ' · ' + it.accuracy + '% correct">' +
+      '<span class="trouble-glyph">' + escapeHtml(it.label) + '</span>' +
+      '<span class="trouble-area">' + it.area + '</span>' +
+      '<span class="trouble-stat">' + miss + ' · ' + it.accuracy + '%</span>' +
+    '</div>';
+  }).join('');
+}
+
+function renderWeek() {
+  const strip = $('#week-strip');
+  const summary = $('#week-summary');
+  const meta = $('#week-meta');
+  strip.innerHTML = '';
+  const sessions = currentRecentSessions(student);
+  const byDate = Object.fromEntries(sessions.map(s => [s.date, s]));
+  const today = new Date();
+  const todayKey = today.toISOString().slice(0, 10);
+  const dayNames = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today);
+    d.setUTCDate(d.getUTCDate() - i);
+    const dow = d.getUTCDay();
+    if (dow === 0 || dow === 6) continue;   // school week only — skip Sat/Sun
+    const key = d.toISOString().slice(0, 10);
+    const s = byDate[key];
+    days.push({
+      date: key,
+      label: dayNames[d.getUTCDay()],
+      reviewed: s ? s.reviewed : 0,
+      correct: s ? s.correct : 0,
+      newIntroduced: s ? s.newIntroduced : 0,
+      isToday: key === todayKey,
+    });
+  }
+  const max = Math.max(1, ...days.map(d => d.reviewed));
+  let totalReviewed = 0, totalCorrect = 0, totalNew = 0;
+  days.forEach(d => {
+    totalReviewed += d.reviewed;
+    totalCorrect += d.correct;
+    totalNew += d.newIntroduced;
+    const correctPct = (d.correct / max) * 100;
+    const incorrectPct = ((d.reviewed - d.correct) / max) * 100;
+    const cell = document.createElement('div');
+    cell.className = 'week-day' + (d.isToday ? ' today' : '');
+    const titleParts = [d.date];
+    if (d.reviewed > 0) {
+      const pct = Math.round((d.correct / d.reviewed) * 100);
+      titleParts.push(d.reviewed + ' reviewed · ' + pct + '%');
+      if (d.newIntroduced > 0) titleParts.push(d.newIntroduced + ' new');
+    } else {
+      titleParts.push('no practice');
+    }
+    cell.title = titleParts.join(' · ');
+    cell.innerHTML =
+      '<div class="week-stack ' + (d.reviewed === 0 ? 'empty' : '') + '">' +
+        '<div class="week-correct" style="height: ' + correctPct + '%"></div>' +
+        '<div class="week-incorrect" style="height: ' + incorrectPct + '%"></div>' +
+      '</div>' +
+      '<div class="week-label">' + d.label + '</div>';
+    strip.appendChild(cell);
+  });
+  const pct = totalReviewed > 0 ? Math.round((totalCorrect / totalReviewed) * 100) : 0;
+  meta.textContent = totalReviewed > 0
+    ? totalReviewed + ' reviewed · ' + pct + '%'
+    : 'no practice yet';
+  summary.innerHTML = totalReviewed > 0
+    ? '<span><span class="dot sage"></span><b>' + totalCorrect + '</b> got it</span>' +
+      '<span><span class="dot coral"></span><b>' + (totalReviewed - totalCorrect) + '</b> missed</span>' +
+      '<span><b>' + totalNew + '</b> new learned</span>'
+    : '<span>Start practicing to build a weekly view.</span>';
+}
+
+function renderPanels(withStagger) {
+  const mode = student.settings.mode || 'alphabet';
+  const showAlpha = mode === 'alphabet' || mode === 'mixed';
+  const showPhon  = mode === 'phonics' || mode === 'mixed';
+  const showSight = mode === 'sight';
+  const showCvc   = mode === 'cvc';
+  const showCvce  = mode === 'cvce';
+  const showBook  = mode === 'book';
+  $('#alphabet-panel').hidden = !showAlpha;
+  $('#phonics-panel').hidden = !showPhon;
+  $('#sight-panel').hidden = !showSight;
+  $('#cvc-panel').hidden = !showCvc;
+  $('#cvce-panel').hidden = !showCvce;
+  $('#book-panel').hidden = !showBook;
+  if (showAlpha) renderAlphabetGrid(withStagger);
+  if (showPhon)  renderPhonicsPills(withStagger);
+  if (showSight) renderSightGroups(withStagger);
+  if (showCvc)   renderCvcPills('cvc', withStagger);
+  if (showCvce)  renderCvcPills('cvce', withStagger);
+  if (showBook)  renderCvcPills('book', withStagger);
+}
+
+/* Word-family side panel (CVC / CVCe / book). Mirrors the phonics pills: each word
+ * is a pill coloured by mastery, dot-flagged when due, ringed when current. */
+function renderCvcPills(kind, withStagger) {
+  const grid = $('#' + kind + '-grid');
+  grid.innerHTML = '';
+  const words = wordsOfKind(student, kind);
+  $('#' + kind + '-meta').textContent = words.length
+    ? words.length + ' word' + (words.length === 1 ? '' : 's') : 'none yet';
+  if (words.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'sound-empty';
+    empty.style.margin = '0';
+    empty.textContent = 'Click Manage words to add the first one.';
+    grid.appendChild(empty);
+    return;
+  }
+  const t = Date.now();
+  const currentType = stage.dataset.currentType;
+  const currentKey = stage.dataset.currentKey;
+  words.forEach((w, i) => {
+    const c = w.card;
+    const bucket = bucketOf(c);
+    const isDue = c.dueAt <= t;
+    const isCurrent = currentType === kind && w.id === currentKey;
+    const div = document.createElement('div');
+    div.className = 'sound-pill s-' + bucket + (isDue ? ' is-due' : '') + (isCurrent ? ' is-current' : '');
+    div.textContent = w.text;
+    div.title = w.onset + '·' + w.rime + ' · ' + bucket +
+      (c.totalSeen ? ' · ' + c.totalSeen + ' seen · ' + Math.round((c.totalCorrect / c.totalSeen) * 100) + '%' : '') +
+      (isDue ? ' · due' : '');
+    if (withStagger) {
+      div.dataset.enter = '';
+      div.style.setProperty('--i', i);
+    }
+    grid.appendChild(div);
+  });
+}
+
+function renderAlphabetGrid(withStagger) {
+  const want = student.settings.case;
+  const set = want === 'lower' ? LOWER : UPPER;
+  $('#case-meta').textContent = want === 'both' ? '52 cards' : '26 cards';
+  const grid = $('#letter-grid');
+  grid.innerHTML = '';
+  const t = Date.now();
+  const currentType = stage.dataset.currentType;
+  const currentKey = stage.dataset.currentKey;
+  set.forEach((letter, i) => {
+    const card = student.cards[letter];
+    const div = document.createElement('div');
+    const bucket = card ? bucketOf(card) : 'new';
+    const isDue = card ? card.dueAt <= t : true;
+    const isCurrent = currentType === 'letter' && letter === currentKey;
+    div.className = 'cell s-' + bucket + (isDue ? ' is-due' : '') + (isCurrent ? ' is-current' : '');
+    div.textContent = letter;
+    if (card) {
+      div.title = letter + ' · ' + bucket +
+        (card.totalSeen ? ' · ' + card.totalSeen + ' seen · ' + Math.round((card.totalCorrect / card.totalSeen) * 100) + '%' : '') +
+        (isDue ? ' · due' : '');
+    } else {
+      div.title = letter;
+    }
+    if (withStagger) {
+      div.dataset.enter = '';
+      div.style.setProperty('--i', i);
+    }
+    grid.appendChild(div);
+  });
+}
+
+function renderPhonicsPills(withStagger) {
+  const grid = $('#phonics-grid');
+  grid.innerHTML = '';
+  const sounds = student.phonics || [];
+  $('#phonics-meta').textContent = sounds.length ? sounds.length + ' sound' + (sounds.length === 1 ? '' : 's') : 'none yet';
+  if (sounds.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'sound-empty';
+    empty.style.margin = '0';
+    empty.textContent = 'Click Manage sounds to add the first one.';
+    grid.appendChild(empty);
+    return;
+  }
+  const t = Date.now();
+  const currentType = stage.dataset.currentType;
+  const currentKey = stage.dataset.currentKey;
+  sounds.forEach((p, i) => {
+    const c = p.card;
+    const bucket = bucketOf(c);
+    const isDue = c.dueAt <= t;
+    const isCurrent = currentType === 'phonics' && p.id === currentKey;
+    const div = document.createElement('div');
+    div.className = 'sound-pill s-' + bucket + (isDue ? ' is-due' : '') + (isCurrent ? ' is-current' : '');
+    div.textContent = p.text;
+    div.title = p.text + (p.example ? ' (as in ' + p.example + ')' : '') + ' · ' + bucket +
+      (c.totalSeen ? ' · ' + c.totalSeen + ' seen · ' + Math.round((c.totalCorrect / c.totalSeen) * 100) + '%' : '') +
+      (isDue ? ' · due' : '');
+    if (withStagger) {
+      div.dataset.enter = '';
+      div.style.setProperty('--i', i);
+    }
+    grid.appendChild(div);
+  });
+}
+
+function renderSightGroups(withStagger) {
+  const grid = $('#sight-grid');
+  grid.innerHTML = '';
+  const words = student.sightWords || [];
+  $('#sight-meta').textContent = words.length ? words.length + ' word' + (words.length === 1 ? '' : 's') : 'none';
+  if (words.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'sound-empty';
+    empty.style.margin = '0';
+    empty.textContent = 'Restart the server to seed the Fry first 100 list.';
+    grid.appendChild(empty);
+    return;
+  }
+  const t = Date.now();
+  const currentType = stage.dataset.currentType;
+  const currentKey = stage.dataset.currentKey;
+  /* group by Fry group (1–4) preserving server order within each */
+  const byGroup = new Map();
+  words.forEach(w => {
+    if (!byGroup.has(w.group)) byGroup.set(w.group, []);
+    byGroup.get(w.group).push(w);
+  });
+  const groupNums = [...byGroup.keys()].sort((a, b) => a - b);
+  let staggerIdx = 0;
+  groupNums.forEach(gn => {
+    const groupWords = byGroup.get(gn);
+    const wrap = document.createElement('div');
+    wrap.className = 'sight-group';
+    const start = (gn - 1) * 25 + 1;
+    const end = start + groupWords.length - 1;
+    wrap.innerHTML = '<div class="sight-group-label">Group ' + gn + ' · ' + start + '–' + end + '</div>';
+    const pills = document.createElement('div');
+    pills.className = 'sound-pills';
+    groupWords.forEach(w => {
+      const c = w.card;
+      const bucket = bucketOf(c);
+      const isDue = c.dueAt <= t;
+      const isCurrent = currentType === 'sight' && w.id === currentKey;
+      const pill = document.createElement('div');
+      pill.className = 'sound-pill s-' + bucket + (isDue ? ' is-due' : '') + (isCurrent ? ' is-current' : '');
+      pill.textContent = w.text;
+      pill.title = w.text + ' · ' + bucket +
+        (c.totalSeen ? ' · ' + c.totalSeen + ' seen · ' + Math.round((c.totalCorrect / c.totalSeen) * 100) + '%' : '') +
+        (isDue ? ' · due' : '');
+      if (withStagger) {
+        pill.dataset.enter = '';
+        pill.style.setProperty('--i', staggerIdx++);
+      }
+      pills.appendChild(pill);
+    });
+    wrap.appendChild(pills);
+    grid.appendChild(wrap);
+  });
+}
+
+function renderToggles() {
+  const mode = student.settings.mode || 'alphabet';
+  document.querySelectorAll('.mode-toggle button').forEach(t => {
+    t.classList.toggle('active', t.dataset.mode === mode);
+  });
+  document.querySelectorAll('.case-toggle button').forEach(t => {
+    t.classList.toggle('active', t.dataset.case === student.settings.case);
+  });
+  /* Case is meaningless for phonics, sight words, and the word families */
+  $('#case-toggle').hidden = mode === 'phonics' || mode === 'sight'
+    || WORD_MODES.has(mode);
+}
+
+/* =====================================================
+   Sounds management
+   ===================================================== */
+function renderSoundsList() {
+  const list = $('#sound-list');
+  const empty = $('#sound-empty');
+  list.innerHTML = '';
+  $('#sound-count').textContent = phonics.length ? '· ' + phonics.length : '';
+  empty.hidden = phonics.length > 0;
+  phonics.forEach(p => {
+    const li = document.createElement('li');
+    li.className = 'sound-item';
+    li.dataset.id = p.id;
+    const exampleClass = p.example ? 'example' : 'example empty';
+    const exampleBody = p.example
+      ? 'as in <em>' + escapeHtml(p.example) + '</em>'
+      : '<em>add an example</em>';
+    li.innerHTML = `
+      <span class="text">${escapeHtml(p.text)}</span>
+      <span class="${exampleClass}" data-edit="${p.id}" title="Click to edit example">${exampleBody}</span>
+      <span class="actions">
+        <button class="remove" data-id="${p.id}" title="Delete sound" aria-label="Delete">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M3 4h8M5 4V3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1M5 4v7a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1V4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </span>`;
+    list.appendChild(li);
+  });
+  list.querySelectorAll('button.remove').forEach(btn => {
+    btn.addEventListener('click', () => removeSound(btn.dataset.id));
+  });
+  list.querySelectorAll('[data-edit]').forEach(span => {
+    span.addEventListener('click', () => beginEditExample(span.dataset.edit));
+  });
+}
+
+function beginEditExample(id) {
+  const sound = phonics.find(p => p.id === id);
+  if (!sound) return;
+  const span = $('#sound-list').querySelector('[data-edit="' + id + '"]');
+  if (!span || span.querySelector('input')) return;
+  const current = sound.example || '';
+  span.innerHTML = `<input type="text" class="example-edit" maxlength="40" placeholder="example word" />`;
+  const input = span.querySelector('input');
+  input.value = current;
+  input.focus();
+  input.select();
+
+  let done = false;
+  const finish = async (save) => {
+    if (done) return;
+    done = true;
+    const next = input.value.trim();
+    if (!save || next === current) { renderSoundsList(); return; }
+    try {
+      await api('/api/phonics/' + id, { method: 'PATCH', body: { example: next } });
+      await refreshPhonics();
+      if (student) student = await api('/api/students/' + student.id);
+      renderSoundsList();
+      if (student) renderAll(false);
+      toast(next ? 'Updated' : 'Cleared example');
+    } catch (e) {
+      toast('Could not save');
+      renderSoundsList();
+    }
+  };
+  input.addEventListener('blur', () => finish(true));
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+    else if (e.key === 'Escape') { e.preventDefault(); done = true; renderSoundsList(); }
+  });
+}
+
+async function refreshPhonics() {
+  phonics = await api('/api/phonics');
+}
+
+async function refreshCvc() {
+  cvcWords = await api('/api/cvc');
+}
+
+async function refreshClasses() {
+  classes = await api('/api/classes');
+}
+
+async function addSound() {
+  const text = $('#sound-text').value.trim();
+  if (!text) { $('#sound-text').focus(); return; }
+  const example = $('#sound-example').value.trim();
+  try {
+    await api('/api/phonics', { method: 'POST', body: { text, example } });
+    await refreshPhonics();
+    /* server added a card row for every student; refresh current student state */
+    if (student) student = await api('/api/students/' + student.id);
+    $('#sound-text').value = '';
+    $('#sound-example').value = '';
+    $('#sound-text').focus();
+    renderSoundsList();
+    if (student) renderAll(true);
+    toast('Added ' + text);
+  } catch (e) { toast('Could not add'); }
+}
+
+async function removeSound(id) {
+  const target = phonics.find(p => p.id === id);
+  if (!target) return;
+  if (!confirm('Delete the sound "' + target.text + '" for every student?')) return;
+  try {
+    await api('/api/phonics/' + id, { method: 'DELETE' });
+    await refreshPhonics();
+    if (student) student = await api('/api/students/' + student.id);
+    renderSoundsList();
+    if (student) renderAll(true);
+    toast('Deleted');
+  } catch (e) { toast('Could not delete'); }
+}
+
+/* =====================================================
+   Word builder (CVC / CVCe / book)
+   ===================================================== */
+let cvcKind = 'cvc';
+
+function openCvcModal(kind) {
+  cvcKind = WORD_MODES.has(kind) ? kind : 'cvc';
+  syncCvcTabs();
+  renderCvcWordList();
+  updateCvcPreview();
+  openModal('cvc-modal');
+  setTimeout(() => $('#cvc-onset').focus(), 80);
+}
+
+function syncCvcTabs() {
+  document.querySelectorAll('#cvc-modal .kind-tabs button').forEach(b => {
+    b.classList.toggle('active', b.dataset.kind === cvcKind);
+  });
+  $('#cvc-onset').placeholder = cvcKind === 'book' ? 'sh' : 'c';
+  $('#cvc-rime').placeholder = cvcKind === 'cvce' ? 'ake' : cvcKind === 'book' ? 'ip' : 'at';
+}
+
+function updateCvcPreview() {
+  const on = $('#cvc-onset').value.trim();
+  const ri = $('#cvc-rime').value.trim();
+  const el = $('#cvc-preview');
+  const ghost = cvcKind === 'cvce' ? 'cake' : cvcKind === 'book' ? 'ship' : 'cat';
+  if (!on && !ri) { el.innerHTML = '<span style="opacity:.45">' + ghost + '</span>'; return; }
+  el.innerHTML = '<span class="on">' + escapeHtml(on) + '</span><span class="ri">' + escapeHtml(ri) + '</span>';
+}
+
+function renderCvcWordList() {
+  const list = $('#cvc-word-list');
+  const empty = $('#cvc-word-empty');
+  list.innerHTML = '';
+  const words = cvcWords.filter(w => w.kind === cvcKind);
+  $('#cvc-word-count').textContent = words.length ? '· ' + words.length : '';
+  empty.hidden = words.length > 0;
+  words.forEach(w => {
+    const li = document.createElement('li');
+    li.className = 'sound-item';
+    li.dataset.id = w.id;
+    li.innerHTML = `
+      <span class="text">${escapeHtml(w.onset + w.rime)}</span>
+      <span class="split" data-edit="${w.id}" title="Click to edit">${escapeHtml(w.onset)} · ${escapeHtml(w.rime)}</span>
+      <span class="actions">
+        <button class="remove" data-id="${w.id}" title="Delete word" aria-label="Delete">${ICON_TRASH}</button>
+      </span>`;
+    list.appendChild(li);
+  });
+  list.querySelectorAll('button.remove').forEach(btn => {
+    btn.addEventListener('click', () => removeCvcWord(btn.dataset.id));
+  });
+  list.querySelectorAll('[data-edit]').forEach(span => {
+    span.addEventListener('click', () => beginEditCvcWord(span.dataset.edit));
+  });
+}
+
+/* Inline edit of a word's onset + rime, keeping its SRS progress. */
+function beginEditCvcWord(id) {
+  const w = cvcWords.find(x => x.id === id);
+  if (!w) return;
+  const span = $('#cvc-word-list').querySelector('[data-edit="' + id + '"]');
+  if (!span || span.querySelector('input')) return;
+  span.innerHTML =
+    '<input class="split-edit on" maxlength="4" /> · <input class="split-edit ri" maxlength="6" style="width:4.4em" />';
+  const onInput = span.querySelector('.on');
+  const riInput = span.querySelector('.ri');
+  onInput.value = w.onset;
+  riInput.value = w.rime;
+  onInput.focus();
+  onInput.select();
+
+  let done = false;
+  const finish = async (save) => {
+    if (done) return;
+    const onv = onInput.value.trim();
+    const riv = riInput.value.trim();
+    if (!save || !onv || !riv || (onv === w.onset && riv === w.rime)) { done = true; renderCvcWordList(); return; }
+    done = true;
+    try {
+      await api('/api/cvc/' + id, { method: 'PATCH', body: { onset: onv, rime: riv } });
+      await refreshCvc();
+      if (student) student = await api('/api/students/' + student.id);
+      renderCvcWordList();
+      if (student) renderAll(false);
+      toast('Updated');
+    } catch (e) { toast('Could not save'); renderCvcWordList(); }
+  };
+  const onBlur = (e) => {
+    /* save only once focus has left BOTH inputs */
+    if (e.relatedTarget === onInput || e.relatedTarget === riInput) return;
+    finish(true);
+  };
+  const onKey = (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+    else if (e.key === 'Escape') { e.preventDefault(); done = true; renderCvcWordList(); }
+  };
+  [onInput, riInput].forEach(inp => {
+    inp.addEventListener('blur', onBlur);
+    inp.addEventListener('keydown', onKey);
+  });
+}
+
+async function addCvcWord() {
+  const onset = $('#cvc-onset').value.trim();
+  const rime = $('#cvc-rime').value.trim();
+  if (!onset) { $('#cvc-onset').focus(); return; }
+  if (!rime) { $('#cvc-rime').focus(); return; }
+  try {
+    await api('/api/cvc', { method: 'POST', body: { kind: cvcKind, onset, rime } });
+    await refreshCvc();
+    /* server added a card row for every student; refresh current student state */
+    if (student) student = await api('/api/students/' + student.id);
+    $('#cvc-onset').value = '';
+    $('#cvc-rime').value = '';
+    updateCvcPreview();
+    $('#cvc-onset').focus();
+    renderCvcWordList();
+    if (student) renderAll(true);
+    toast('Added ' + onset + rime);
+  } catch (e) { toast('Could not add'); }
+}
+
+async function removeCvcWord(id) {
+  const target = cvcWords.find(w => w.id === id);
+  if (!target) return;
+  if (!confirm('Delete the word "' + target.onset + target.rime + '" for every student?')) return;
+  try {
+    await api('/api/cvc/' + id, { method: 'DELETE' });
+    await refreshCvc();
+    if (student) student = await api('/api/students/' + student.id);
+    renderCvcWordList();
+    if (student) renderAll(true);
+    toast('Deleted');
+  } catch (e) { toast('Could not delete'); }
+}
+
+/* =====================================================
+   Classes management
+   ===================================================== */
+function classOptionsHtml(selectedId) {
+  let html = '<option value=""' + (!selectedId ? ' selected' : '') + '>— Unassigned</option>';
+  classes.forEach(c => {
+    html += '<option value="' + c.id + '"' + (c.id === selectedId ? ' selected' : '') +
+            '>' + escapeHtml(c.name) + '</option>';
+  });
+  return html;
+}
+
+function renderClassList() {
+  const wrap = $('#class-list');
+  const empty = $('#class-empty');
+  $('#class-count').textContent = classes.length ? '· ' + classes.length : '';
+  /* Drop selections for students that no longer exist. */
+  for (const id of [...selectedStudents]) {
+    if (!students.some(s => s.id === id)) selectedStudents.delete(id);
+  }
+  if (classes.length === 0) {
+    wrap.innerHTML = '';
+    empty.hidden = false;
+    renderBulkBar();
+    return;
+  }
+  empty.hidden = true;
+  const rowsFor = (list) => list.length
+    ? list.map(s =>
+        '<div class="class-student">' +
+          '<label class="class-check"><input type="checkbox" class="stu-check" data-id="' + s.id + '"' +
+            (selectedStudents.has(s.id) ? ' checked' : '') + ' aria-label="Select ' + escapeHtml(s.name) + '" /></label>' +
+          '<span class="class-student-name">' + escapeHtml(s.name) + '</span>' +
+          '<select class="assign-select" data-id="' + s.id + '" aria-label="Class for ' + escapeHtml(s.name) + '">' +
+            classOptionsHtml(s.classId || '') +
+          '</select>' +
+        '</div>').join('')
+    : '<div class="class-empty-row">No students yet</div>';
+  const headCheck = (group, label) =>
+    '<label class="class-check"><input type="checkbox" class="group-check" data-group="' + group +
+      '" aria-label="Select all in ' + label + '" /></label>';
+
+  let html = '';
+  classes.forEach(c => {
+    const list = students.filter(s => s.classId === c.id);
+    html +=
+      '<div class="class-group" data-id="' + c.id + '">' +
+        '<div class="class-group-head">' +
+          headCheck(c.id, escapeHtml(c.name)) +
+          '<span class="class-group-name">' + escapeHtml(c.name) + '</span>' +
+          '<span class="class-group-count">' + list.length + '</span>' +
+          '<span class="class-group-actions">' +
+            '<button class="rename" data-id="' + c.id + '" title="Rename" aria-label="Rename">' + ICON_PENCIL + '</button>' +
+            '<button class="remove" data-id="' + c.id + '" title="Delete class" aria-label="Delete class">' + ICON_TRASH + '</button>' +
+          '</span>' +
+        '</div>' +
+        '<div class="class-students">' + rowsFor(list) + '</div>' +
+      '</div>';
+  });
+  const unassigned = students.filter(s => !s.classId);
+  if (unassigned.length) {
+    html +=
+      '<div class="class-group is-unassigned">' +
+        '<div class="class-group-head">' +
+          headCheck('unassigned', 'Unassigned') +
+          '<span class="class-group-name">Unassigned</span>' +
+          '<span class="class-group-count">' + unassigned.length + '</span>' +
+        '</div>' +
+        '<div class="class-students">' + rowsFor(unassigned) + '</div>' +
+      '</div>';
+  }
+  wrap.innerHTML = html;
+  wrap.querySelectorAll('.assign-select').forEach(sel =>
+    sel.addEventListener('change', () => assignStudentToClass(sel.dataset.id, sel.value)));
+  wrap.querySelectorAll('button.rename').forEach(b =>
+    b.addEventListener('click', () => beginEditClassName(b.dataset.id)));
+  wrap.querySelectorAll('button.remove').forEach(b =>
+    b.addEventListener('click', () => deleteClass(b.dataset.id)));
+  wrap.querySelectorAll('.stu-check').forEach(cb =>
+    cb.addEventListener('change', () => {
+      if (cb.checked) selectedStudents.add(cb.dataset.id);
+      else selectedStudents.delete(cb.dataset.id);
+      updateGroupChecks();
+      renderBulkBar();
+    }));
+  wrap.querySelectorAll('.group-check').forEach(gc =>
+    gc.addEventListener('change', () => {
+      const ids = studentsOfGroup(gc.dataset.group).map(s => s.id);
+      ids.forEach(id => gc.checked ? selectedStudents.add(id) : selectedStudents.delete(id));
+      wrap.querySelectorAll('.stu-check').forEach(cb => {
+        if (ids.includes(cb.dataset.id)) cb.checked = gc.checked;
+      });
+      updateGroupChecks();
+      renderBulkBar();
+    }));
+  updateGroupChecks();
+  renderBulkBar();
+}
+
+/* All students currently in a group ('unassigned' or a class id). */
+function studentsOfGroup(group) {
+  return group === 'unassigned'
+    ? students.filter(s => !s.classId)
+    : students.filter(s => s.classId === group);
+}
+
+/* Reflect the selection in each group's header checkbox (checked / dash). */
+function updateGroupChecks() {
+  document.querySelectorAll('#class-list .group-check').forEach(gc => {
+    const ids = studentsOfGroup(gc.dataset.group).map(s => s.id);
+    const sel = ids.filter(id => selectedStudents.has(id)).length;
+    gc.checked = sel > 0 && sel === ids.length;
+    gc.indeterminate = sel > 0 && sel < ids.length;
+  });
+}
+
+/* The bulk action bar shows only when something is selected. */
+function renderBulkBar() {
+  const bar = $('#bulk-bar');
+  const n = selectedStudents.size;
+  bar.hidden = n === 0;
+  if (n === 0) return;
+  $('#bulk-count').textContent = n + ' selected';
+  const target = $('#bulk-target');
+  const prev = target.value;
+  target.innerHTML =
+    '<option value="" disabled' + (prev ? '' : ' selected') + '>Move to…</option>' +
+    classes.map(c => '<option value="' + c.id + '"' + (prev === c.id ? ' selected' : '') + '>' + escapeHtml(c.name) + '</option>').join('') +
+    '<option value="__unassigned__"' + (prev === '__unassigned__' ? ' selected' : '') + '>— Unassigned</option>';
+}
+
+async function bulkMove() {
+  const target = $('#bulk-target').value;
+  if (!target) { $('#bulk-target').focus(); return; }
+  const classId = target === '__unassigned__' ? null : target;
+  const ids = [...selectedStudents];
+  if (!ids.length) return;
+  try {
+    await Promise.all(ids.map(id =>
+      api('/api/students/' + id, { method: 'PATCH', body: { classId } })));
+    selectedStudents.clear();
+    await refreshClasses();
+    await refreshStudentsList();
+    if (student && ids.includes(student.id)) student.classId = classId;
+    renderClassList();
+    reflectClassChanges();
+    const where = classId ? ('to ' + (classNameOf(classId) || 'class')) : 'to Unassigned';
+    toast('Moved ' + ids.length + ' ' + (ids.length === 1 ? 'student' : 'students') + ' ' + where);
+  } catch (e) { toast('Could not move'); }
+}
+
+function bulkClear() {
+  selectedStudents.clear();
+  document.querySelectorAll('#class-list .stu-check').forEach(cb => { cb.checked = false; });
+  updateGroupChecks();
+  renderBulkBar();
+}
+
+/* After any class change, refresh the picker + filter without disturbing the
+ * practice card behind the modal. */
+function reflectClassChanges() {
+  syncFilterToActive();
+  renderClassFilter();
+  renderStudentSelect();
+}
+
+async function addClass() {
+  const input = $('#class-name');
+  const name = input.value.trim();
+  if (!name) { input.focus(); return; }
+  try {
+    await api('/api/classes', { method: 'POST', body: { name } });
+    input.value = '';
+    input.focus();
+    await refreshClasses();
+    renderClassList();
+    reflectClassChanges();
+    toast('Added ' + name);
+  } catch (e) { toast('Could not add class'); }
+}
+
+function beginEditClassName(id) {
+  const c = classes.find(x => x.id === id);
+  if (!c) return;
+  const nameEl = $('#class-list').querySelector('.class-group[data-id="' + id + '"] .class-group-name');
+  if (!nameEl || nameEl.querySelector('input')) return;
+  const current = c.name;
+  nameEl.innerHTML = '<input type="text" class="class-name-edit" maxlength="40" />';
+  const input = nameEl.querySelector('input');
+  input.value = current; input.focus(); input.select();
+
+  let done = false;
+  const finish = async (save) => {
+    if (done) return;
+    done = true;
+    const next = input.value.trim();
+    if (!save || !next || next === current) { renderClassList(); return; }
+    try {
+      await api('/api/classes/' + id, { method: 'PATCH', body: { name: next } });
+      await refreshClasses();
+      renderClassList();
+      reflectClassChanges();
+      toast('Renamed');
+    } catch (e) { toast('Could not rename'); renderClassList(); }
+  };
+  input.addEventListener('blur', () => finish(true));
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+    else if (e.key === 'Escape') { e.preventDefault(); done = true; renderClassList(); }
+  });
+}
+
+async function deleteClass(id) {
+  const c = classes.find(x => x.id === id);
+  if (!c) return;
+  const n = students.filter(s => s.classId === id).length;
+  const msg = n > 0
+    ? 'Delete "' + c.name + '"? Its ' + n + ' student' + (n === 1 ? '' : 's') +
+      ' will become Unassigned — their progress is kept.'
+    : 'Delete the class "' + c.name + '"?';
+  if (!confirm(msg)) return;
+  try {
+    await api('/api/classes/' + id, { method: 'DELETE' });
+    if (classFilter === id) { classFilter = 'all'; localStorage.setItem('alphabet:classFilter', 'all'); }
+    await refreshClasses();
+    await refreshStudentsList();
+    if (student && student.classId === id) student.classId = null;
+    renderClassList();
+    reflectClassChanges();
+    toast('Class deleted');
+  } catch (e) { toast('Could not delete class'); }
+}
+
+async function assignStudentToClass(studentId, classId) {
+  try {
+    await api('/api/students/' + studentId, { method: 'PATCH', body: { classId: classId || null } });
+    await refreshClasses();
+    await refreshStudentsList();
+    if (student && student.id === studentId) student.classId = classId || null;
+    renderClassList();
+    reflectClassChanges();
+    toast('Moved');
+  } catch (e) { toast('Could not move'); }
+}
+
+function openClassesModal() {
+  selectedStudents.clear();
+  renderClassList();
+  openModal('classes-modal');
+  setTimeout(() => $('#class-name').focus(), 80);
+}
+
+/* =====================================================
+   Practice actions
+   ===================================================== */
+async function answer(correct) {
+  if (busy || !student) return;
+  const type = stage.dataset.currentType;
+  const key = stage.dataset.currentKey;
+  if (!type || !key) return;
+  busy = true;
+  stopReadingAnimation();
+
+  const frame = stage.querySelector('.letter-frame');
+  const letterEl = stage.querySelector('.letter');
+  if (frame) frame.classList.add(correct ? 'flash-yes' : 'flash-no');
+  if (letterEl) letterEl.classList.add(correct ? 'pop' : 'shake');
+
+  const startedAt = performance.now();
+  try {
+    student = await api('/api/students/' + student.id + '/answer', {
+      method: 'POST',
+      body: { type, key, correct },
+    });
+    canUndo = true;
+    $('#undo-btn').disabled = false;
+  } catch (e) {
+    toast('Could not save');
+    busy = false;
+    return;
+  }
+
+  const minHold = correct ? 220 : 320;
+  const elapsed = performance.now() - startedAt;
+  const wait = Math.max(0, minHold - elapsed);
+  setTimeout(() => {
+    renderLetter();
+    renderStats();
+    renderWeek();
+    busy = false;
+    /* Celebrate once the day's session is cleared. shouldCelebrate() is false
+     * while "keep going" is on, so the modal never becomes noise. */
+    if (!isDoneForToday() && shouldCelebrate(student)) openDoneCelebration();
+  }, wait);
+}
+
+function openDoneCelebration() {
+  if (!student) return;
+  const t = Date.now();
+  const todayStart = startOfTodayMs();
+  const all = activeItems(student);
+  const done = all.filter(it => (it.card.lastSeenAt || 0) >= todayStart).length;
+  const backlog = all.filter(it => it.card.dueAt <= t).length;
+  $('#done-name').textContent = student.name;
+  const parts = ['You finished ' + done + ' today.'];
+  if (backlog > 0) parts.push(backlog + ' more for next time.');
+  $('#done-sub').textContent = parts.join(' ');
+  openModal('done-modal');
+}
+
+async function undo() {
+  if (!canUndo || !student || busy) return;
+  busy = true;
+  try {
+    student = await api('/api/students/' + student.id + '/undo', { method: 'POST' });
+    canUndo = false;
+    $('#undo-btn').disabled = true;
+    toast('Undone');
+    renderLetter();
+    renderStats();
+    renderWeek();
+  } catch (e) {
+    toast('Could not undo');
+  }
+  busy = false;
+}
+
+async function setCase(mode) {
+  if (!student || busy) return;
+  try {
+    student = await api('/api/students/' + student.id, { method: 'PATCH', body: { case: mode } });
+    canUndo = false;
+    $('#undo-btn').disabled = true;
+    renderAll(true);
+  } catch (e) { toast('Could not save'); }
+}
+
+async function setMode(mode) {
+  if (!student || busy) return;
+  try {
+    student = await api('/api/students/' + student.id, { method: 'PATCH', body: { mode } });
+    canUndo = false;
+    $('#undo-btn').disabled = true;
+    /* Streak is tracked per-area; re-baseline so the badge doesn't animate
+     * just because we switched between letters and sight words. */
+    lastStreak = currentSession(student).streak;
+    renderAll(true);
+  } catch (e) { toast('Could not save'); }
+}
+
+async function selectStudent(id) {
+  if (!id) return;
+  try {
+    student = await api('/api/students/' + id);
+    activeId = id;
+    localStorage.setItem('alphabet:lastActiveId', id);
+    syncFilterToActive();
+    canUndo = false;
+    $('#undo-btn').disabled = true;
+    lastStreak = currentSession(student).streak;
+    renderAll(true);
+  } catch (e) {
+    toast('Could not load student');
+  }
+}
+
+async function refreshStudentsList() {
+  students = await api('/api/students');
+}
+
+/* =====================================================
+   Modals + toast
+   ===================================================== */
+function openModal(id) {
+  const m = $('#' + id);
+  m.classList.add('open');
+  m.setAttribute('aria-hidden', 'false');
+}
+function closeModal(id) {
+  const m = $('#' + id);
+  m.classList.remove('open');
+  m.setAttribute('aria-hidden', 'true');
+}
+
+function toast(msg) {
+  const t = $('#toast');
+  $('#toast-text').textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+/* =====================================================
+   Event wiring
+   ===================================================== */
+$('#btn-yes').addEventListener('click', () => answer(true));
+$('#btn-no').addEventListener('click', () => answer(false));
+$('#undo-btn').addEventListener('click', undo);
+
+document.querySelectorAll('.case-toggle button').forEach(btn => {
+  btn.addEventListener('click', () => setCase(btn.dataset.case));
+});
+document.querySelectorAll('.mode-toggle button').forEach(btn => {
+  btn.addEventListener('click', () => setMode(btn.dataset.mode));
+});
+
+studentSelect.addEventListener('change', () => {
+  if (studentSelect.value) selectStudent(studentSelect.value);
+});
+
+$('#class-filter').addEventListener('change', () => {
+  classFilter = $('#class-filter').value;
+  localStorage.setItem('alphabet:classFilter', classFilter);
+  const list = filteredStudents();
+  /* Focus this class by loading its first student, unless the active student
+   * is already in view (or the class is empty — then just keep the current
+   * card and show the placeholder). */
+  if (list.length && !list.some(s => s.id === activeId)) {
+    selectStudent(list[0].id);
+  } else {
+    renderStudentSelect();
+  }
+});
+
+$('#classes-btn').addEventListener('click', openClassesModal);
+$('#add-class').addEventListener('click', addClass);
+$('#class-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') addClass(); });
+$('#bulk-move').addEventListener('click', bulkMove);
+$('#bulk-clear').addEventListener('click', bulkClear);
+
+$('#add-student-btn').addEventListener('click', () => {
+  $('#new-name').value = '';
+  openModal('add-modal');
+  setTimeout(() => $('#new-name').focus(), 80);
+});
+$('#create-student').addEventListener('click', async () => {
+  const name = $('#new-name').value.trim();
+  if (!name) { $('#new-name').focus(); return; }
+  try {
+    /* New students land in the class you're currently viewing. */
+    const body = { name };
+    if (classFilter !== 'all' && classFilter !== 'unassigned') body.classId = classFilter;
+    const created = await api('/api/students', { method: 'POST', body });
+    await refreshStudentsList();
+    activeId = created.id;
+    localStorage.setItem('alphabet:lastActiveId', created.id);
+    student = created;
+    canUndo = false;
+    $('#undo-btn').disabled = true;
+    lastStreak = 0;
+    closeModal('add-modal');
+    toast('Welcome, ' + name);
+    /* New students open straight into practice; "back" returns to their class. */
+    if (viewClassId == null) viewClassId = classFilter;
+    setView('practice');
+    renderAll(true);
+  } catch (e) { toast('Could not create'); }
+});
+$('#new-name').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') $('#create-student').click();
+});
+
+$('#manage-btn').addEventListener('click', () => {
+  if (!student) { toast('Add a student first'); return; }
+  $('#manage-title').textContent = 'Settings · ' + student.name;
+  $('#rename-input').value = student.name;
+  $('#session-size-input').value = student.settings.sessionSize ?? 10;
+  $('#new-per-day-input').value = student.settings.newPerDay ?? 10;
+  openModal('manage-modal');
+});
+$('#rename-student').addEventListener('click', async () => {
+  if (!student) return;
+  const name = $('#rename-input').value.trim();
+  if (!name) return;
+  const rawN = parseInt($('#new-per-day-input').value, 10);
+  const rawS = parseInt($('#session-size-input').value, 10);
+  const body = { name };
+  if (Number.isFinite(rawN) && rawN >= 1) body.newPerDay = Math.min(52, rawN);
+  if (Number.isFinite(rawS) && rawS >= 1) body.sessionSize = Math.min(100, rawS);
+  try {
+    student = await api('/api/students/' + student.id, { method: 'PATCH', body });
+    await refreshStudentsList();
+    closeModal('manage-modal');
+    renderStudentSelect();
+    renderAll(true);
+    toast('Saved');
+  } catch (e) { toast('Could not save'); }
+});
+/* ---- Quick placement: mark what a student already knows --------------------
+ * Grid of every card in an area; tap the known ones; Save seeds them as 'young'
+ * (a few school-days out) via /place, so they aren't drilled from scratch. The
+ * teacher can mark across areas (selections persist per area) and save once. */
+let placeType = 'letter';
+let placeKnown = {};   // type -> Set(keys)
+
+function placeAreas() {
+  const a = [];
+  const letters = Object.values(student.cards || {});
+  if (letters.length) a.push({ type: 'letter', label: 'Letters', items: letters.map(c => ({ key: c.letter, label: c.letter })) });
+  if ((student.phonics || []).length) a.push({ type: 'phonics', label: 'Sounds', items: student.phonics.map(p => ({ key: p.id, label: p.text })) });
+  if ((student.sightWords || []).length) a.push({ type: 'sight', label: 'Sight words', items: student.sightWords.map(w => ({ key: w.id, label: w.text })) });
+  if ((student.cvcWords || []).length) a.push({ type: 'cvc', label: 'CVC', items: student.cvcWords.map(w => ({ key: w.id, label: w.text })) });
+  if ((student.cvceWords || []).length) a.push({ type: 'cvce', label: 'CVCe', items: student.cvceWords.map(w => ({ key: w.id, label: w.text })) });
+  if ((student.bookWords || []).length) a.push({ type: 'book', label: 'Phonics Kids 4', items: student.bookWords.map(w => ({ key: w.id, label: w.text })) });
+  return a;
+}
+
+function openPlaceModal() {
+  if (!student) return;
+  const areas = placeAreas();
+  if (!areas.length) { toast('No cards to place'); return; }
+  placeKnown = {};
+  placeType = areas[0].type;
+  renderPlaceTabs();
+  renderPlaceGrid();
+  openModal('place-modal');
+}
+
+function renderPlaceTabs() {
+  const tabs = $('#place-tabs');
+  tabs.innerHTML = '';
+  placeAreas().forEach(a => {
+    const b = document.createElement('button');
+    b.className = 'place-tab' + (a.type === placeType ? ' active' : '');
+    b.textContent = a.label;
+    b.addEventListener('click', () => { placeType = a.type; renderPlaceTabs(); renderPlaceGrid(); });
+    tabs.appendChild(b);
+  });
+}
+
+function renderPlaceGrid() {
+  const grid = $('#place-grid');
+  const empty = $('#place-empty');
+  grid.innerHTML = '';
+  const area = placeAreas().find(a => a.type === placeType);
+  if (!area || !area.items.length) { empty.hidden = false; updatePlaceSave(); return; }
+  empty.hidden = true;
+  const known = placeKnown[placeType] || (placeKnown[placeType] = new Set());
+  area.items.forEach(it => {
+    const chip = document.createElement('button');
+    chip.className = 'place-chip' + (known.has(it.key) ? ' known' : '');
+    chip.textContent = it.label;
+    chip.title = it.label;
+    chip.addEventListener('click', () => {
+      if (known.has(it.key)) { known.delete(it.key); chip.classList.remove('known'); }
+      else { known.add(it.key); chip.classList.add('known'); }
+      updatePlaceSave();
+    });
+    grid.appendChild(chip);
+  });
+  updatePlaceSave();
+}
+
+function placeTotal() {
+  return Object.values(placeKnown).reduce((n, s) => n + s.size, 0);
+}
+function updatePlaceSave() {
+  const btn = $('#save-placement');
+  const n = placeTotal();
+  btn.textContent = n > 0 ? 'Save ' + n + ' known' : 'Save';
+  btn.disabled = n === 0;
+}
+
+async function savePlacement() {
+  const entries = Object.entries(placeKnown).filter(([, s]) => s.size > 0);
+  if (!entries.length) return;
+  const total = placeTotal();
+  try {
+    let snap = student;
+    for (const [type, set] of entries) {
+      snap = await api('/api/students/' + student.id + '/place', { method: 'POST', body: { type, keys: [...set] } });
+    }
+    student = snap;
+    closeModal('place-modal');
+    toast('Placed ' + total + (total === 1 ? ' card' : ' cards'));
+    renderAll(true);
+  } catch (e) { toast('Could not save placement'); }
+}
+
+$('#open-placement').addEventListener('click', () => { closeModal('manage-modal'); openPlaceModal(); });
+$('#save-placement').addEventListener('click', savePlacement);
+
+$('#reset-stats').addEventListener('click', async () => {
+  if (!student) return;
+  if (!confirm('Reset all stats for ' + student.name + '? This cannot be undone.')) return;
+  try {
+    student = await api('/api/students/' + student.id + '/reset', { method: 'POST' });
+    canUndo = false;
+    $('#undo-btn').disabled = true;
+    lastStreak = 0;
+    closeModal('manage-modal');
+    renderAll(true);
+    toast('Stats reset');
+  } catch (e) { toast('Could not reset'); }
+});
+$('#delete-student').addEventListener('click', async () => {
+  if (!student) return;
+  if (!confirm('Delete ' + student.name + ' and all their history? This cannot be undone.')) return;
+  try {
+    await api('/api/students/' + student.id, { method: 'DELETE' });
+    await refreshStudentsList();
+    closeModal('manage-modal');
+    student = null;
+    activeId = null;
+    localStorage.removeItem('alphabet:lastActiveId');
+    toast('Deleted');
+    /* Return to the picker the student came from. */
+    if (viewClassId != null) await enterClass(viewClassId);
+    else await goHome();
+  } catch (e) { toast('Could not delete'); }
+});
+
+/* Class roster modal — teacher view of who's done today */
+async function openRosterModal() {
+  const list = $('#roster-list');
+  const empty = $('#roster-empty');
+  const summary = $('#roster-summary');
+  list.innerHTML = '';
+  summary.textContent = '';
+  empty.hidden = true;
+  openModal('roster-modal');
+  try {
+    const roster = await api('/api/roster');
+    renderRoster(roster);
+  } catch (e) {
+    list.innerHTML = '';
+    empty.hidden = false;
+    empty.textContent = 'Could not load class list.';
+  }
+}
+
+function renderRoster(roster) {
+  const list = $('#roster-list');
+  const empty = $('#roster-empty');
+  const summary = $('#roster-summary');
+  list.innerHTML = '';
+  /* The class filter narrows the roster to one class (or Unassigned). */
+  const view = classFilter === 'all' ? roster
+    : classFilter === 'unassigned' ? roster.filter(r => !r.classId)
+    : roster.filter(r => r.classId === classFilter);
+  const label = classFilter === 'all' ? ''
+    : classFilter === 'unassigned' ? ' · Unassigned'
+    : ' · ' + (classNameOf(classFilter) || 'Class');
+  $('#roster-title').textContent = 'Class today' + label;
+  if (!view.length) {
+    empty.hidden = false;
+    empty.textContent = roster.length ? 'No students in this class.' : 'No students yet. Add one to get started.';
+    return;
+  }
+  empty.hidden = true;
+  let done = 0, inProgress = 0, notStarted = 0;
+  for (const r of view) {
+    if (r.doneToday) done++;
+    else if (r.reviewed > 0) inProgress++;
+    else notStarted++;
+  }
+  summary.innerHTML =
+    '<span><span class="dot sage"></span><b>' + done + '</b> done</span>' +
+    '<span><span class="dot sun"></span><b>' + inProgress + '</b> in progress</span>' +
+    '<span><span class="dot muted"></span><b>' + notStarted + '</b> not started</span>';
+
+  /* Sort: in-progress first (kids who need attention), then not-started,
+   * then done last. Within each group, alphabetical by name. */
+  const rank = (r) => r.doneToday ? 2 : (r.reviewed > 0 ? 0 : 1);
+  const sorted = [...view].sort((a, b) =>
+    rank(a) - rank(b) || a.name.localeCompare(b.name));
+
+  for (const r of sorted) {
+    const li = document.createElement('li');
+    let cls = 'roster-item';
+    if (student && r.id === student.id) cls += ' is-current';
+    if (r.doneToday) cls += ' is-done';
+    else if (r.reviewed > 0) cls += ' is-progress';
+    li.className = cls;
+    li.tabIndex = 0;
+    li.setAttribute('role', 'button');
+
+    const badgeText = r.doneToday
+      ? 'Done ✓'
+      : (r.reviewed > 0 ? r.dueNow + ' to go' : 'Not started');
+    const badgeCls = r.doneToday ? 'done' : (r.reviewed > 0 ? 'progress' : '');
+    const accuracy = r.reviewed > 0
+      ? Math.round((r.correct / r.reviewed) * 100) + '% correct'
+      : null;
+    const subParts = [];
+    if (r.reviewed > 0) subParts.push(r.reviewed + ' reviewed');
+    if (accuracy) subParts.push(accuracy);
+    if (!r.doneToday && r.seenToday > 0 && r.total > 0) {
+      subParts.push(r.seenToday + '/' + r.total + ' touched');
+    }
+    if (!r.doneToday && r.backlogDue > r.dueNow) {
+      subParts.push((r.backlogDue - r.dueNow) + ' in backlog');
+    }
+    const sub = subParts.length
+      ? '<div class="roster-sub">' + subParts.join(' · ') + '</div>'
+      : '';
+
+    li.innerHTML =
+      '<div class="roster-name">' + escapeHtml(r.name) + '</div>' +
+      '<div class="roster-status"><span class="roster-badge ' + badgeCls + '">' +
+        badgeText + '</span></div>' + sub;
+
+    const onPick = async () => {
+      closeModal('roster-modal');
+      if (!student || r.id !== student.id) {
+        studentSelect.value = r.id;
+        await selectStudent(r.id);
+      }
+    };
+    li.addEventListener('click', onPick);
+    li.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPick(); }
+    });
+    list.appendChild(li);
+  }
+}
+
+$('#roster-btn').addEventListener('click', openRosterModal);
+
+/* ---- Progress report (teacher handout) ----------------------------------
+ * Per-student mastery breakdown for whatever class is in view, using the same
+ * buckets as the in-app mastery bar. Print → PDF, or download a CSV. */
+const MODE_LABEL = {
+  alphabet: 'Letters', mixed: 'Letters + sounds', phonics: 'Sounds',
+  sight: 'Sight words', cvc: 'CVC words', cvce: 'CVCe words', book: 'Phonics Kids 4',
+};
+
+/* Every card in a student's current mode, uncapped — the report shows the
+ * whole picture, not the daily new-card slice that activeItems() returns. */
+function reportCardsFor(stu) {
+  const mode = (stu.settings && stu.settings.mode) || 'alphabet';
+  const out = [];
+  if (mode === 'alphabet' || mode === 'mixed') {
+    const want = stu.settings.case;
+    const set = want === 'upper' ? UPPER : want === 'lower' ? LOWER : [...UPPER, ...LOWER];
+    set.forEach(l => { const c = stu.cards[l]; if (c) out.push(c); });
+  }
+  if (mode === 'phonics' || mode === 'mixed') (stu.phonics || []).forEach(p => out.push(p.card));
+  if (mode === 'sight') (stu.sightWords || []).forEach(w => out.push(w.card));
+  if (mode === 'cvc') (stu.cvcWords || []).forEach(w => out.push(w.card));
+  if (mode === 'cvce') (stu.cvceWords || []).forEach(w => out.push(w.card));
+  if (mode === 'book') (stu.bookWords || []).forEach(w => out.push(w.card));
+  return out;
+}
+
+function summarizeStudent(stu) {
+  const cards = reportCardsFor(stu);
+  const buckets = { new: 0, learning: 0, young: 0, mature: 0 };
+  const now = Date.now();
+  let seen = 0, correct = 0, due = 0;
+  cards.forEach(c => {
+    buckets[bucketOf(c)]++;
+    seen += c.totalSeen || 0;
+    correct += c.totalCorrect || 0;
+    if ((c.dueAt || 0) <= now) due++;
+  });
+  const total = cards.length;
+  const accuracy = seen > 0 ? Math.round((correct / seen) * 100) : null;
+  const masteredPct = total ? Math.round((buckets.mature / total) * 100) : 0;
+  /* Composite "needs work" score in 0..1 — blends how far from mastered, how
+   * big the due pile is, and how shaky accuracy is. Higher = needs more help. */
+  const masteryNeed = 1 - (total ? buckets.mature / total : 0);
+  const reviewNeed = total ? Math.min(1, due / total) : 0;
+  const accuracyNeed = accuracy === null ? 0 : (1 - accuracy / 100);
+  const score = 0.45 * masteryNeed + 0.35 * reviewNeed + 0.20 * accuracyNeed;
+  return {
+    id: stu.id,
+    name: stu.name,
+    mode: stu.settings.mode || 'alphabet',
+    total, buckets, due,
+    accuracy,
+    streak: currentSession(stu).streak || 0,
+    masteredPct,
+    score,
+  };
+}
+
+let reportRows = [];   // last-rendered report, retained for CSV export
+
+async function openReportModal() {
+  const table = $('#report-table');
+  const empty = $('#report-empty');
+  const summary = $('#report-summary');
+  table.innerHTML = '';
+  summary.textContent = '';
+  empty.hidden = true;
+  reportRows = [];
+
+  /* Scope to the class currently in view — the same filter the roster honors. */
+  const scope = filteredStudents();
+  const label = classFilter === 'all' ? 'All students'
+    : classFilter === 'unassigned' ? 'Unassigned'
+    : (classNameOf(classFilter) || 'Class');
+  $('#report-sub').textContent = label + ' · ' + new Date().toLocaleDateString();
+  openModal('report-modal');
+
+  if (!scope.length) {
+    empty.hidden = false;
+    empty.textContent = students.length ? 'No students in this class.' : 'No students yet. Add one to get started.';
+    return;
+  }
+
+  let snaps;
+  try {
+    snaps = await Promise.all(scope.map(s => api('/api/students/' + s.id)));
+  } catch (e) {
+    empty.hidden = false;
+    empty.textContent = 'Could not load the report.';
+    return;
+  }
+  reportRows = snaps.map(summarizeStudent).sort((a, b) =>
+    b.masteredPct - a.masteredPct || a.name.localeCompare(b.name));
+  renderReport(reportRows);
+}
+
+function renderReport(rows) {
+  const table = $('#report-table');
+  const summary = $('#report-summary');
+  const totalCards = rows.reduce((n, r) => n + r.total, 0);
+  const totalMature = rows.reduce((n, r) => n + r.buckets.mature, 0);
+  summary.innerHTML =
+    '<span><b>' + rows.length + '</b> ' + (rows.length === 1 ? 'student' : 'students') + '</span>' +
+    '<span><span class="dot plum"></span><b>' + totalMature + '</b> / ' + totalCards + ' cards mastered</span>';
+
+  const head =
+    '<thead><tr><th>Student</th><th>Set</th><th class="num">Mastered</th>' +
+    '<th class="bar-col">Progress</th><th class="num">Accuracy</th></tr></thead>';
+  const body = rows.map(r => {
+    const bar = ['new', 'learning', 'young', 'mature'].map(k => {
+      const w = r.total ? (r.buckets[k] / r.total) * 100 : 0;
+      return w > 0 ? '<span class="mb-' + k + '" style="width:' + w + '%" title="' + k + ': ' + r.buckets[k] + '"></span>' : '';
+    }).join('');
+    const acc = r.accuracy === null ? '—' : r.accuracy + '%';
+    return '<tr>' +
+      '<td class="r-name">' + escapeHtml(r.name) + '</td>' +
+      '<td class="r-mode">' + (MODE_LABEL[r.mode] || r.mode) + '</td>' +
+      '<td class="num"><b>' + r.buckets.mature + '</b> / ' + r.total + '</td>' +
+      '<td class="bar-col"><div class="mastery-bar report-bar">' + bar + '</div></td>' +
+      '<td class="num">' + acc + '</td></tr>';
+  }).join('');
+  table.innerHTML = head + '<tbody>' + body + '</tbody>';
+}
+
+function downloadReportCsv() {
+  if (!reportRows.length) { toast('Nothing to export yet'); return; }
+  const header = ['Student', 'Set', 'Total', 'New', 'Learning', 'Young', 'Mature', 'Mastered %', 'Accuracy %', 'Streak'];
+  const esc = (v) => {
+    const s = String(v ?? '');
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  };
+  const lines = [header.join(',')];
+  reportRows.forEach(r => {
+    lines.push([
+      r.name, MODE_LABEL[r.mode] || r.mode, r.total,
+      r.buckets.new, r.buckets.learning, r.buckets.young, r.buckets.mature,
+      r.masteredPct, r.accuracy === null ? '' : r.accuracy, r.streak,
+    ].map(esc).join(','));
+  });
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'progress-report-' + new Date().toISOString().slice(0, 10) + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+$('#report-btn').addEventListener('click', openReportModal);
+$('#report-csv').addEventListener('click', downloadReportCsv);
+$('#report-print').addEventListener('click', () => window.print());
+
+/* Sounds modal */
+function openSoundsModal() {
+  renderSoundsList();
+  openModal('phonics-modal');
+  setTimeout(() => $('#sound-text').focus(), 80);
+}
+$('#all-done-btn').addEventListener('click', () => {
+  markDoneForToday();
+  closeModal('done-modal');
+  renderLetter();
+  renderStats();
+});
+$('#keep-going-btn').addEventListener('click', () => {
+  enableKeepGoing();
+  closeModal('done-modal');
+  renderLetter();
+  renderStats();
+});
+
+$('#sounds-btn').addEventListener('click', openSoundsModal);
+$('#open-sounds-from-panel').addEventListener('click', openSoundsModal);
+$('#add-sound').addEventListener('click', addSound);
+$('#sound-text').addEventListener('keydown', (e) => { if (e.key === 'Enter') addSound(); });
+$('#sound-example').addEventListener('keydown', (e) => { if (e.key === 'Enter') addSound(); });
+
+/* Word builder modal (CVC / CVCe) */
+$('#words-btn').addEventListener('click', () => openCvcModal(cvcKind));
+$('#open-cvc-from-panel').addEventListener('click', () => openCvcModal('cvc'));
+$('#open-cvce-from-panel').addEventListener('click', () => openCvcModal('cvce'));
+$('#open-book-from-panel').addEventListener('click', () => openCvcModal('book'));
+$('#add-cvc-word').addEventListener('click', addCvcWord);
+$('#cvc-onset').addEventListener('input', updateCvcPreview);
+$('#cvc-rime').addEventListener('input', updateCvcPreview);
+$('#cvc-onset').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('#cvc-rime').focus(); } });
+$('#cvc-rime').addEventListener('keydown', (e) => { if (e.key === 'Enter') addCvcWord(); });
+document.querySelectorAll('#cvc-modal .kind-tabs button').forEach(b => {
+  b.addEventListener('click', () => {
+    cvcKind = b.dataset.kind;
+    syncCvcTabs();
+    renderCvcWordList();
+    updateCvcPreview();
+  });
+});
+
+function dismissModals() {
+  const wasOpen = !!document.querySelector('.modal-backdrop.open');
+  document.querySelectorAll('.modal-backdrop.open').forEach(m => {
+    m.classList.remove('open');
+    m.setAttribute('aria-hidden', 'true');
+  });
+  /* Edits made inside a modal (classes, students) can change the pickers
+     sitting behind it — refresh whichever one is showing. */
+  if (wasOpen && (view === 'home' || view === 'class')) refreshCurrentPicker();
+}
+document.querySelectorAll('[data-close]').forEach(b => {
+  b.addEventListener('click', dismissModals);
+});
+document.querySelectorAll('.modal-backdrop').forEach(m => {
+  m.addEventListener('click', (e) => { if (e.target === m) dismissModals(); });
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.target.matches('input, select, textarea')) return;
+  if (document.querySelector('.modal-backdrop.open')) {
+    if (e.key === 'Escape') dismissModals();
+    return;
+  }
+  /* Keyboard answering only applies while practicing. */
+  if (view !== 'practice') return;
+  if (e.key === 'y' || e.key === 'Y' || e.key === 'ArrowRight') { e.preventDefault(); answer(true); }
+  else if (e.key === 'n' || e.key === 'N' || e.key === 'ArrowLeft') { e.preventDefault(); answer(false); }
+  else if (e.key === 'z' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); undo(); }
+});
+
+/* =====================================================
+   Screen navigation: home (classes) → class (students) → practice
+   ===================================================== */
+let view = 'home';        // 'home' | 'class' | 'practice'
+let viewClassId = null;   // 'all' | 'unassigned' | <classId> currently opened
+let rosterCache = [];     // last /api/roster, powers the status badges on the pickers
+
+function setView(v) {
+  view = v;
+  document.body.dataset.view = v;
+  const main = document.querySelector('main');
+  if (main) main.hidden = v !== 'practice';
+  $('#home-screen').hidden = v !== 'home';
+  $('#class-screen').hidden = v !== 'class';
+  $('#back-btn').hidden = v === 'home';
+  $('#back-btn').title = v === 'practice' ? 'Back to class' : 'Back to home';
+}
+
+async function loadRoster() {
+  try { rosterCache = await api('/api/roster'); }
+  catch (e) { rosterCache = []; }
+}
+
+function rosterFor(cid) {
+  if (cid === 'all') return rosterCache;
+  if (cid === 'unassigned') return rosterCache.filter(r => !r.classId);
+  return rosterCache.filter(r => r.classId === cid);
+}
+
+function pickBadge(r) {
+  if (r && r.doneToday) return { text: 'Done ✓', cls: 'done' };
+  if (r && r.reviewed > 0) return { text: r.dueNow + ' to go', cls: 'progress' };
+  return { text: 'Not started', cls: '' };
+}
+
+async function goHome() {
+  classFilter = 'all';
+  localStorage.setItem('alphabet:classFilter', 'all');
+  viewClassId = null;
+  setView('home');
+  await loadRoster();
+  renderHome();
+}
+
+function renderHome() {
+  const grid = $('#home-grid');
+  const empty = $('#home-empty');
+  grid.innerHTML = '';
+  if (students.length === 0) {
+    empty.hidden = false;
+    empty.innerHTML = 'No students yet. Tap <b>+</b> at the top to add your first one.';
+    $('#home-sub').textContent = '';
+    return;
+  }
+  empty.hidden = true;
+  $('#home-sub').textContent = 'Tap a class to see its students.';
+
+  /* Counts come from the always-present students list; done-today from the
+     best-effort roster, so a roster hiccup never zeroes the student counts. */
+  const doneIn = (cid) => rosterFor(cid).filter(r => r.doneToday).length;
+  const tiles = [];
+  classes.forEach(c => {
+    tiles.push({ id: c.id, name: c.name, total: students.filter(s => s.classId === c.id).length, done: doneIn(c.id) });
+  });
+  if (classes.length && students.some(s => !s.classId)) {
+    tiles.push({ id: 'unassigned', name: 'Unassigned', total: students.filter(s => !s.classId).length, done: doneIn('unassigned') });
+  }
+  tiles.push({ id: 'all', name: 'All students', total: students.length, done: doneIn('all'), all: true });
+
+  tiles.forEach(t => {
+    const card = document.createElement('button');
+    card.className = 'pick-card class-card' + (t.all ? ' is-all' : '');
+    const allDone = t.total > 0 && t.done === t.total;
+    const status = t.total === 0 ? 'No students yet'
+      : allDone ? 'All done today ✓'
+      : t.done + ' of ' + t.total + ' done today';
+    card.innerHTML =
+      '<span class="pick-name">' + escapeHtml(t.name) + '</span>' +
+      '<span class="pick-meta">' + t.total + (t.total === 1 ? ' student' : ' students') + '</span>' +
+      '<span class="pick-status' + (allDone ? ' done' : '') + '">' + status + '</span>';
+    card.addEventListener('click', () => enterClass(t.id));
+    grid.appendChild(card);
+  });
+}
+
+async function enterClass(cid) {
+  viewClassId = cid;
+  classFilter = cid;
+  localStorage.setItem('alphabet:classFilter', cid);
+  setView('class');
+  await loadRoster();
+  renderClassScreen();
+}
+
+function renderClassScreen() {
+  const grid = $('#class-grid');
+  const empty = $('#class-empty');
+  grid.innerHTML = '';
+  $('#needs-panel').hidden = true;
+  const title = viewClassId === 'all' ? 'All students'
+    : viewClassId === 'unassigned' ? 'Unassigned'
+    : (classNameOf(viewClassId) || 'Class');
+  $('#class-title').textContent = title;
+
+  const list = filteredStudents();
+  if (!list.length) {
+    empty.hidden = false;
+    $('#class-sub').textContent = '';
+    return;
+  }
+  empty.hidden = true;
+  $('#class-sub').textContent = 'Tap a student to start practice.';
+
+  const statusOf = (id) => rosterCache.find(r => r.id === id);
+  /* In-progress first (need attention), then not-started, done last. */
+  const rank = (s) => { const r = statusOf(s.id); return r && r.doneToday ? 2 : (r && r.reviewed > 0 ? 0 : 1); };
+  const sorted = [...list].sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));
+
+  sorted.forEach(s => {
+    const b = pickBadge(statusOf(s.id));
+    const card = document.createElement('button');
+    let cls = 'pick-card student-card';
+    if (b.cls === 'done') cls += ' is-done';
+    else if (b.cls === 'progress') cls += ' is-progress';
+    if (student && s.id === student.id) cls += ' is-current';
+    card.className = cls;
+    card.innerHTML =
+      '<span class="pick-name">' + escapeHtml(s.name) + '</span>' +
+      '<span class="pick-badge ' + b.cls + '">' + b.text + '</span>';
+    card.addEventListener('click', () => openStudent(s.id));
+    grid.appendChild(card);
+  });
+
+  /* Surface who needs the most work — async, fills in after the grid paints. */
+  renderNeedsList(list, viewClassId);
+}
+
+/* "Needs the most work" — ranks the class by the composite needs score
+ * (low mastery + big review pile + low accuracy). Pulls full snapshots, so it
+ * runs async and fills the panel once the student grid is already up. */
+async function renderNeedsList(list, forClassId) {
+  const panel = $('#needs-panel');
+  const ul = $('#needs-list');
+  if (!list.length) { panel.hidden = true; return; }
+  let snaps;
+  try { snaps = await Promise.all(list.map(s => api('/api/students/' + s.id))); }
+  catch (e) { panel.hidden = true; return; }
+  /* Bail if the teacher navigated away while we were fetching. */
+  if (view !== 'class' || viewClassId !== forClassId) return;
+
+  const worst = snaps.map(summarizeStudent)
+    .filter(r => r.total > 0 && r.score > 0.05)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5);
+  if (!worst.length) { panel.hidden = true; return; }
+
+  ul.innerHTML = worst.map(r => {
+    const filled = Math.max(1, Math.min(4, Math.round(r.score * 4)));
+    const dots = '●'.repeat(filled) + '○'.repeat(4 - filled);
+    const acc = r.accuracy === null ? 'no reviews yet' : r.accuracy + '% acc';
+    return '<li class="needs-item" data-id="' + r.id + '" tabindex="0" role="button">' +
+      '<span class="needs-dots" title="needs-work score">' + dots + '</span>' +
+      '<span class="needs-name">' + escapeHtml(r.name) + '</span>' +
+      '<span class="needs-stats">' + r.masteredPct + '% mastered · ' + r.due + ' due · ' + acc + '</span>' +
+    '</li>';
+  }).join('');
+  ul.querySelectorAll('.needs-item').forEach(li => {
+    const go = () => openStudent(li.dataset.id);
+    li.addEventListener('click', go);
+    li.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+  });
+  panel.hidden = false;
+}
+
+async function openStudent(id) {
+  setView('practice');
+  await selectStudent(id);
+}
+
+function goBack() {
+  if (view === 'practice') { if (viewClassId != null) enterClass(viewClassId); else goHome(); }
+  else goHome();
+}
+
+async function refreshCurrentPicker() {
+  if (view === 'home') { await loadRoster(); renderHome(); }
+  else if (view === 'class') { await loadRoster(); renderClassScreen(); }
+}
+
+$('#back-btn').addEventListener('click', goBack);
+$('#home-link').addEventListener('click', goHome);
+$('#home-link').addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); goHome(); } });
+
+/* ---- Collapsible sidebar panels -------------------------------------------
+ * Click a panel header to fold it; choices persist in localStorage. Defaults to
+ * all-collapsed on first run (no stored preference) so the sidebar starts tidy.
+ * "Expand all / Collapse all" controls sit at the top of the sidebar. Wired once
+ * — panel wrappers/heads are static, so re-renders (which only refill bodies)
+ * don't disturb it. */
+const COLLAPSE_KEY = 'alphabet:collapsed';
+let panelCollapsed = new Set();   // keys of currently-collapsed panels
+let collapsiblePanels = [];       // [{ panel, key }]
+
+function persistCollapsed() {
+  localStorage.setItem(COLLAPSE_KEY, JSON.stringify([...panelCollapsed]));
+}
+function applyCollapseState() {
+  collapsiblePanels.forEach(({ panel, key }) => {
+    const isC = panelCollapsed.has(key);
+    panel.classList.toggle('collapsed', isC);
+    const head = panel.querySelector('.panel-head');
+    if (head) head.setAttribute('aria-expanded', String(!isC));
+  });
+}
+function setAllPanelsCollapsed(collapse) {
+  panelCollapsed = new Set(collapse ? collapsiblePanels.map(p => p.key) : []);
+  persistCollapsed();
+  applyCollapseState();
+}
+function setupCollapsiblePanels() {
+  const stored = localStorage.getItem(COLLAPSE_KEY);
+  const firstRun = stored === null;
+  if (!firstRun) { try { panelCollapsed = new Set(JSON.parse(stored)); } catch (e) { panelCollapsed = new Set(); } }
+  document.querySelectorAll('aside .panel').forEach(panel => {
+    const head = panel.querySelector('.panel-head');
+    if (!head || head.dataset.collapsible) return;
+    head.dataset.collapsible = '1';
+    const key = panel.id || ((head.querySelector('h3') || {}).textContent || '').trim();
+    collapsiblePanels.push({ panel, key });
+    if (firstRun) panelCollapsed.add(key);   // first run → start every panel collapsed
+    const chev = document.createElement('span');
+    chev.className = 'chevron';
+    chev.innerHTML = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.5 4.5L6 8l3.5-3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    head.appendChild(chev);
+    head.setAttribute('role', 'button');
+    head.setAttribute('tabindex', '0');
+    const toggle = () => {
+      if (panelCollapsed.has(key)) panelCollapsed.delete(key); else panelCollapsed.add(key);
+      persistCollapsed();
+      applyCollapseState();
+    };
+    head.addEventListener('click', toggle);
+    head.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
+  });
+  applyCollapseState();
+}
+setupCollapsiblePanels();
+$('#expand-all').addEventListener('click', () => setAllPanelsCollapsed(false));
+$('#collapse-all').addEventListener('click', () => setAllPanelsCollapsed(true));
+
+/* ---------- First run ---------- */
+(async function init() {
+  pruneDoneKeys();
+  try {
+    await refreshPhonics();
+    await refreshCvc();
+    await refreshClasses();
+    await refreshStudentsList();
+    normalizeClassFilter();
+    if (students.length === 0) {
+      setView('home');
+      renderHome();
+      setTimeout(() => $('#add-student-btn').click(), 240);
+      return;
+    }
+    /* Land on the class picker — no auto-entering a class. */
+    await goHome();
+  } catch (e) {
+    toast('Could not connect to server');
+    setView('home');
+    renderHome();
+  }
+})();
+</script>
+</body>
+</html>

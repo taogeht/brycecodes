@@ -8,3 +8,7 @@ venv/
 # 12x12 build artifacts (rebuilt by Dockerfile)
 12x12/client/build/
 12x12/server/dist/
+
+# SQLite WAL sidecars
+*.db-shm
+*.db-wal

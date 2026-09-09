@@ -84,6 +84,33 @@ app.use('/12x12/api', createProxyMiddleware({
     }
 }));
 
+// Alphabet Time: proxy all /alphabet-help requests to the Bun server (port 4321).
+// Registered BEFORE bodyParser.json() so request streams are not consumed.
+const ALPHABET_PORT = process.env.ALPHABET_PORT || 4321;
+
+app.get('/alphabet', (req, res) => res.redirect(301, '/alphabet-help/'));
+app.get('/alphabet-help', (req, res, next) => {
+    if (req.originalUrl === '/alphabet-help') {
+        return res.redirect(301, '/alphabet-help/');
+    }
+    next();
+});
+
+app.use('/alphabet-help', createProxyMiddleware({
+    target: `http://localhost:${ALPHABET_PORT}`,
+    changeOrigin: true,
+    pathRewrite: (_path, req) => req.originalUrl.replace(/^\/alphabet-help/, '') || '/',
+    on: {
+        error: (err, req, res) => {
+            console.error(`[alphabet-help proxy] ${err.message}`);
+            if (res && !res.headersSent) {
+                res.writeHead(502, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'alphabet-help backend unreachable', details: err.message }));
+            }
+        }
+    }
+}));
+
 // Body parser AFTER proxy routes so it doesn't consume the request stream
 app.use(bodyParser.json());
 

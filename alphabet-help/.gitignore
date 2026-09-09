@@ -1,0 +1,15 @@
+# macOS
+.DS_Store
+
+# Local SQLite data
+*.db
+!alphabet.db
+*.db-shm
+*.db-wal
+
+# Local agent/editor settings
+.claude/settings.local.json
+
+# Logs and temp files
+*.log
+/tmp/

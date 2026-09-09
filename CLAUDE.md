@@ -11,6 +11,7 @@ Subprojects:
 - `invoice/` — static site mounted at `/invoice`. **Currently reads/writes Supabase directly from the browser** (`invoice/config.js` holds the project URL + anon key; `supabase-js` loaded from CDN in `index.html`). A move to Postgres landed in `1e7fde7` but was rolled back on the frontend, because the one-shot import (`scripts/migrate-invoice-from-supabase.js`) never ran while Supabase was paused, so the Postgres tables are empty. The `/api/invoice/*` endpoints in `server.js` are still live but unused — finish the import before re-pointing the frontend at them.
 - `chores/` — single-file SPA (`chores/public/index.html`) mounted at `/chores`. State persisted via `GET/POST /api/chores` to a single JSONB row in `chores.state` (Postgres). Schema is bootstrapped on root-server startup; reuses `DATABASE_URL`.
 - `12x12/` — full-stack flashcards app (React CRA + TypeScript frontend, Express+TypeScript+PostgreSQL backend on port 3002). Mounted under `/12x12` in production. CRA `homepage` is set to `/12x12` so built assets resolve correctly.
+- `alphabet-help/` — Alphabet Time / Phonics / Sight Word SRS app (Bun + SQLite backend on port 4321, single-file SPA). Mounted under `/alphabet-help` in production. Data stored in SQLite (`alphabet.db`, `/data/alphabet.db` in Docker).
 - `fitnessjourney/` — **disabled.** Source code preserved in this directory but not built or run. To revive: re-add the fitness blocks to `Dockerfile`, `start.sh`, and `server.js` (see git history before this point).
 
 `create_template.py` is a one-off script (run from the project's `venv/`) that uses `python-docx` to regenerate `timesheet/template.docx` from `timesheet/SignatureSheet.docx` for docxtemplater.
@@ -34,6 +35,12 @@ node scripts/build-client.js # CRA build with --max_old_space_size=512
 npm --prefix server run build # tsc → server/dist/
 ```
 
+Alphabet Time (`alphabet-help/`):
+```bash
+npm run alphabet:start       # bun alphabet-help/server.ts (port 4321)
+npm run alphabet:test        # cd alphabet-help && bun test
+```
+
 Full Docker stack (Postgres + backend + frontend) for fitness only:
 ```bash
 cd fitnessjourney && docker compose up --build
@@ -43,7 +50,9 @@ Production image (builds everything — root server, all static sites, fitness f
 
 ## Architecture notes that aren't obvious from the code
 
-**Proxy ordering in `server.js` is load-bearing.** The `/12x12/api` proxy is registered *before* `bodyParser.json()`. If you add middleware, do not insert body-parsing or anything that consumes the request stream above the proxy — the backend would receive empty POST bodies.
+**Proxy ordering in `server.js` is load-bearing.** The `/12x12/api` and `/alphabet-help` proxies are registered *before* `bodyParser.json()`. If you add middleware, do not insert body-parsing or anything that consumes the request stream above the proxies — backends would receive empty POST bodies.
+
+**Alphabet Time proxy and persistence.** `server.js` proxies `/alphabet-help` to port 4321 (Bun server) with path rewrite removing `/alphabet-help`. Database path defaults to `alphabet-help/alphabet.db` locally and `/data/alphabet.db` in production (via `DB_PATH`). `start.sh` seeds `/data/alphabet.db` from the repo's `alphabet-help/alphabet.db` if the volume doesn't already have one. Front-end API calls in `index.html` dynamically use `API_BASE = '/alphabet-help'` when hosted under `/alphabet-help` or `''` when standalone.
 
 **12x12 path-rewrite keeps `/api`.** The proxy rewrites `^/12x12` → `''`, so `/12x12/api/login` arrives at the backend as `/api/login`. The 12x12 backend's auth middleware specifically gates on `req.path.startsWith('/api')`, so don't change this without updating that check.
 
