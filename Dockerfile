@@ -1,10 +1,10 @@
 FROM node:20-alpine
 
-# Copy Bun runtime from official image
-COPY --from=oven/bun:1 /usr/local/bin/bun /usr/local/bin/bun
+# Copy Bun runtime from official Alpine image (compiled for musl)
+COPY --from=oven/bun:1-alpine /usr/local/bin/bun /usr/local/bin/bun
 
 # postgresql-client provides `psql` for the 12x12 migration runner; libgcc/libstdc++ for bun
-RUN apk add --no-cache postgresql-client libgcc libstdc++
+RUN apk add --no-cache postgresql-client libgcc libstdc++ && bun --version
 
 WORKDIR /usr/src/app
 
