@@ -1017,6 +1017,7 @@ const indexFile = Bun.file(path.join(import.meta.dir, "index.html"));
 // by the test suite — we skip the listener and just expose the handlers below.
 if (import.meta.main) {
   const server = Bun.serve({
+    hostname: "0.0.0.0",
     port: Number(process.env.PORT) || 4321,
     async fetch(req) {
       const url = new URL(req.url);

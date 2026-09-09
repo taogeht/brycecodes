@@ -97,15 +97,15 @@ app.get('/alphabet-help', (req, res, next) => {
 });
 
 app.use('/alphabet-help', createProxyMiddleware({
-    target: `http://localhost:${ALPHABET_PORT}`,
+    target: `http://127.0.0.1:${ALPHABET_PORT}`,
     changeOrigin: true,
     pathRewrite: (_path, req) => req.originalUrl.replace(/^\/alphabet-help/, '') || '/',
     on: {
         error: (err, req, res) => {
-            console.error(`[alphabet-help proxy] ${err.message}`);
+            console.error(`[alphabet-help proxy] ${err.message || err.code}`);
             if (res && !res.headersSent) {
                 res.writeHead(502, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ error: 'alphabet-help backend unreachable', details: err.message }));
+                res.end(JSON.stringify({ error: 'alphabet-help backend unreachable', details: err.message || err.code || String(err) }));
             }
         }
     }

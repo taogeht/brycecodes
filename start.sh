@@ -27,6 +27,8 @@ else
 fi
 cd /usr/src/app/alphabet-help
 DB_PATH="${ALPHABET_DB_PATH:-$ALPHABET_DB}" PORT=4321 bun server.ts &
+ALPHABET_PID=$!
+echo "alphabet-help started with PID $ALPHABET_PID on port 4321"
 
 # Start main brycecodes server on port 80
 echo "Starting main server on port 80..."
