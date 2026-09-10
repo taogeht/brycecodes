@@ -607,9 +607,9 @@ function grade(card: any, correct: boolean) {
   if (correct) {
     card.totalCorrect += 1;
     card.reps += 1;
-    if (card.reps === 1)       card.intervalDays = 1;
-    else if (card.reps === 2)  card.intervalDays = 3;
-    else                       card.intervalDays = Math.max(1, Math.round(card.intervalDays * card.ease));
+    if (card.reps === 1)       card.intervalDays = 7;
+    else if (card.reps === 2)  card.intervalDays = 21;
+    else                       card.intervalDays = Math.max(14, Math.round(card.intervalDays * card.ease));
     card.ease = Math.min(2.8, card.ease + 0.05);
   } else {
     card.reps = 0;
@@ -868,8 +868,8 @@ async function handleApi(req: Request, url: URL): Promise<Response> {
 
     if (action === "place" && m === "POST") {
       /* Placement check: the teacher marks the cards a student already knows.
-       * Each is seeded like a child who's answered correctly twice — interval 3
-       * ('young'), one confirmation review a few school-days out, then it
+       * Each is seeded like a child who's answered correctly twice — interval 21
+       * ('young'), one confirmation review 3 weeks out, then it
        * graduates to mature on the next correct. Placement is not practice, so
        * no session counters move. Unmarked cards are left untouched (new). */
       const body = (await req.json()) as { type: string; keys: string[] };
@@ -884,14 +884,14 @@ async function handleApi(req: Request, url: URL): Promise<Response> {
 
       const keys = Array.isArray(body.keys) ? body.keys : [];
       const now = Date.now();
-      const dueAt = rollOffWeekend(now + 3 * DAY_MS);
+      const dueAt = rollOffWeekend(now + 21 * DAY_MS);
       for (const key of keys) {
         const row = getQ.get(id, key) as any;
         if (!row) continue;
         updQ.run(
           2,                               // reps (as if two correct answers)
           Math.max(row.ease ?? 2.5, 2.5),  // ease — never lower an existing higher ease
-          3,                               // interval_days → 'young'
+          21,                              // interval_days → 'young' (3 weeks out)
           dueAt,
           row.lapses,
           Math.max(row.total_seen, 1),

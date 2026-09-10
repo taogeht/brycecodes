@@ -42,29 +42,29 @@ function freshCard() {
 }
 
 describe("grade — SM-2 lite scheduler", () => {
-  test("first correct: reps→1, interval 1 day, due in 1 day", () => {
+  test("first correct: reps→1, interval 7 days, due in 7 days", () => {
     const c = freshCard();
     grade(c, true);
     expect(c.reps).toBe(1);
-    expect(c.intervalDays).toBe(1);
+    expect(c.intervalDays).toBe(7);
     expect(c.totalSeen).toBe(1);
     expect(c.totalCorrect).toBe(1);
     expect(c.ease).toBeCloseTo(2.55, 5);
-    // Interval is 1 day, but the due-date is nudged off weekends (Mon–Fri app),
-    // so it's at least a day out and never lands on Sat/Sun.
-    expect(c.dueAt - c.lastSeenAt).toBeGreaterThanOrEqual(1 * DAY_MS);
+    // Interval is 7 days, but the due-date is nudged off weekends (Mon–Fri app),
+    // so it's at least a week out and never lands on Sat/Sun.
+    expect(c.dueAt - c.lastSeenAt).toBeGreaterThanOrEqual(7 * DAY_MS);
     expect([1, 2, 3, 4, 5]).toContain(new Date(c.dueAt).getDay());
   });
 
-  test("interval ladder: 1 → 3 → round(prev * ease)", () => {
+  test("interval ladder: 7 → 21 → round(prev * ease)", () => {
     const c = freshCard();
     grade(c, true);                       // reps 1
-    expect(c.intervalDays).toBe(1);
+    expect(c.intervalDays).toBe(7);
     grade(c, true);                       // reps 2
-    expect(c.intervalDays).toBe(3);
-    grade(c, true);                       // reps 3: round(3 * 2.60) = 8
+    expect(c.intervalDays).toBe(21);
+    grade(c, true);                       // reps 3: round(21 * 2.60) = 55
     expect(c.reps).toBe(3);
-    expect(c.intervalDays).toBe(8);
+    expect(c.intervalDays).toBe(55);
   });
 
   test("ease is capped at 2.8 no matter how many correct answers", () => {
@@ -165,7 +165,7 @@ describe("student lifecycle + letter answers", () => {
     });
     expect(r.status).toBe(200);
     expect(r.body.cards.A.reps).toBe(1);
-    expect(r.body.cards.A.intervalDays).toBe(1);
+    expect(r.body.cards.A.intervalDays).toBe(7);
     expect(r.body.session.reviewed).toBe(1);
     expect(r.body.session.correct).toBe(1);
     expect(r.body.session.streak).toBe(1);
@@ -230,8 +230,8 @@ describe("placement — seed known cards", () => {
     const stu = await newStudent();
     const r = await api("POST", `/api/students/${stu.id}/place`, { type: "letter", keys: ["A", "B", "C"] });
     expect(r.status).toBe(200);
-    // Placed cards seed as 'young': interval 3, reps 2, at least one seen/correct.
-    expect(r.body.cards.A.intervalDays).toBe(3);
+    // Placed cards seed as 'young': interval 21, reps 2, at least one seen/correct.
+    expect(r.body.cards.A.intervalDays).toBe(21);
     expect(r.body.cards.A.reps).toBe(2);
     expect(r.body.cards.A.totalSeen).toBeGreaterThanOrEqual(1);
     expect(r.body.cards.A.totalCorrect).toBeGreaterThanOrEqual(1);
@@ -336,7 +336,7 @@ describe("book words — the level reader's new sounds", () => {
     const r = await api("POST", `/api/students/${stu.id}/place`, { type: "book", keys: [word.id] });
     expect(r.status).toBe(200);
     const placed = r.body.bookWords.find((w: any) => w.id === word.id);
-    expect(placed.card.intervalDays).toBe(3);
+    expect(placed.card.intervalDays).toBe(21);
     expect(placed.card.reps).toBe(2);
     expect(r.body.bookSession.reviewed).toBe(0);
   });
