@@ -12,57 +12,67 @@
      Tokens
      ===================================================== */
   :root {
-  :root {
-    /* Clean Schoolhouse & Classroom Palette — crisp, high-contrast, human-crafted */
-    --bg:           #f8fafc; /* Clean slate-white canvas */
-    --bg-2:         #f1f5f9;
-    --surface:      #ffffff;
-    --surface-2:    #f8fafc;
+    /* Soft Sky Blue + Warm Amber Gentle Palette */
+    --bg:           #FFF9F0; /* Main background: Warm off-white */
+    --bg-2:         #FFF4E5;
+    --surface:      #FFFFFF; /* Cards / activity area: Soft white */
+    --surface-2:    #FAF6F0;
 
-    --ink:          #0f172a; /* Deep legible slate */
-    --ink-2:        #334155;
-    --ink-3:        #64748b;
-    --ink-4:        #94a3b8;
+    --ink:          #344054; /* Main text: Deep navy-gray */
+    --ink-2:        #475467;
+    --ink-3:        #667085; /* Secondary text: Muted slate */
+    --ink-4:        #98A2B3;
 
-    --line:         #e2e8f0;
-    --line-2:       #cbd5e1;
+    --line:         #D9E2EC; /* Borders: Pale blue-gray */
+    --line-2:       #BCCCDC;
 
-    /* Classroom Mastery States:
-       - Mastered / Mature: Confident Emerald Green (#16a34a)
-       - Young / Practicing: Clean Schoolhouse Cobalt Blue (#2563eb)
-       - Learning / In-Progress: Warm Pencil Amber (#d97706)
-       - Missed / Struggle: Crisp Brick Crimson (#dc2626)
-    */
-    --plum:         #16a34a; /* Mastered / Mature: Emerald Green */
-    --plum-soft:    #dcfce7;
-    --plum-ink:     #14532d;
+    /* Primary buttons: Calm blue (#5B8DEF) */
+    --primary:      #5B8DEF;
+    --primary-soft: #EDF4FE;
+    --primary-ink:  #1D3B7A;
 
-    --sage:         #16a34a; /* Success / Got it: Emerald Green */
-    --sage-soft:    #dcfce7;
-    --sage-ink:     #14532d;
+    /* Correct answer / Mature: Soft teal-blue (#3AA6A0) */
+    --correct:      #3AA6A0;
+    --correct-soft: #E6F5F4;
+    --correct-ink:  #164E4B;
+    --sage:         #3AA6A0;
+    --sage-soft:    #E6F5F4;
+    --sage-ink:     #164E4B;
+    --plum:         #3AA6A0;
+    --plum-soft:    #E6F5F4;
+    --plum-ink:     #164E4B;
 
-    --coral:        #dc2626; /* Missed / Needs practice: Crimson */
-    --coral-soft:   #fee2e2;
-    --coral-ink:    #991b1b;
+    /* Incorrect / Try again / Learning: Warm amber (#E6A23C) */
+    --incorrect:    #E6A23C;
+    --incorrect-soft:#FDF4E6;
+    --incorrect-ink:#7C4F13;
+    --coral:        #E6A23C;
+    --coral-soft:   #FDF4E6;
+    --coral-ink:    #7C4F13;
+    --sun:          #E6A23C;
+    --sun-soft:     #FDF4E6;
+    --sun-ink:      #7C4F13;
 
-    --sun:          #d97706; /* Learning / To Review: Amber */
-    --sun-soft:     #fef3c7;
-    --sun-ink:      #78350f;
+    /* Hints / highlights: Gentle lavender (#9B8AD1) */
+    --hint:         #9B8AD1;
+    --hint-soft:    #F2EFF9;
+    --hint-ink:     #433364;
 
-    --teal:         #2563eb; /* Young / Secondary: Royal Cobalt */
-    --teal-soft:    #dbeafe;
-    --teal-ink:     #1e40af;
+    /* Practicing / Young: Calm blue (#5B8DEF) */
+    --teal:         #5B8DEF;
+    --teal-soft:    #EDF4FE;
+    --teal-ink:     #1D3B7A;
 
     --radius-lg: 24px;
     --radius:    16px;
     --radius-sm: 12px;
     --radius-xs: 8px;
 
-    /* Clean natural drop shadows, no neon/purple glows */
-    --shadow-soft: 0 1px 3px 0 rgba(15, 23, 42, 0.05),
-                   0 1px 2px -1px rgba(15, 23, 42, 0.03);
-    --shadow-pop:  0 10px 25px -5px rgba(15, 23, 42, 0.08),
-                   0 8px 10px -6px rgba(15, 23, 42, 0.04);
+    /* Clean natural drop shadows using deep navy-gray */
+    --shadow-soft: 0 1px 3px 0 rgba(52, 64, 84, 0.05),
+                   0 1px 2px -1px rgba(52, 64, 84, 0.03);
+    --shadow-pop:  0 10px 25px -5px rgba(52, 64, 84, 0.08),
+                   0 8px 10px -6px rgba(52, 64, 84, 0.04);
 
     --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
     --ease-out-soft: cubic-bezier(0.16, 1, 0.3, 1);
@@ -85,12 +95,12 @@
   }
   button { font-family: inherit; cursor: pointer; border: 0; background: none; color: inherit; }
   button:focus-visible {
-    outline: 3px solid var(--teal);
+    outline: 3px solid var(--primary);
     outline-offset: 3px;
     border-radius: var(--radius-sm);
   }
   input, select { font-family: inherit; font-size: 17px; color: var(--ink); font-weight: 600; }
-  ::selection { background: var(--teal-soft); color: var(--teal-ink); }
+  ::selection { background: var(--primary-soft); color: var(--primary-ink); }
 
   /* =====================================================
      Layout
@@ -117,8 +127,8 @@
   .brand-mark {
     width: 48px; height: 48px;
     border-radius: 14px;
-    background: var(--ink);
-    color: var(--surface);
+    background: var(--primary);
+    color: #ffffff;
     display: grid; place-items: center;
     font-family: 'Fredoka', sans-serif;
     font-weight: 600;
@@ -284,10 +294,15 @@
     border-radius: 40px;
     background: var(--surface-2);
     border: 1.5px dashed var(--line-2);
-    transition: background 280ms var(--ease-out), border-color 280ms var(--ease-out);
+    transition: background 280ms var(--ease-out), border-color 280ms var(--ease-out), box-shadow 280ms var(--ease-out);
   }
-  .letter-frame.flash-yes { background: var(--sage-soft); border-color: var(--sage); }
-  .letter-frame.flash-no  { background: var(--coral-soft); border-color: var(--coral); }
+  .letter-frame.flash-yes { background: var(--correct-soft); border-color: var(--correct); }
+  .letter-frame.flash-no  { background: var(--incorrect-soft); border-color: var(--incorrect); }
+  .letter-frame.is-hinted {
+    background: var(--hint-soft);
+    border-color: var(--hint);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--hint), transparent 60%);
+  }
 
   .letter {
     font-family: 'Comic Sans MS', 'Comic Sans', 'Chalkboard SE', cursive;
@@ -306,9 +321,7 @@
     50% { transform: translateX(5px) rotate(1deg); }
     75% { transform: translateX(-3px); }
   }
-  /* Success gets an equally kinetic answer to the wrong-answer shake: a gentle
-     spring pop that peaks early, so it still reads even when the next card's
-     entry animation takes over. Neutralised by the global reduced-motion rule. */
+  /* Success gets a gentle kinetic spring pop */
   .letter.pop { animation: pop 300ms cubic-bezier(0.34, 1.4, 0.64, 1); }
   @keyframes pop {
     0%   { transform: scale(1); }
@@ -325,7 +338,7 @@
   }
   .letter-caption .pellet { width: 4px; height: 4px; border-radius: 50%; background: var(--ink-4); }
 
-  /* Entry animation, no scale(0) per Emil */
+  /* Entry animation */
   .letter-frame[data-enter] {
     opacity: 0;
     transform: scale(0.96);
@@ -333,6 +346,103 @@
   }
   @keyframes letterIn {
     to { opacity: 1; transform: scale(1); }
+  }
+
+  /* Multi-modal feedback toast on stage */
+  .feedback-toast {
+    position: absolute;
+    top: 14px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-6px);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 20px;
+    border-radius: 999px;
+    font-family: 'Fredoka', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    box-shadow: var(--shadow-pop);
+    z-index: 10;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 160ms var(--ease-out), transform 160ms var(--ease-spring);
+  }
+  .feedback-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  .feedback-toast.feedback-yes {
+    background: var(--correct);
+    color: #ffffff;
+    border: 1.5px solid color-mix(in srgb, var(--correct), black 8%);
+  }
+  .feedback-toast.feedback-no {
+    background: var(--incorrect);
+    color: #ffffff;
+    border: 1.5px solid color-mix(in srgb, var(--incorrect), black 8%);
+  }
+  .feedback-toast .feedback-icon {
+    font-size: 19px;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  .stage-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: -6px;
+    margin-bottom: 2px;
+  }
+  .hint-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 18px;
+    border-radius: 999px;
+    background: var(--hint-soft);
+    border: 1.5px solid var(--hint);
+    color: var(--ink);
+    font-family: 'Fredoka', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 140ms var(--ease-out), background 180ms var(--ease-out), box-shadow 180ms var(--ease-out);
+    box-shadow: 0 1px 2px rgba(52, 64, 84, 0.04);
+  }
+  .hint-btn:hover {
+    background: color-mix(in srgb, var(--hint-soft), var(--hint) 14%);
+    transform: translateY(-1px);
+    box-shadow: 0 3px 6px rgba(52, 64, 84, 0.08);
+  }
+  .hint-btn:active {
+    transform: scale(0.97);
+  }
+  .hint-btn.active {
+    background: var(--hint);
+    color: #ffffff;
+    border-color: var(--hint);
+  }
+  .hint-box {
+    display: none;
+    max-width: 420px;
+    padding: 10px 18px;
+    border-radius: 12px;
+    background: var(--hint-soft);
+    border: 1.5px solid var(--hint);
+    color: var(--ink);
+    font-size: 15px;
+    font-weight: 600;
+    text-align: center;
+    line-height: 1.4;
+    animation: letterIn 200ms var(--ease-out-soft) forwards;
+  }
+  .hint-box.show {
+    display: block;
+  }
+  .hint-box b {
+    color: var(--hint-ink);
   }
 
   /* =====================================================
@@ -347,39 +457,39 @@
     z-index: 1;
   }
   .answer {
-    --bg-c: var(--sage);
-    --bg-soft: var(--sage-soft);
-    --ink-c: var(--sage-ink);
+    --bg-c: var(--correct);
+    --bg-soft: var(--correct-soft);
+    --ink-c: var(--ink);
     position: relative;
-    padding: 28px 26px;
+    padding: 24px 26px;
     border-radius: 22px;
     background: var(--bg-soft);
-    border: 1.5px solid color-mix(in oklch, var(--bg-c), white 55%);
+    border: 1.5px solid color-mix(in srgb, var(--bg-c), #ffffff 35%);
     color: var(--ink-c);
     font-family: 'Fredoka', sans-serif;
     font-weight: 600;
     font-size: 24px;
     letter-spacing: -0.005em;
     display: flex; align-items: center; justify-content: center; gap: 12px;
-    box-shadow: 0 1px 0 oklch(1 0 0 / .8) inset,
-                0 8px 0 -2px color-mix(in oklch, var(--bg-c), white 70%);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset,
+                0 6px 0 -1px color-mix(in srgb, var(--bg-c), #ffffff 60%);
     transition: transform 140ms var(--ease-out),
                 background 180ms var(--ease-out),
                 box-shadow 140ms var(--ease-out);
   }
   .answer:hover {
-    background: color-mix(in oklch, var(--bg-soft), var(--bg-c) 12%);
+    background: color-mix(in srgb, var(--bg-soft), var(--bg-c) 14%);
   }
   .answer:active {
     transform: translateY(2px) scale(0.985);
-    box-shadow: 0 1px 0 oklch(1 0 0 / .8) inset,
-                0 4px 0 -2px color-mix(in oklch, var(--bg-c), white 70%);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset,
+                0 3px 0 -1px color-mix(in srgb, var(--bg-c), #ffffff 60%);
   }
   .answer .icon {
-    width: 32px; height: 32px;
+    width: 34px; height: 34px;
     border-radius: 999px;
     background: var(--bg-c);
-    color: var(--surface);
+    color: #ffffff;
     display: grid; place-items: center;
     flex-shrink: 0;
   }
@@ -389,17 +499,17 @@
     font-weight: 800;
     padding: 3px 8px;
     border-radius: 8px;
-    background: oklch(1 0 0 / .55);
-    color: var(--ink-c);
+    background: rgba(255, 255, 255, 0.75);
+    color: var(--ink);
     margin-left: auto;
     letter-spacing: 0.06em;
-    border: 1px solid color-mix(in oklch, var(--bg-c), white 55%);
+    border: 1px solid color-mix(in srgb, var(--bg-c), #ffffff 40%);
   }
 
   .answer.no {
-    --bg-c: var(--coral);
-    --bg-soft: var(--coral-soft);
-    --ink-c: var(--coral-ink);
+    --bg-c: var(--incorrect);
+    --bg-soft: var(--incorrect-soft);
+    --ink-c: var(--ink);
   }
 
   /* =====================================================
@@ -435,8 +545,8 @@
   }
   .case-toggle button:hover { color: var(--ink); }
   .case-toggle button.active {
-    background: var(--ink);
-    color: var(--surface);
+    background: var(--primary);
+    color: #ffffff;
   }
   .undo-btn {
     display: inline-flex; align-items: center; gap: 6px;
@@ -808,17 +918,17 @@
   .btn:hover { background: var(--surface-2); color: var(--ink); }
   .btn:active { transform: scale(0.97); }
   .btn.primary {
-    background: var(--ink);
-    color: var(--surface);
-    border-color: var(--ink);
+    background: var(--primary);
+    color: #ffffff;
+    border-color: var(--primary);
   }
-  .btn.primary:hover { background: oklch(0.18 0.022 55); color: var(--surface); }
+  .btn.primary:hover { background: color-mix(in srgb, var(--primary), black 10%); color: #ffffff; }
   .btn.danger {
-    color: var(--coral-ink);
-    border-color: color-mix(in oklch, var(--coral), white 55%);
-    background: var(--coral-soft);
+    color: var(--incorrect-ink);
+    border-color: color-mix(in srgb, var(--incorrect), white 45%);
+    background: var(--incorrect-soft);
   }
-  .btn.danger:hover { background: color-mix(in oklch, var(--coral-soft), var(--coral) 12%); }
+  .btn.danger:hover { background: color-mix(in srgb, var(--incorrect-soft), var(--incorrect) 14%); }
   .btn.ghost {
     border-color: var(--line);
     background: transparent;
@@ -969,7 +1079,7 @@
   }
   .mode-toggle button:hover { color: var(--ink); }
   .mode-toggle button.active {
-    background: var(--plum);
+    background: var(--primary);
     color: #ffffff;
   }
   .case-toggle[hidden] { display: none; }
@@ -1013,7 +1123,7 @@
     align-items: center;
     width: 100%;
     margin-top: 24px;
-    color: var(--plum);
+    color: var(--primary);
   }
   .read-arrow .dot {
     width: 17px; height: 17px;
@@ -1046,10 +1156,10 @@
     left: 0;
     width: 22px; height: 22px;
     border-radius: 50%;
-    background: var(--plum);
+    background: var(--hint);
     box-shadow:
-      0 0 0 3px rgba(22, 163, 74, 0.25),
-      0 2px 8px -2px rgba(22, 163, 74, 0.4);
+      0 0 0 3px rgba(155, 138, 209, 0.25),
+      0 2px 8px -2px rgba(155, 138, 209, 0.4);
     transform: translate(-50%, -50%);
     pointer-events: none;
     opacity: 0;
@@ -1059,7 +1169,7 @@
     transform: translate(-50%, -50%) scale(1.35);
   }
 
-  /* Each letter pops (plum + lift) when the tracer reaches it. The script
+  /* Each letter pops (hint lavender + lift) when the tracer reaches it. The script
      adds .flash one at a time in reading order, then to all at once
      (with .blend) for the blended sound. */
   .letter .glyph {
@@ -1068,7 +1178,7 @@
                 transform 240ms var(--ease-spring);
   }
   .letter .glyph.flash {
-    color: var(--plum);
+    color: var(--hint);
     transform: translateY(-0.08em) scale(1.1);
   }
   .letter .glyph.flash.blend {
@@ -1889,17 +1999,17 @@
 
       <div class="answers" id="answers">
         <button class="answer no" id="btn-no">
-          <span class="icon">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7h10" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+          <span class="icon" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 9a6 6 0 1 0 1.76-4.24L2.5 7M2.5 3v4.5H7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </span>
-          <span>Needs practice</span>
+          <span>Try again</span>
           <span class="kbd">N</span>
         </button>
         <button class="answer" id="btn-yes">
-          <span class="icon">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 7.2l3 3 5-6.4" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="icon" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M4 9.5l3.5 3.5 7-8" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </span>
-          <span>Got it</span>
+          <span>Great job!</span>
           <span class="kbd">Y</span>
         </button>
       </div>
@@ -1941,7 +2051,7 @@
         </div>
         <div class="stats">
           <div class="stat sage">
-            <div class="label">Got it</div>
+            <div class="label">Great job</div>
             <div class="value" id="stat-correct">0</div>
             <div class="delta" id="stat-accuracy">No reviews yet</div>
           </div>
@@ -1978,8 +2088,8 @@
 
       <div class="panel" id="trouble-panel" hidden>
         <div class="panel-head">
-          <h3>Trouble spots</h3>
-          <span class="meta">most missed</span>
+          <h3>Practice focus</h3>
+          <span class="meta">ready to review</span>
         </div>
         <div class="trouble-list" id="trouble-list"></div>
       </div>
@@ -2055,7 +2165,7 @@
       <p class="screen-sub" id="class-sub">Tap a student to start practice.</p>
     </div>
     <div class="needs-panel" id="needs-panel" hidden>
-      <h2 class="needs-title">Needs the most work</h2>
+      <h2 class="needs-title">Practice focus · Ready to review</h2>
       <ul class="needs-list" id="needs-list"></ul>
     </div>
     <div class="pick-grid" id="class-grid"></div>
@@ -2497,7 +2607,7 @@ function impactScore(it, t) {
   const c = it.card;
   if (c.totalSeen === 0) return -1; // brand-new: introduced only after reviews
   const overdueDays = Math.max(0, (t - c.dueAt) / DAY_MS);
-  const miss = 1 - (c.totalCorrect / c.totalSeen);  // 0 perfect … 1 always wrong
+  const miss = 1 - (c.totalCorrect / c.totalSeen);  // 0 perfect … 1 needs review
   const relearning = c.intervalDays < 7 ? 1 : 0;    // fragile, in reteach loop (< 1 week)
   return 0.5 + c.lapses * 3 + miss * 5 + overdueDays + relearning * 2;
 }
@@ -2906,11 +3016,19 @@ function renderLetter() {
     ? `<div class="read-arrow" aria-hidden="true"><span class="dot"></span><span class="line"></span><span class="head"></span><span class="tracer"></span></div>`
     : '';
   stage.innerHTML = `
+    <div class="feedback-toast" id="feedback-toast" role="status" aria-live="polite"></div>
     <div class="letter-frame" data-enter>
       <div class="letter ${letterClass}" id="letter-el">${letterInner}</div>
       ${arrowHtml}
     </div>
     ${exampleHtml}
+    <div class="stage-actions">
+      <button class="hint-btn" id="hint-btn" type="button" aria-label="Hint: Let's look closely">
+        <span class="hint-icon" aria-hidden="true">💡</span>
+        <span>Let’s look closely</span>
+      </button>
+    </div>
+    <div class="hint-box" id="hint-box"></div>
     <div class="letter-caption">
       <span>${labelFor(item)}</span>
       <span class="pellet"></span>
@@ -2921,6 +3039,41 @@ function renderLetter() {
   stage.dataset.currentKey = item.key;
   renderPanels(false);
   playReadingAnimation();
+
+  const hintBtn = $('#hint-btn');
+  const hintBox = $('#hint-box');
+  if (hintBtn && hintBox) {
+    hintBtn.addEventListener('click', () => {
+      const frame = stage.querySelector('.letter-frame');
+      const isNowActive = hintBtn.classList.toggle('active');
+      if (frame) frame.classList.toggle('is-hinted', isNowActive);
+
+      if (isNowActive) {
+        let hintContent = '';
+        if (isPhonics) {
+          hintContent = item.example
+            ? `Sound out <b>${escapeHtml(item.display)}</b> as in <b>${escapeHtml(item.example)}</b>`
+            : `Listen to the sound: <b>${escapeHtml(item.display)}</b>`;
+        } else if (isCvc) {
+          const parts = item.segments ? item.segments.join(' + ') : item.display;
+          hintContent = `Blend the parts: <b>${escapeHtml(parts)}</b> = <b>${escapeHtml(item.display)}</b>`;
+        } else if (isSight) {
+          hintContent = `Read the whole word together: <b>${escapeHtml(item.display)}</b>`;
+        } else {
+          const isUpper = item.key === item.key.toUpperCase();
+          const pair = isUpper
+            ? `${item.key} (uppercase) and ${item.key.toLowerCase()} (lowercase)`
+            : `${item.key.toUpperCase()} (uppercase) and ${item.key} (lowercase)`;
+          hintContent = `Letter <b>${escapeHtml(item.display)}</b> · Pair: <b>${escapeHtml(pair)}</b>`;
+        }
+        hintBox.innerHTML = `<span>💡 <b>Look closely:</b> ${hintContent}</span>`;
+        hintBox.classList.add('show');
+        if (typeof playReadingAnimation === 'function') playReadingAnimation();
+      } else {
+        hintBox.classList.remove('show');
+      }
+    });
+  }
 }
 
 function labelFor(item) {
@@ -3062,15 +3215,15 @@ function renderTrouble() {
   .slice(0, 6);
 
   if (!trouble.length) {
-    listEl.innerHTML = '<div class="trouble-empty">No trouble spots — going strong! 🎉</div>';
+    listEl.innerHTML = '<div class="trouble-empty">All cards going strong! 🎉</div>';
     return;
   }
   listEl.innerHTML = trouble.map(it => {
-    const miss = it.lapses === 1 ? '1 miss' : it.lapses + ' misses';
-    return '<div class="trouble-row" title="' + escapeHtml(it.area) + ' · ' + miss + ' · ' + it.accuracy + '% correct">' +
+    const retryLabel = it.lapses === 1 ? '1 retry' : it.lapses + ' retries';
+    return '<div class="trouble-row" title="' + escapeHtml(it.area) + ' · ' + retryLabel + ' · ' + it.accuracy + '% correct">' +
       '<span class="trouble-glyph">' + escapeHtml(it.label) + '</span>' +
       '<span class="trouble-area">' + it.area + '</span>' +
-      '<span class="trouble-stat">' + miss + ' · ' + it.accuracy + '%</span>' +
+      '<span class="trouble-stat">' + retryLabel + ' · ' + it.accuracy + '%</span>' +
     '</div>';
   }).join('');
 }
@@ -3134,8 +3287,8 @@ function renderWeek() {
     ? totalReviewed + ' reviewed · ' + pct + '%'
     : 'no practice yet';
   summary.innerHTML = totalReviewed > 0
-    ? '<span><span class="dot sage"></span><b>' + totalCorrect + '</b> got it</span>' +
-      '<span><span class="dot coral"></span><b>' + (totalReviewed - totalCorrect) + '</b> missed</span>' +
+    ? '<span><span class="dot sage"></span><b>' + totalCorrect + '</b> remembered</span>' +
+      '<span><span class="dot coral"></span><b>' + (totalReviewed - totalCorrect) + '</b> to review</span>' +
       '<span><b>' + totalNew + '</b> new learned</span>'
     : '<span>Start practicing to build a weekly view.</span>';
 }
@@ -3856,8 +4009,27 @@ async function answer(correct) {
 
   const frame = stage.querySelector('.letter-frame');
   const letterEl = stage.querySelector('.letter');
+  const toastEl = stage.querySelector('#feedback-toast');
+
   if (frame) frame.classList.add(correct ? 'flash-yes' : 'flash-no');
   if (letterEl) letterEl.classList.add(correct ? 'pop' : 'shake');
+
+  if (toastEl) {
+    if (correct) {
+      toastEl.className = 'feedback-toast feedback-yes show';
+      toastEl.innerHTML = '<span class="feedback-icon" aria-hidden="true">✓</span> <span>Great job!</span>';
+    } else {
+      const gentlePhrases = [
+        'Almost!',
+        'Let’s try once more',
+        'Try again',
+        type === 'phonics' ? 'Listen again' : 'Almost!'
+      ];
+      const phrase = gentlePhrases[Math.floor(Math.random() * gentlePhrases.length)];
+      toastEl.className = 'feedback-toast feedback-no show';
+      toastEl.innerHTML = `<span class="feedback-icon" aria-hidden="true">↻</span> <span>${phrase}</span>`;
+    }
+  }
 
   const startedAt = performance.now();
   try {
@@ -3873,7 +4045,7 @@ async function answer(correct) {
     return;
   }
 
-  const minHold = correct ? 220 : 320;
+  const minHold = correct ? 380 : 480;
   const elapsed = performance.now() - startedAt;
   const wait = Math.max(0, minHold - elapsed);
   setTimeout(() => {
@@ -4535,6 +4707,7 @@ document.addEventListener('keydown', (e) => {
   if (view !== 'practice') return;
   if (e.key === 'y' || e.key === 'Y' || e.key === 'ArrowRight') { e.preventDefault(); answer(true); }
   else if (e.key === 'n' || e.key === 'N' || e.key === 'ArrowLeft') { e.preventDefault(); answer(false); }
+  else if (e.key === 'h' || e.key === 'H') { e.preventDefault(); $('#hint-btn')?.click(); }
   else if (e.key === 'z' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); undo(); }
 });
 
