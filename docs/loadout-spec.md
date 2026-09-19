@@ -148,7 +148,9 @@ appended by the migration.
 ```
 
 `status` is one of `pending`, `confirmed`, `adjusted`. Quests with
-`requiresParentConfirm: false` are written straight to `confirmed`.
+`requiresParentConfirm: false` are written straight to `confirmed`. `awarded`
+is the computed total; `paid` is what has actually hit the ledger so far
+(`ledgerIds` lists the rows) — the two differ while pending or below target.
 
 ### Ledger row (as returned by the API)
 
@@ -211,7 +213,18 @@ can reopen from HQ.
 
 Touch targets minimum 44px; pack rows are 60px.
 
-**`/quest/:id`** — phase 2. **`/vault`** — phase 3. **`/log`** — phase 2.
+**`/quest/:id` — Quest check-in.** Stepper for external XP / minutes / counts
+(±1/±5 or ±5/±10), a single "Mark done" toggle for simple quests, an optional
+focus timer (persists in localStorage; "Use N min" fills minutes for duration
+quests, saves focus minutes otherwise), the quest's power-ups as large toggles
+with plain-language labels, and a sticky running total that shows what's *new
+since the last log*. Re-logging can only add. Paid power-ups lock; confirmed or
+adjusted check-ins lock entirely.
+
+**`/log`** — the ledger, newest first, grouped by day: pack checks, quests,
+adjustments (with the parent's note), the starting balance.
+
+**`/vault`** — phase 3.
 
 ### Parent (1280px, desktop, light) — `public/hq.html`
 
@@ -233,8 +246,16 @@ ticked-but-missing, not-ticked) and per-day rows. Ticked-but-missing is a
 packing problem, not-ticked is an attention problem — they need different
 fixes. Seeded now; phase 4 expands it.
 
-**`/hq/quests`**, **`/hq/rewards`**, **`/hq/settings`** — CRUD over config
-with enable toggles. Phase 2+.
+**`/hq`** also lists the day's check-ins (value, power-ups, status, award,
+Adjust) and a **Pending approvals** card with Confirm / Adjust for
+`requiresParentConfirm` quests across the last 30 days.
+
+**`/hq/quests`** — every quest as a card: enable switch, reorder, edit form
+(name, kind, target, unit, XP/coins/screen, per-unit for counts, cadence and
+times-per-week, active days, parent-confirms, counts-for-streak, power-ups),
+two-step delete, new quest. Power-ups are edited on the same page.
+
+**`/hq/rewards`**, **`/hq/settings`** — phase 3.
 
 ---
 
@@ -257,9 +278,11 @@ GET  /history/pack?weeks=4               per-day stats + byWeekday aggregates
 GET  /hq/overview?date=                  hq — daily-log bundle
 GET  /hq/last-list?before=               hq — most recent parent-written list
 POST /hq/login { pin } · POST /hq/logout · GET /hq/session
---- phase 2+ ---
-POST /day/:date/checkin                  { questId, value, focusMinutes, powerUps }
-POST /checkin/:id/confirm · POST /checkin/:id/adjust
+POST /day/:date/checkin                  { questId, value, focusMinutes, powerUps } → creates or re-logs; pays the delta
+GET  /checkins/pending                   hq — pending across the last 30 days
+POST /checkin/:id/confirm                hq — pays a pending check-in once
+POST /checkin/:id/adjust                 hq — { awarded, note } → adjust row for the difference
+--- phase 3 ---
 POST /rewards/:id/request · POST /requests/:id/approve · POST /requests/:id/deny
 ```
 
@@ -299,8 +322,11 @@ at phase 2 cutover, when `/chores` is redirected.
 **Phase 1 — the pack loop. ✅** `/hq/list` (+ print slip), `/pack`, `/hq`
 verification, history seed. Unit + API integration tests.
 
-**Phase 2 — quests and currency.** Check-in screens, power-ups, pending
-confirms, Today quest rows go live, Log tab, `/hq/quests`. Redirect `/chores`.
+**Phase 2 — quests and currency. ✅** Check-in screen (stepper / done toggle,
+focus timer, power-up toggles, running total), monotonic delta payouts,
+pending → confirm → adjust in HQ, Today quest rows live, Log tab,
+`/hq/quests` editor (quests + power-ups). `/chores` 301s automatically once the
+migration has run — see the cutover runbook in `loadout/README.md`.
 
 **Phase 3 — vault.** Rewards, requests, approvals, savings goals, `/hq/rewards`.
 

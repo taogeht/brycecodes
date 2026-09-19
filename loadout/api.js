@@ -3,6 +3,7 @@
 // Parent-only routes are gated by auth.requireHq; Edward's routes are open,
 // matching the old chores app.
 const express = require('express');
+const crypto = require('crypto');
 const tz = require('./lib/tz');
 const S = require('./lib/scoring');
 const makeStore = require('./lib/store');
@@ -16,6 +17,34 @@ function bad(res, message, status = 400) {
 
 function cleanLabel(s) {
     return String(s || '').replace(/\s+/g, ' ').trim().slice(0, 120);
+}
+
+const CHECKIN_ID_RE = /^chk_(\d{4})(\d{2})(\d{2})_[0-9a-f]{8}$/;
+function checkinDate(id) {
+    const m = CHECKIN_ID_RE.exec(String(id || ''));
+    return m ? `${m[1]}-${m[2]}-${m[3]}` : null;
+}
+function toInt(v, { min = 0, max = 100000 } = {}) {
+    const n = Math.round(Number(v));
+    return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : null;
+}
+function awardDelta(total, paid) {
+    const p = paid || S.ZERO;
+    return S.award(total.xp - p.xp, total.coins - p.coins, total.screenMinutes - p.screenMinutes);
+}
+function isNegative(a) { return a.xp < 0 || a.coins < 0 || a.screenMinutes < 0; }
+function isZero(a) { return a.xp === 0 && a.coins === 0 && a.screenMinutes === 0; }
+// Days in the Mon–Sun week of `date` on which `questId` was logged with target met.
+function weekCount(daysByKey, date, questId, exceptDate) {
+    const mon = tz.mondayOf(date);
+    let n = 0;
+    for (let i = 0; i < 7; i++) {
+        const k = tz.addDays(mon, i);
+        if (k === exceptDate) continue;
+        const d = daysByKey[k];
+        if (d && (d.checkins || []).some(c => c.questId === questId && c.targetMet)) n++;
+    }
+    return n;
 }
 
 function wrap(fn) {
@@ -68,10 +97,12 @@ module.exports = function loadout(pool, opts = {}) {
         ]);
         days[today] = day;
         const quests = S.questsActiveOn(config, today);
+        const weekCounts = {};
+        for (const q of quests) if ((q.cadence || 'daily') === 'weekly') weekCounts[q.id] = weekCount(days, today, q.id);
         return {
             date: today, weekday: tz.weekday(today), now: tz.nowISO(),
             isSchoolDay: quests.some(q => q.kind === 'packCheck'),
-            day, quests, balances: bal,
+            day, quests, weekCounts, powerUps: config.powerUps || [], balances: bal,
             level: S.levelFor(config, bal.lifetimeXp),
             streak: S.streak(config, days, today),
             child: config.child,
@@ -211,6 +242,136 @@ module.exports = function loadout(pool, opts = {}) {
         res.json(day);
     }));
 
+    // ── Quest check-ins (§5 rules 1, 2, 6, 7) ───────────────────────────
+    // One check-in per quest per day. Re-logging recomputes the award and
+    // pays only the delta over what's already been paid; deltas must be ≥ 0
+    // (add minutes or a power-up, never remove — lowering is a parent
+    // adjustment). requiresParentConfirm quests pay nothing until confirmed
+    // and are locked for Edward afterwards.
+    async function payDelta(checkin, delta, kind, note, client, date) {
+        if (isZero(delta)) return null;
+        const txn = await store.appendLedger({
+            kind, ...delta,
+            source: { type: kind === 'adjust' ? 'checkin-adjust' : 'checkin', date, checkinId: checkin.id, questId: checkin.questId },
+            note,
+        }, client);
+        checkin.paid = S.addAwards(checkin.paid || S.ZERO, delta);
+        checkin.ledgerIds = [...(checkin.ledgerIds || []), txn.id];
+        return txn;
+    }
+
+    router.post('/day/:date/checkin', wrap(async (req, res) => {
+        const date = req.dateKey;
+        const today = tz.dateKey();
+        const hq = auth.isHq(req);
+        if (date > today) return bad(res, 'That day has not happened yet.');
+        if (!hq && date < tz.addDays(today, -1)) return bad(res, 'Only today or yesterday can be logged. Ask a parent for older days.');
+        const config = await store.getConfig();
+        const quest = S.questById(config, req.body && req.body.questId);
+        if (!quest || quest.enabled === false || quest.kind === 'packCheck') return bad(res, 'Unknown quest.');
+        if (!S.questsActiveOn(config, date).some(q => q.id === quest.id)) return bad(res, quest.name + ' is not on the board that day.');
+
+        const value = quest.kind === 'simple' ? 1 : toInt(req.body.value);
+        if (value === null) return bad(res, 'value must be a whole number ≥ 0');
+        const focusMinutes = toInt(req.body.focusMinutes || 0, { max: 24 * 60 });
+        const powerUps = Array.isArray(req.body.powerUps) ? req.body.powerUps.map(String) : [];
+        const computed = S.checkinAward(config, quest, { value, powerUps });
+
+        const weekly = (quest.cadence || 'daily') === 'weekly';
+        const daysThisWeek = weekly ? await store.daysBetween(tz.mondayOf(date), tz.addDays(tz.mondayOf(date), 6)) : null;
+
+        const { day, result } = await store.withDay(date, async (day, client) => {
+            day.checkins = day.checkins || [];
+            let c = day.checkins.find(x => x.questId === quest.id);
+            const now = tz.nowISO();
+            if (c && !hq && (c.status === 'adjusted' || (quest.requiresParentConfirm && c.status === 'confirmed'))) {
+                return { conflict: 'A parent has already confirmed this one. Ask them to adjust it.' };
+            }
+            if (weekly && !c && computed.targetMet && weekCount(daysThisWeek, date, quest.id, date) >= (quest.timesPerWeek || 1)) {
+                return { conflict: `Already done ${quest.timesPerWeek || 1}× this week.` };
+            }
+            if (!c) {
+                c = { id: `chk_${date.replace(/-/g, '')}_${crypto.randomBytes(4).toString('hex')}`, questId: quest.id,
+                    loggedAt: now, paid: S.ZERO, ledgerIds: [], status: quest.requiresParentConfirm ? 'pending' : 'confirmed' };
+                day.checkins.push(c);
+            }
+            const delta = awardDelta(computed.total, c.paid);
+            if (isNegative(delta) && !hq) return { conflict: 'You can add to a check-in but not take away. Ask a parent to adjust it.' };
+            Object.assign(c, { value, focusMinutes, powerUps: computed.applied, targetMet: computed.targetMet,
+                awarded: computed.total, base: computed.base, updatedAt: now });
+            let paidNow = S.ZERO;
+            if (c.status !== 'pending') {
+                await payDelta(c, delta, isNegative(delta) ? 'adjust' : 'earn', `${quest.name} ${date}`, client, date);
+                paidNow = delta;
+            }
+            return { checkin: c, paidNow };
+        });
+        if (result.conflict) return res.status(409).json({ error: 'conflict', message: result.conflict, day });
+        res.json({ day, checkin: result.checkin, paid: result.paidNow, pending: result.checkin.status === 'pending' });
+    }));
+
+    // Pending check-ins across the last 30 days, oldest first.
+    router.get('/checkins/pending', auth.requireHq, wrap(async (req, res) => {
+        const today = tz.dateKey();
+        const [config, days] = await Promise.all([store.getConfig(), store.daysBetween(tz.addDays(today, -30), today)]);
+        const out = [];
+        for (const key of Object.keys(days).sort()) {
+            for (const c of days[key].checkins || []) {
+                if (c.status !== 'pending') continue;
+                const q = S.questById(config, c.questId);
+                out.push({ date: key, checkin: c, quest: q ? { id: q.id, name: q.name, kind: q.kind, target: q.target, unitLabel: q.unitLabel } : null });
+            }
+        }
+        res.json(out);
+    }));
+
+    router.param('checkinId', (req, res, next, id) => {
+        const date = checkinDate(id);
+        if (!date || !tz.isDateKey(date)) return bad(res, 'bad check-in id');
+        req.checkinDate = date;
+        req.checkinId = id;
+        next();
+    });
+
+    router.post('/checkin/:checkinId/confirm', auth.requireHq, wrap(async (req, res) => {
+        const config = await store.getConfig();
+        const { day, result } = await store.withDay(req.checkinDate, async (day, client) => {
+            const c = (day.checkins || []).find(x => x.id === req.checkinId);
+            if (!c) return { missing: true };
+            if (c.status !== 'pending') return { checkin: c, already: true };
+            const q = S.questById(config, c.questId);
+            c.status = 'confirmed';
+            c.confirmedAt = tz.nowISO();
+            await payDelta(c, awardDelta(c.awarded, c.paid), 'earn', `${q ? q.name : c.questId} ${req.checkinDate} (confirmed)`, client, req.checkinDate);
+            return { checkin: c };
+        });
+        if (result.missing) return bad(res, 'no such check-in', 404);
+        res.json({ day, checkin: result.checkin, already: !!result.already });
+    }));
+
+    // Rule 7: parent sets the award outright; the difference is an `adjust`
+    // ledger row with a required note.
+    router.post('/checkin/:checkinId/adjust', auth.requireHq, wrap(async (req, res) => {
+        const a = req.body && req.body.awarded || {};
+        const awarded = S.award(toInt(a.xp, { min: -100000 }), toInt(a.coins, { min: -100000 }), toInt(a.screenMinutes, { min: -100000 }));
+        const note = cleanLabel(req.body && req.body.note).slice(0, 300);
+        if (!note) return bad(res, 'A note is required for adjustments.');
+        const config = await store.getConfig();
+        const { day, result } = await store.withDay(req.checkinDate, async (day, client) => {
+            const c = (day.checkins || []).find(x => x.id === req.checkinId);
+            if (!c) return { missing: true };
+            const q = S.questById(config, c.questId);
+            c.awarded = awarded;
+            c.status = 'adjusted';
+            c.note = note;
+            c.adjustedAt = tz.nowISO();
+            await payDelta(c, awardDelta(awarded, c.paid), 'adjust', note, client, req.checkinDate);
+            return { checkin: c };
+        });
+        if (result.missing) return bad(res, 'no such check-in', 404);
+        res.json({ day, checkin: result.checkin });
+    }));
+
     // ── History (§6 /hq/history, §7 GET /api/history/pack) ──────────────
     // Per-day pack stats plus weekday aggregates. The comparison that
     // matters is ticked vs arrived: ticked-but-missing is a packing problem,
@@ -269,12 +430,20 @@ module.exports = function loadout(pool, opts = {}) {
     // ── HQ daily-log bundle ─────────────────────────────────────────────
     router.get('/hq/overview', auth.requireHq, wrap(async (req, res) => {
         const date = tz.isDateKey(req.query.date) ? req.query.date : tz.dateKey();
-        const [config, day, bal, open] = await Promise.all([
+        const today = tz.dateKey();
+        const [config, day, bal, open, recent] = await Promise.all([
             store.getConfig(), store.getDay(date), store.balances(), store.requests({ status: 'open' }),
+            store.daysBetween(tz.addDays(today, -30), today),
         ]);
-        const pendingCheckins = []; // populated once quests land (phase 2)
-        res.json({ date, weekday: tz.weekday(date), today: tz.dateKey(), day, balances: bal,
-            level: S.levelFor(config, bal.lifetimeXp), pendingCheckins, openRequests: open, config });
+        const pendingCheckins = [];
+        for (const key of Object.keys(recent).sort()) {
+            for (const c of recent[key].checkins || []) {
+                if (c.status === 'pending') pendingCheckins.push({ date: key, checkin: c, quest: S.questById(config, c.questId) });
+            }
+        }
+        res.json({ date, weekday: tz.weekday(date), today, day, balances: bal,
+            level: S.levelFor(config, bal.lifetimeXp), pendingCheckins, openRequests: open, config,
+            questsOnBoard: S.questsActiveOn(config, date) });
     }));
 
     // Most recent day (before `date`) that has a parent-written list — for
@@ -295,5 +464,19 @@ module.exports = function loadout(pool, opts = {}) {
         res.status(500).json({ error: 'server', message: err.message });
     });
 
-    return { router, bootstrap, store, auth };
+    // True once scripts/migrate-chores-to-loadout.js has run. server.js uses
+    // this to redirect /chores → /loadout without a second deploy. Memoised
+    // for a minute; a false answer is re-checked so the cutover is quick.
+    let legacyMemo = { at: 0, value: false };
+    async function legacyImported() {
+        if (legacyMemo.value) return true;
+        if (Date.now() - legacyMemo.at < 60000) return false;
+        try {
+            const { rows } = await pool.query(`SELECT 1 FROM loadout.legacy WHERE id = 'chores'`);
+            legacyMemo = { at: Date.now(), value: rows.length > 0 };
+        } catch (e) { legacyMemo = { at: Date.now(), value: false }; }
+        return legacyMemo.value;
+    }
+
+    return { router, bootstrap, store, auth, legacyImported };
 };

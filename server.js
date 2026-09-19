@@ -119,6 +119,17 @@ app.use('/invoice', express.static(path.join(__dirname, 'invoice')));
 app.use('/mainpage', express.static(path.join(__dirname, 'mainpage')));
 app.use('/EnglishAngel', express.static(path.join(__dirname, 'englishangel')));
 app.use('/timesheet', express.static(path.join(__dirname, 'timesheet')));
+// Loadout — see loadout/api.js. Schema lives in loadout.* and is bootstrapped
+// here alongside the chores/invoice block above. The router itself is mounted
+// after bodyParser, below.
+const loadout = require('./loadout/api')(pool);
+loadout.bootstrap();
+
+// /chores is retired once the Loadout migration has run (it checks for the
+// loadout.legacy row), so the cutover is one script run, not a redeploy.
+app.use('/chores', (req, res, next) => {
+    loadout.legacyImported().then(done => done ? res.redirect(301, '/loadout/') : next(), next);
+});
 app.use('/chores', express.static(path.join(__dirname, 'chores', 'public')));
 
 // Loadout (Edward's quest tracker — successor to /chores). Two single-file
@@ -197,10 +208,7 @@ app.post('/api/timesheet', (req, res) => {
     }
 });
 
-// Loadout API — see loadout/api.js. Schema lives in loadout.* and is
-// bootstrapped here alongside the chores/invoice block above.
-const loadout = require('./loadout/api')(pool);
-loadout.bootstrap();
+// Loadout API — see loadout/api.js (module is created above the static mounts).
 app.use('/api/loadout', loadout.router);
 
 // API for Chores persistence — single JSONB row in chores.state

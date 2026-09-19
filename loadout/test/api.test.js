@@ -105,6 +105,90 @@ if (!URL_) {
         assert.deepEqual(d.notTicked, ['Math workbook']);
     });
 
+    test('check-in: pays on target, power-ups pay below target, deltas are monotonic, never double-pays', async () => {
+        const bal = async () => (await call('/balances')).body;
+        const b0 = await bal();
+        // below target with a power-up → only the power-up pays
+        let r = await call(`/day/${today}/checkin`, { method: 'POST', body: { questId: 'math-academy', value: 10, powerUps: ['started-promptly', 'bogus'] } });
+        assert.equal(r.status, 200);
+        assert.equal(r.body.checkin.targetMet, false);
+        assert.deepEqual(r.body.checkin.powerUps, ['started-promptly']);
+        assert.deepEqual(r.body.paid, { xp: 3, coins: 1, screenMinutes: 0 });
+        const b1 = await bal();
+        assert.equal(b1.xp - b0.xp, 3); assert.equal(b1.coins - b0.coins, 1);
+        // same log again → nothing new paid
+        r = await call(`/day/${today}/checkin`, { method: 'POST', body: { questId: 'math-academy', value: 10, powerUps: ['started-promptly'] } });
+        assert.deepEqual(r.body.paid, { xp: 0, coins: 0, screenMinutes: 0 });
+        // reach target + add a power-up → base + new power-up pay, old one doesn't repeat
+        r = await call(`/day/${today}/checkin`, { method: 'POST', body: { questId: 'math-academy', value: 35, powerUps: ['started-promptly', 'stayed-with-hard'] } });
+        assert.equal(r.body.checkin.targetMet, true);
+        assert.deepEqual(r.body.paid, { xp: 11, coins: 3, screenMinutes: 10 });
+        assert.deepEqual(r.body.checkin.awarded, { xp: 14, coins: 4, screenMinutes: 10 });
+        assert.deepEqual(r.body.checkin.paid, { xp: 14, coins: 4, screenMinutes: 10 });
+        // taking a power-up away → refused for Edward
+        r = await call(`/day/${today}/checkin`, { method: 'POST', body: { questId: 'math-academy', value: 35, powerUps: ['started-promptly'] } });
+        assert.equal(r.status, 409);
+        // one check-in per quest per day
+        assert.equal((await call(`/day/${today}`)).body.checkins.filter(c => c.questId === 'math-academy').length, 1);
+        // ledger: exactly two earn rows for this check-in
+        const ledger = (await call('/ledger')).body.filter(e => e.source.type === 'checkin' && e.source.questId === 'math-academy');
+        assert.equal(ledger.length, 2);
+        // future / unknown / off-board
+        assert.equal((await call(`/day/${tz.addDays(today, 1)}/checkin`, { method: 'POST', body: { questId: 'reading', value: 20 } })).status, 400);
+        assert.equal((await call(`/day/${today}/checkin`, { method: 'POST', body: { questId: 'nope', value: 20 } })).status, 400);
+        assert.equal((await call(`/day/${today}/checkin`, { method: 'POST', body: { questId: 'pack-check', value: 1 } })).status, 400);
+    });
+
+    test('check-in: requiresParentConfirm pays on confirm; adjust writes an adjust row and needs a note', async () => {
+        // piano is weekdays only — pick the most recent weekday as the log date (hq may log any past day)
+        let date = today;
+        while (['sat', 'sun'].includes(tz.weekday(date))) date = tz.addDays(date, -1);
+        const b0 = (await call('/balances')).body;
+        let r = await call(`/day/${date}/checkin`, { method: 'POST', hq: true, body: { questId: 'piano', value: 25, powerUps: ['started-promptly'] } });
+        assert.equal(r.status, 200);
+        assert.equal(r.body.pending, true);
+        assert.deepEqual(r.body.paid, { xp: 0, coins: 0, screenMinutes: 0 });
+        assert.deepEqual((await call('/balances')).body, b0);
+        const id = r.body.checkin.id;
+        assert.equal((await call('/checkins/pending', { hq: true })).body.some(p => p.checkin.id === id), true);
+        // Edward can't confirm; parent can, once
+        assert.equal((await call(`/checkin/${id}/confirm`, { method: 'POST' })).status, 401);
+        r = await call(`/checkin/${id}/confirm`, { method: 'POST', hq: true });
+        assert.equal(r.body.checkin.status, 'confirmed');
+        const b1 = (await call('/balances')).body;
+        assert.equal(b1.xp - b0.xp, 11); assert.equal(b1.coins - b0.coins, 3); assert.equal(b1.screenMinutes - b0.screenMinutes, 10);
+        assert.equal((await call(`/checkin/${id}/confirm`, { method: 'POST', hq: true })).body.already, true);
+        assert.deepEqual((await call('/balances')).body, b1);
+        // Edward is now locked out of it
+        assert.equal((await call(`/day/${date}/checkin`, { method: 'POST', body: { questId: 'piano', value: 30 } })).status, 409);
+        // adjust: note required; delta lands as an adjust row
+        assert.equal((await call(`/checkin/${id}/adjust`, { method: 'POST', hq: true, body: { awarded: { xp: 5, coins: 1, screenMinutes: 0 } } })).status, 400);
+        r = await call(`/checkin/${id}/adjust`, { method: 'POST', hq: true, body: { awarded: { xp: 5, coins: 1, screenMinutes: 0 }, note: 'only 10 minutes really' } });
+        assert.equal(r.body.checkin.status, 'adjusted');
+        const b2 = (await call('/balances')).body;
+        assert.equal(b2.xp - b1.xp, -6); assert.equal(b2.coins - b1.coins, -2); assert.equal(b2.screenMinutes - b1.screenMinutes, -10);
+        assert.equal(b2.lifetimeXp, b1.lifetimeXp, 'lifetime XP never decreases');
+        const adj = (await call('/ledger')).body.find(e => e.kind === 'adjust' && e.source.checkinId === id);
+        assert.equal(adj && adj.note, 'only 10 minutes really');
+    });
+
+    test('check-in: weekly-cadence quests cap at timesPerWeek', async () => {
+        const cfg = (await call('/config')).body;
+        cfg.quests.push({ id: 'bins', name: 'Bins', kind: 'simple', xp: 0, coins: 20, screenMinutes: 0, activeDays: [], cadence: 'weekly', timesPerWeek: 1, requiredForStreak: false, enabled: true });
+        assert.equal((await call('/config', { method: 'PUT', hq: true, body: cfg })).status, 200);
+        const mon = tz.mondayOf(today);
+        // log it on monday (hq can log any past day), then try again another day the same week
+        let r = await call(`/day/${mon}/checkin`, { method: 'POST', hq: true, body: { questId: 'bins' } });
+        assert.equal(r.status, 200, JSON.stringify(r.body));
+        assert.deepEqual(r.body.paid, { xp: 0, coins: 20, screenMinutes: 0 });
+        if (today !== mon) {
+            r = await call(`/day/${today}/checkin`, { method: 'POST', body: { questId: 'bins' } });
+            assert.equal(r.status, 409);
+        }
+        const t = (await call('/today')).body;
+        assert.equal(t.weekCounts.bins, 1);
+    });
+
     test('date param is validated', async () => {
         assert.equal((await call('/day/2026-13-01')).status, 400);
         assert.equal((await call('/day/nope')).status, 400);

@@ -119,6 +119,62 @@
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   .toast.err { background: var(--danger); color: #fff; }
 
+  /* Quest rows (live) */
+  a.qrow { color: inherit; }
+  .qrow .qstate { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; margin-top: 4px; justify-content: flex-end; }
+  .qrow .qstate.done { color: var(--success); }
+  .qrow .qstate.open { color: var(--gold); }
+  .qrow .qstate.wait { color: var(--muted); }
+  .qrow .qicon { width: 36px; height: 36px; border-radius: var(--r-ctl); background: var(--surface-alt); border: 1px solid var(--border); display: grid; place-items: center; color: var(--muted); flex: none; }
+  .qrow.is-done .qicon { color: var(--success); border-color: var(--success); }
+  .qrow.is-open .qicon { color: var(--gold); border-color: var(--gold); }
+  .qrow.is-off { opacity: .55; }
+
+  /* Check-in screen */
+  .stepper { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 8px 0 4px; }
+  .stepper .sbtn { width: 56px; height: 56px; border-radius: var(--r-ctl); border: 1px solid var(--border-strong); background: var(--surface-alt); font-family: var(--display); font-weight: 700; font-size: 18px; display: grid; place-items: center; }
+  .stepper .sbtn:active { transform: scale(.96); }
+  .stepper .sval { min-width: 104px; text-align: center; font-family: var(--display); font-weight: 700; font-size: 44px; line-height: 1; font-variant-numeric: tabular-nums; }
+  .stepper .sval input { width: 104px; text-align: center; background: transparent; border: 0; border-bottom: 2px solid var(--border-strong); font: inherit; color: inherit; outline: 0; padding: 0 0 2px; }
+  .stepper .sval input:focus { border-color: var(--gold); }
+  .target { text-align: center; color: var(--muted); font-size: 13px; margin-top: 6px; }
+  .target b { color: var(--text); }
+  .target.met { color: var(--success); }
+  .donebtn { width: 100%; min-height: 72px; border-radius: var(--r-hero); border: 2px solid var(--border-strong); background: var(--surface-alt); display: flex; align-items: center; justify-content: center; gap: 10px; font-family: var(--display); font-weight: 700; font-size: 20px; }
+  .donebtn.on { border-color: var(--success); color: var(--success); }
+  .timer { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--r-card); background: var(--surface-alt); }
+  .timer .tval { font-family: var(--display); font-weight: 700; font-size: 26px; font-variant-numeric: tabular-nums; }
+  .timer.run .tval { color: var(--gold); }
+  .timer .tbtns { display: flex; gap: 6px; }
+  .pu { display: flex; align-items: center; gap: 14px; min-height: 64px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--r-card); background: var(--surface); margin-top: 8px; user-select: none; }
+  .pu.on { border-color: var(--gold); background: var(--surface-alt); }
+  .pu .box { width: 30px; height: 30px; flex: none; border-radius: 8px; border: 2px solid var(--border-strong); display: grid; place-items: center; color: transparent; }
+  .pu.on .box { background: var(--gold); border-color: var(--gold); color: #1A1400; }
+  .pu .pl { font-weight: 600; font-size: 16px; line-height: 1.25; }
+  .pu .ps { font-size: 13px; color: var(--muted); }
+  .pu .pa { margin-left: auto; flex: none; text-align: right; }
+  .pu.locked { opacity: .8; }
+  .totals { position: sticky; bottom: calc(var(--nav-h) + env(safe-area-inset-bottom)); background: var(--ground); padding: 12px 0 8px; margin-top: 16px; border-top: 1px solid var(--border); }
+  .totals .line { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); padding: 3px 0; }
+  .totals .line b { color: var(--text); font-weight: 600; }
+  .totals .line.dim b { color: var(--muted); font-weight: 500; }
+  .totals .sum { display: flex; justify-content: space-between; align-items: baseline; padding: 8px 0 12px; font-family: var(--display); font-weight: 700; font-size: 18px; }
+  .totals .sum .award { font-size: 15px; }
+  .status-chip { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: var(--r-ctl); border: 1px solid var(--border-strong); background: var(--surface-alt); font-size: 13px; font-weight: 600; margin-top: 12px; }
+  .status-chip.ok { color: var(--success); border-color: var(--success); }
+
+  /* Log */
+  .lday { margin-top: 18px; }
+  .lrow { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--border); }
+  .lrow:first-of-type { border-top: 0; }
+  .lrow .licon { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; background: var(--surface-alt); border: 1px solid var(--border); color: var(--muted); flex: none; }
+  .lrow.earn .licon { color: var(--success); }
+  .lrow.spend .licon { color: var(--danger); }
+  .lrow.adjust .licon { color: var(--gold); }
+  .lrow .ll { font-weight: 500; font-size: 15px; }
+  .lrow .ls { font-size: 12px; color: var(--muted); }
+  .lrow .la { margin-left: auto; text-align: right; flex: none; }
+
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
@@ -146,18 +202,37 @@
     clearTimeout(toastTimer); toastTimer = setTimeout(() => t.className = 'toast', 2200);
   }
 
-  function awardHtml(a, { zeroOk = false } = {}) {
+  const sign = n => (n < 0 ? '−' : '+') + Math.abs(n);
+  function awardHtml(a, { zeroOk = false, dash = false } = {}) {
     if (!a) return '';
     const parts = [];
-    if (a.xp || zeroOk) parts.push('<span><b>+' + a.xp + '</b> XP</span>');
-    if (a.coins || zeroOk) parts.push('<span class="g"><b>+' + a.coins + '</b> coins</span>');
-    if (a.screenMinutes) parts.push('<span><b>+' + a.screenMinutes + '</b> min</span>');
+    if (a.xp || zeroOk) parts.push('<span><b>' + sign(a.xp) + '</b> XP</span>');
+    if (a.coins || zeroOk) parts.push('<span class="g"><b>' + sign(a.coins) + '</b> coins</span>');
+    if (a.screenMinutes) parts.push('<span><b>' + sign(a.screenMinutes) + '</b> min</span>');
+    if (!parts.length && dash) parts.push('<span>—</span>');
     return '<span class="award">' + parts.join('') + '</span>';
+  }
+  function addA(a, b) { return { xp: a.xp + b.xp, coins: a.coins + b.coins, screenMinutes: a.screenMinutes + b.screenMinutes }; }
+  const ZERO = { xp: 0, coins: 0, screenMinutes: 0 };
+  function questTargetLabel(q) {
+    if (q.kind === 'externalXp' || q.kind === 'duration') return q.target + ' ' + (q.unitLabel || '');
+    if (q.kind === 'count') return 'per ' + (q.unitLabel || 'unit');
+    return (q.cadence || 'daily') === 'weekly' ? (q.timesPerWeek || 1) + '× a week' : 'daily';
+  }
+  // Pure mirror of lib/scoring.checkinAward for the running total on the check-in screen.
+  function computeAward(q, powerUpDefs, value, powerUps) {
+    let targetMet, base = ZERO;
+    if (q.kind === 'externalXp' || q.kind === 'duration') { targetMet = value >= (q.target || 0) && value > 0; if (targetMet) base = { xp: q.xp | 0, coins: q.coins | 0, screenMinutes: q.screenMinutes | 0 }; }
+    else if (q.kind === 'count') { const n = Math.max(0, value | 0); targetMet = n > 0; const p = q.perUnit || ZERO; base = { xp: (p.xp | 0) * n, coins: (p.coins | 0) * n, screenMinutes: (p.screenMinutes | 0) * n }; }
+    else { targetMet = value > 0; base = targetMet ? { xp: q.xp | 0, coins: q.coins | 0, screenMinutes: q.screenMinutes | 0 } : ZERO; }
+    let pu = ZERO;
+    for (const id of new Set(powerUps)) { if (!(q.powerUps || []).includes(id)) continue; const d = powerUpDefs.find(p => p.id === id); if (d) pu = addA(pu, { xp: d.xp | 0, coins: d.coins | 0, screenMinutes: d.screenMinutes | 0 }); }
+    return { targetMet, base, pu, total: addA(base, pu) };
   }
 
   function tabbar(active) {
     const items = [
-      ['/', 'home', 'Today'], ['/pack', 'bag', 'Pack'], ['/vault', 'vault', 'Vault', true], ['/log', 'log', 'Log', true],
+      ['/', 'home', 'Today'], ['/pack', 'bag', 'Pack'], ['/vault', 'vault', 'Vault', true], ['/log', 'log', 'Log'],
     ];
     tabs.innerHTML = items.map(([p, ic, label, soon]) =>
       '<a class="tab' + (p === active ? ' active' : '') + (soon ? ' soon' : '') + '" href="' + href(p) + '" data-link' +
@@ -196,11 +271,21 @@
     }
 
     const quests = t.quests.filter(q => q.kind !== 'packCheck');
+    const doneCount = quests.filter(q => { const c = t.day.checkins.find(x => x.questId === q.id); return c && c.targetMet; }).length;
     const questRows = quests.length ? quests.map(q => {
-      const target = q.kind === 'externalXp' || q.kind === 'duration' ? q.target + ' ' + (q.unitLabel || '') : q.kind === 'count' ? 'per ' + (q.unitLabel || 'unit') : (q.cadence === 'weekly' ? (q.timesPerWeek || 1) + '× a week' : 'daily');
-      const a = q.kind === 'count' ? q.perUnit : q;
-      return '<div class="qrow"><div><div class="qname">' + esc(q.name) + '</div><div class="qsub">' + esc(target) + '</div></div>' +
-        '<div class="qmeta">' + awardHtml(a) + '<div style="margin-top:4px"><span class="pill soon">Soon</span></div></div></div>';
+      const c = t.day.checkins.find(x => x.questId === q.id);
+      const weekly = (q.cadence || 'daily') === 'weekly';
+      const wc = weekly ? (t.weekCounts[q.id] || 0) : 0;
+      const weekDone = weekly && !c && wc >= (q.timesPerWeek || 1);
+      let cls = '', state, ic = 'sword';
+      if (c && c.status === 'pending') { cls = 'is-open'; ic = 'lock'; state = '<div class="qstate wait">' + icon('lock', 13) + 'Waiting for a parent</div>'; }
+      else if (c && c.targetMet) { cls = 'is-done'; ic = 'check'; state = '<div class="qstate done">' + icon('check', 13) + 'Done' + (weekly ? ' · ' + wc + ' of ' + (q.timesPerWeek || 1) + ' this week' : '') + '</div>'; }
+      else if (c) { cls = 'is-open'; ic = 'right'; state = '<div class="qstate open">' + c.value + ' / ' + q.target + ' · keep going</div>'; }
+      else if (weekDone) { cls = 'is-off'; ic = 'check'; state = '<div class="qstate done">' + icon('check', 13) + wc + ' of ' + (q.timesPerWeek || 1) + ' this week</div>'; }
+      else { state = '<div class="qstate wait">' + (weekly ? wc + ' of ' + (q.timesPerWeek || 1) + ' this week' : 'Not logged') + '</div>'; }
+      const a = c && c.awarded && (c.awarded.xp || c.awarded.coins) ? c.awarded : (q.kind === 'count' ? q.perUnit : q);
+      return '<a class="qrow ' + cls + '" href="' + href('/quest/' + encodeURIComponent(q.id)) + '" data-link><div class="qicon">' + icon(ic, 18) + '</div><div><div class="qname">' + esc(q.name) + '</div><div class="qsub">' + esc(questTargetLabel(q)) + '</div></div>' +
+        '<div class="qmeta">' + awardHtml(a) + state + '</div></a>';
     }).join('') : '<div class="muted" style="font-size:14px">Nothing else on the board today.</div>';
 
     app.innerHTML =
@@ -215,8 +300,7 @@
         '<div class="tile"><div class="lbl">' + icon('screen', 16) + 'Screen</div><div class="val num">' + b.screenMinutes + '<small>min</small></div></div>' +
       '</div>' +
       packCard +
-      '<div class="section"><div class="section-h"><h2>Today\'s quests</h2><span class="muted" style="font-size:12px">' + quests.length + '</span></div><div class="card">' + questRows + '</div>' +
-      '<p class="note">Quest check-ins and power-ups arrive in the next update. Pack check is live now.</p></div>';
+      '<div class="section"><div class="section-h"><h2>Today\'s quests</h2><span class="muted" style="font-size:12px">' + doneCount + ' of ' + quests.length + ' done</span></div><div class="card">' + questRows + '</div></div>';
   }
 
   // ── Pack check ────────────────────────────────────────────────────
@@ -341,6 +425,164 @@
     addBlank(inp.dataset.blankInput, false);
   });
 
+  // ── Quest check-in ───────────────────────────────────────────────
+  const timerKey = (qid, date) => 'loadout.timer.' + qid + '.' + date;
+  function readTimer(qid, date) { try { return JSON.parse(localStorage.getItem(timerKey(qid, date))) || { acc: 0, startedAt: null }; } catch (e) { return { acc: 0, startedAt: null }; } }
+  function writeTimer(qid, date, t) { try { localStorage.setItem(timerKey(qid, date), JSON.stringify(t)); } catch (e) {} }
+  function timerMs(t) { return t.acc + (t.startedAt ? Date.now() - t.startedAt : 0); }
+  function fmtMs(ms) { const s = Math.floor(ms / 1000); return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); }
+  let timerTick = null;
+
+  async function renderQuest(qid) {
+    tabbar('/');
+    app.innerHTML = '<div class="top"><a class="back" href="' + href('/') + '" data-link>' + icon('left', 20) + 'Today</a></div><p class="muted">Loading…</p>';
+    let t;
+    try { t = await api('/today'); } catch (e) { app.innerHTML = errorView(e); return; }
+    const q = t.quests.find(x => x.id === qid);
+    if (!q || q.kind === 'packCheck') {
+      app.innerHTML = '<div class="top"><a class="back" href="' + href('/') + '" data-link>' + icon('left', 20) + 'Today</a></div><div class="empty">' + icon('sword', 28) + '<div><b>Not on the board today</b><br><span style="font-size:13px">This quest isn\'t active on ' + esc(L.DAY_LONG[t.weekday]) + 's.</span></div></div>';
+      return;
+    }
+    const date = t.date;
+    const existing = t.day.checkins.find(x => x.questId === q.id) || null;
+    const locked = !!existing && (existing.status === 'adjusted' || (q.requiresParentConfirm && existing.status === 'confirmed'));
+    const weekly = (q.cadence || 'daily') === 'weekly';
+    const weekDone = weekly && !existing && (t.weekCounts[q.id] || 0) >= (q.timesPerWeek || 1);
+    const st = {
+      value: existing ? existing.value : 0,
+      powerUps: new Set(existing ? existing.powerUps : []),
+      paidPowerUps: new Set(existing && existing.status !== 'pending' ? existing.powerUps : []),
+      focus: existing ? existing.focusMinutes || 0 : 0,
+      saving: false,
+    };
+    const minValue = existing && existing.status !== 'pending' ? existing.value : 0; // monotonic: can't go below what was paid for
+    const hasTimer = q.kind === 'duration' || q.kind === 'externalXp';
+    const step = q.kind === 'externalXp' ? [1, 5] : q.kind === 'duration' ? [5, 10] : [1, 5];
+
+    function paint() {
+      const a = computeAward(q, t.powerUps, st.value, [...st.powerUps]);
+      const tm = readTimer(q.id, date);
+      let entry;
+      if (q.kind === 'simple') {
+        entry = '<button class="donebtn' + (st.value ? ' on' : '') + '" type="button" data-toggle-done' + (locked ? ' disabled' : '') + '>' + icon('check', 24) + (st.value ? 'Done' : 'Mark done') + '</button>';
+      } else {
+        entry = '<div class="stepper">' +
+          '<button class="sbtn" type="button" data-step="-' + step[1] + '"' + (locked ? ' disabled' : '') + '>−' + step[1] + '</button>' +
+          '<button class="sbtn" type="button" data-step="-' + step[0] + '"' + (locked ? ' disabled' : '') + '>−' + step[0] + '</button>' +
+          '<div class="sval"><input type="number" inputmode="numeric" min="0" value="' + st.value + '" data-val' + (locked ? ' disabled' : '') + '></div>' +
+          '<button class="sbtn" type="button" data-step="' + step[0] + '"' + (locked ? ' disabled' : '') + '>+' + step[0] + '</button>' +
+          '<button class="sbtn" type="button" data-step="' + step[1] + '"' + (locked ? ' disabled' : '') + '>+' + step[1] + '</button></div>' +
+          (q.kind === 'count'
+            ? '<div class="target">' + esc(q.unitLabel || 'units') + ' · ' + awardHtml(q.perUnit) + ' each</div>'
+            : '<div class="target' + (a.targetMet ? ' met' : '') + '">' + (a.targetMet ? icon('check', 14) + ' Target reached' : 'Target <b>' + q.target + '</b> ' + esc(q.unitLabel || '') + (st.value > 0 ? ' · ' + (q.target - st.value) + ' to go' : '')) + '</div>');
+        if (hasTimer && !locked) {
+          const running = !!tm.startedAt;
+          entry += '<div class="timer' + (running ? ' run' : '') + '"><div><div class="eyebrow">Focus timer</div><div class="tval" data-tval>' + fmtMs(timerMs(tm)) + '</div></div><div class="tbtns">' +
+            (running ? '<button class="btn" type="button" data-timer="stop">Stop</button>'
+              : '<button class="btn" type="button" data-timer="start">' + (tm.acc ? 'Resume' : 'Start') + '</button>' +
+                (tm.acc >= 60000 ? '<button class="btn primary" type="button" data-timer="use">' + (q.kind === 'duration' ? 'Use ' + Math.round(tm.acc / 60000) + ' min' : 'Save ' + Math.round(tm.acc / 60000) + ' min focus') + '</button>' : '')) +
+            '</div></div>';
+        }
+      }
+      const pus = (q.powerUps || []).map(id => t.powerUps.find(p => p.id === id)).filter(Boolean);
+      const puHtml = pus.length ? '<div class="section"><div class="eyebrow">Power-ups</div><p class="note" style="margin:4px 0 6px">These pay for how you worked, even if you didn\'t hit the target.</p>' +
+        pus.map(p => { const on = st.powerUps.has(p.id); const lk = locked || st.paidPowerUps.has(p.id);
+          return '<div class="pu' + (on ? ' on' : '') + (lk ? ' locked' : '') + '" role="checkbox" aria-checked="' + on + '" tabindex="0" data-pu="' + esc(p.id) + '"><span class="box">' + icon('check', 18) + '</span><div><div class="pl">' + esc(p.label) + '</div><div class="ps">' + esc(p.sub || '') + '</div></div><div class="pa">' + awardHtml(p) + '</div></div>'; }).join('') + '</div>' : '';
+
+      let status = '';
+      if (existing && existing.status === 'pending') status = '<div class="status-chip">' + icon('lock', 14) + ' Logged — waiting for a parent to confirm</div>';
+      else if (existing && existing.status === 'adjusted') status = '<div class="status-chip">' + icon('lock', 14) + ' Adjusted by a parent' + (existing.note ? ': ' + esc(existing.note) : '') + '</div>';
+      else if (existing && existing.status === 'confirmed' && locked) status = '<div class="status-chip ok">' + icon('check', 14) + ' Confirmed by a parent</div>';
+      else if (existing && existing.paid && (existing.paid.xp || existing.paid.coins)) status = '<div class="status-chip ok">' + icon('check', 14) + ' Paid so far: ' + awardHtml(existing.paid) + '</div>';
+
+      const paid = existing && existing.status !== 'pending' ? existing.paid : ZERO;
+      const delta = addA(a.total, { xp: -paid.xp, coins: -paid.coins, screenMinutes: -paid.screenMinutes });
+      const changed = !existing || st.value !== existing.value || [...st.powerUps].sort().join() !== [...existing.powerUps].sort().join() || st.focus !== (existing.focusMinutes || 0);
+      const totals = locked ? '' : '<div class="totals">' +
+        '<div class="line' + (a.targetMet ? '' : ' dim') + '"><span>' + esc(q.name) + (a.targetMet ? '' : (q.kind === 'simple' ? ' (not done)' : ' (below target)')) + '</span><b>' + (a.targetMet || q.kind === 'count' ? awardHtml(a.base, { dash: true }) : '—') + '</b></div>' +
+        (pus.length ? '<div class="line"><span>Power-ups</span><b>' + awardHtml(a.pu, { dash: true }) + '</b></div>' : '') +
+        '<div class="sum"><span>' + (existing ? 'New since last log' : 'Total') + '</span>' + awardHtml(existing ? delta : a.total, { dash: true }) + '</div>' +
+        '<button class="btn primary full" type="button" data-log' + (st.saving || !changed || (q.kind !== 'count' && q.kind !== 'simple' && st.value === 0 && !st.powerUps.size) || (q.kind === 'simple' && !st.value) ? ' disabled' : '') + '>' +
+          (q.requiresParentConfirm ? icon('lock', 18) + ' Log for a parent to confirm' : icon('bolt', 18) + ' Log it') + '</button>' +
+        (weekDone ? '<p class="note" style="text-align:center">Already done ' + (q.timesPerWeek || 1) + '× this week.</p>' : '') + '</div>';
+
+      app.innerHTML =
+        '<div class="top"><a class="back" href="' + href('/') + '" data-link>' + icon('left', 20) + 'Today</a><span class="date">' + fmtDate(date) + '</span></div>' +
+        '<div class="eyebrow gold">Quest</div><h1>' + esc(q.name) + '</h1>' +
+        '<p class="muted" style="margin:4px 0 12px;font-size:14px">' + esc(questTargetLabel(q)) + (q.kind !== 'count' ? ' · ' + awardHtml(q) : '') + (q.requiresParentConfirm ? ' · parent confirms' : '') + '</p>' +
+        '<div class="card">' + entry + '</div>' + status + puHtml + totals;
+      clearInterval(timerTick);
+      if (tm.startedAt) timerTick = setInterval(() => { const el = app.querySelector('[data-tval]'); if (el) el.textContent = fmtMs(timerMs(readTimer(q.id, date))); else clearInterval(timerTick); }, 1000);
+    }
+
+    function setValue(v) { st.value = Math.max(minValue, Math.min(100000, Math.round(Number(v) || 0))); paint(); }
+    // The module-level handlers below dispatch to whichever quest is on screen.
+    questCtl = {
+      step(n) { setValue(st.value + n); },
+      set(v) { setValue(v); },
+      toggleDone() { if (!locked) { st.value = st.value ? 0 : 1; if (st.value < minValue) st.value = minValue; paint(); } },
+      powerUp(id) { if (locked || st.paidPowerUps.has(id)) { if (st.paidPowerUps.has(id)) toast('Already paid — ask a parent to change it'); return; } st.powerUps.has(id) ? st.powerUps.delete(id) : st.powerUps.add(id); paint(); },
+      timer(action) {
+        const tm = readTimer(q.id, date);
+        if (action === 'start') { tm.startedAt = Date.now(); writeTimer(q.id, date, tm); }
+        if (action === 'stop') { tm.acc = timerMs(tm); tm.startedAt = null; writeTimer(q.id, date, tm); }
+        if (action === 'use') { const mins = Math.round(tm.acc / 60000); st.focus = mins; if (q.kind === 'duration') st.value = Math.max(st.value, mins, minValue); toast(q.kind === 'duration' ? mins + ' min from the timer' : mins + ' focus minutes saved'); }
+        paint();
+      },
+      async log(btn) {
+        st.saving = true; btn.disabled = true;
+        try {
+          const r = await api('/day/' + date + '/checkin', { method: 'POST', body: { questId: q.id, value: st.value, focusMinutes: st.focus, powerUps: [...st.powerUps] } });
+          if (r.pending) toast('Logged — a parent will confirm');
+          else if (r.paid && (r.paid.xp || r.paid.coins || r.paid.screenMinutes)) toast(['+' + r.paid.xp + ' XP', '+' + r.paid.coins + ' coins', r.paid.screenMinutes ? '+' + r.paid.screenMinutes + ' min' : ''].filter(Boolean).join(' · '));
+          else toast('Logged');
+          if (r.checkin.targetMet) { try { localStorage.removeItem(timerKey(q.id, date)); } catch (x) {} }
+          go('/');
+        } catch (err) { st.saving = false; toast(err.message || 'Could not log', true); paint(); }
+      },
+    };
+    paint();
+  }
+  let questCtl = null;
+  L.on(app, 'click', '[data-step]', (e, b) => questCtl && questCtl.step(Number(b.dataset.step)));
+  L.on(app, 'change', '[data-val]', (e, inp) => questCtl && questCtl.set(inp.value));
+  L.on(app, 'keydown', '[data-val]', (e, inp) => { if (e.key === 'Enter') inp.blur(); });
+  L.on(app, 'click', '[data-toggle-done]', () => questCtl && questCtl.toggleDone());
+  L.on(app, 'click', '[data-pu]', (e, el) => questCtl && questCtl.powerUp(el.dataset.pu));
+  L.on(app, 'keydown', '[data-pu]', (e, el) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); el.click(); } });
+  L.on(app, 'click', '[data-timer]', (e, b) => questCtl && questCtl.timer(b.dataset.timer));
+  L.on(app, 'click', '[data-log]', (e, b) => questCtl && questCtl.log(b));
+
+  // ── Log ──────────────────────────────────────────────────────────
+  async function renderLog() {
+    tabbar('/log');
+    app.innerHTML = '<div class="top"><span class="brand">Loadout</span></div><h1>Log</h1><p class="muted">Loading…</p>';
+    let entries, cfg;
+    try { [entries, cfg] = await Promise.all([api('/ledger?limit=150'), api('/config')]); } catch (e) { app.innerHTML = errorView(e); return; }
+    const qname = id => { const q = (cfg.quests || []).find(x => x.id === id); return q ? q.name : id; };
+    const groups = new Map();
+    for (const e of entries) { const k = e.at.slice(0, 10); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(e); }
+    const label = e => {
+      const s = e.source || {};
+      if (s.type === 'packCheck') return ['Pack check', 'bag'];
+      if (s.type === 'checkin') return [qname(s.questId), 'sword'];
+      if (s.type === 'checkin-adjust') return [qname(s.questId) + ' · adjusted', 'settings'];
+      if (s.type === 'legacy-import') return ['Starting balance', 'star'];
+      if (s.type === 'reward') return [s.name || 'Reward', 'vault'];
+      return [e.note || e.kind, 'log'];
+    };
+    let html = '<div class="top"><span class="brand">Loadout</span></div><h1>Log</h1><p class="muted" style="margin:4px 0 0;font-size:14px">Everything you\'ve earned and spent.</p>';
+    if (!groups.size) html += '<div class="empty">' + icon('log', 28) + '<div>Nothing yet.</div></div>';
+    for (const [day, list] of groups) {
+      html += '<div class="lday"><div class="eyebrow">' + esc(L.relDay(day)) + '</div><div class="card" style="margin-top:6px">' + list.map(e => {
+        const [l, ic] = label(e);
+        const sub = e.source && e.source.type === 'legacy-import' ? 'Carried over from the old chore tracker' : (e.kind === 'adjust' ? e.note : fmtTime(e.at));
+        return '<div class="lrow ' + e.kind + '"><div class="licon">' + icon(ic, 16) + '</div><div><div class="ll">' + esc(l) + '</div><div class="ls">' + esc(sub) + '</div></div><div class="la">' + awardHtml(e, { dash: true }) + '</div></div>';
+      }).join('') + '</div></div>';
+    }
+    app.innerHTML = html;
+  }
+
   function errorView(e) {
     return '<div class="empty">' + icon('alert', 28) + '<div><b>Could not load</b><br><span style="font-size:13px">' + esc(e.message) + '</span></div><div style="margin-top:14px"><button class="btn" type="button" onclick="location.reload()">Try again</button></div></div>';
   }
@@ -352,11 +594,15 @@
 
   function route() {
     const p = path();
+    clearInterval(timerTick);
+    questCtl = null;
     window.scrollTo(0, 0);
     if (p === '/') return renderToday();
     if (p === '/pack') return renderPack();
     if (p === '/vault') return soonView('Vault');
-    if (p === '/log') return soonView('Log');
+    if (p === '/log') return renderLog();
+    const qm = p.match(/^\/quest\/([^/]+)$/);
+    if (qm) return renderQuest(decodeURIComponent(qm[1]));
     go('/', { replace: true });
   }
   window.addEventListener('routechange', route);

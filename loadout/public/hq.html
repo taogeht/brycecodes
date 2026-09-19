@@ -126,6 +126,44 @@
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   .toast.err { background: var(--red); }
 
+  /* Switch */
+  .switch { position: relative; width: 40px; height: 22px; border-radius: 999px; background: var(--border-strong); border: 0; flex: none; transition: background .15s; }
+  .switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform .15s; box-shadow: 0 1px 2px rgba(0,0,0,.2); }
+  .switch.on { background: var(--green); }
+  .switch.on::after { transform: translateX(18px); }
+
+  /* Check-ins / approvals */
+  .ci { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .ci:last-child { border-bottom: 0; }
+  .ci .cn { font-weight: 600; }
+  .ci .cs { font-size: 13px; color: var(--muted); }
+  .ci .ca { margin-left: auto; text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .ci .ca b { font-weight: 600; }
+  .ci .cb { display: flex; gap: 6px; }
+  .adjform { width: 100%; display: grid; grid-template-columns: 80px 80px 80px 1fr auto auto; gap: 8px; align-items: center; padding: 8px 0 4px; }
+  .adjform label { font-size: 11px; color: var(--muted); display: block; margin-bottom: 2px; }
+  .adjform input[type=number] { min-height: 34px; padding: 4px 8px; border: 1px solid var(--border-strong); border-radius: 8px; width: 100%; }
+
+  /* Quest editor */
+  .qcard { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-card); padding: 14px 16px; margin-top: 10px; }
+  .qcard.off { opacity: .6; }
+  .qhead { display: flex; align-items: center; gap: 14px; }
+  .qhead .qn { font-weight: 600; font-size: 15px; }
+  .qhead .qs { font-size: 13px; color: var(--muted); }
+  .qhead .qr { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .qform { border-top: 1px solid var(--border); margin-top: 12px; padding-top: 12px; display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px 12px; }
+  .qform .f { display: flex; flex-direction: column; gap: 4px; }
+  .qform .f label { font-size: 11px; color: var(--muted); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+  .qform .f input, .qform .f select { min-height: 36px; padding: 4px 8px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); }
+  .qform .span2 { grid-column: span 2; } .qform .span3 { grid-column: span 3; } .qform .span6 { grid-column: span 6; }
+  .dayseg { display: flex; gap: 4px; }
+  .dayseg button, .puchips button { min-height: 32px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--border-strong); font-size: 12px; font-weight: 600; color: var(--muted); background: var(--surface); }
+  .dayseg button.on, .puchips button.on { background: var(--text); color: #fff; border-color: var(--text); }
+  .puchips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .checkrow { display: flex; align-items: center; gap: 8px; min-height: 36px; font-size: 13px; }
+  .qform .actions { grid-column: span 6; display: flex; gap: 8px; align-items: center; padding-top: 4px; }
+  .qform .actions .right { margin-left: auto; display: flex; gap: 8px; }
+
   /* PIN gate */
   .gate { min-height: 100vh; display: grid; place-items: center; padding: 20px; }
   .gate .card { width: 360px; max-width: 100%; padding: 28px; }
@@ -179,13 +217,60 @@
   function q(name) { return new URLSearchParams(location.search).get(name); }
   function withDate(p, date) { return p + '?date=' + date; }
   function isKey(s) { return /^\d{4}-\d{2}-\d{2}$/.test(s || ''); }
+  const sign = n => (n < 0 ? '−' : '+') + Math.abs(n | 0);
+  function awardText(a) {
+    if (!a) return '—';
+    const p = [];
+    if (a.xp) p.push('<b>' + sign(a.xp) + '</b> XP');
+    if (a.coins) p.push('<b style="color:var(--gold)">' + sign(a.coins) + '</b> coins');
+    if (a.screenMinutes) p.push('<b>' + sign(a.screenMinutes) + '</b> min');
+    return p.length ? p.join(' · ') : '—';
+  }
+  function valueText(q, c) {
+    if (!q) return String(c.value);
+    if (q.kind === 'simple') return 'done';
+    if (q.kind === 'count') return c.value + ' ' + (q.unitLabel || '');
+    return c.value + ' / ' + q.target + ' ' + (q.unitLabel || '') + (c.targetMet ? '' : ' (below target)');
+  }
+  function checkinRow(c, q, date, cfg, { showDate = false, pending = false } = {}) {
+    const pus = (c.powerUps || []).map(id => { const p = (cfg.powerUps || []).find(x => x.id === id); return p ? p.label : id; });
+    const chip = c.status === 'pending' ? '<span class="chip gold">pending</span>' : c.status === 'adjusted' ? '<span class="chip">adjusted</span>' : '<span class="chip ok">paid</span>';
+    return '<div class="ci" data-ci="' + esc(c.id) + '"><div><div class="cn">' + esc(q ? q.name : c.questId) + (showDate ? ' <span class="muted small">' + fmtDate(date) + '</span>' : '') + '</div>' +
+      '<div class="cs">' + esc(valueText(q, c)) + (c.focusMinutes ? ' · ' + c.focusMinutes + ' min focus' : '') + (pus.length ? ' · ' + esc(pus.join(', ')) : '') + (c.note ? ' · <i>' + esc(c.note) + '</i>' : '') + '</div></div>' +
+      '<div class="ca">' + awardText(c.awarded) + '<div>' + chip + '</div></div>' +
+      '<div class="cb">' + (pending ? '<button class="btn sm primary" type="button" data-confirm="' + esc(c.id) + '">Confirm</button>' : '') + '<button class="btn sm" type="button" data-adjust="' + esc(c.id) + '">Adjust</button></div></div>';
+  }
+  function adjustForm(c) {
+    const a = c.awarded || { xp: 0, coins: 0, screenMinutes: 0 };
+    return '<form class="adjform" data-adjform="' + esc(c.id) + '"><div><label>XP</label><input type="number" name="xp" value="' + a.xp + '"></div><div><label>Coins</label><input type="number" name="coins" value="' + a.coins + '"></div><div><label>Screen min</label><input type="number" name="screenMinutes" value="' + a.screenMinutes + '"></div>' +
+      '<div><label>Note (required)</label><input type="text" name="note" placeholder="Why?" maxlength="300" required></div><button class="btn sm primary" type="submit">Save</button><button class="btn sm" type="button" data-cancel-adjust>Cancel</button></form>';
+  }
+  function bindCheckinActions(m, reload) {
+    L.on(m, 'click', '[data-confirm]', async (e, b) => {
+      b.disabled = true;
+      try { await api('/checkin/' + b.dataset.confirm + '/confirm', { method: 'POST' }); toast('Confirmed and paid'); reload(); }
+      catch (err) { b.disabled = false; toast(err.message, true); }
+    });
+    L.on(m, 'click', '[data-adjust]', (e, b) => {
+      const row = b.closest('[data-ci]'); if (row.querySelector('.adjform')) return;
+      const id = row.dataset.ci; const c = m.__checkins[id]; if (!c) return;
+      row.insertAdjacentHTML('beforeend', adjustForm(c)); row.querySelector('input[name=note]').focus();
+    });
+    L.on(m, 'click', '[data-cancel-adjust]', (e, b) => b.closest('.adjform').remove());
+    L.on(m, 'submit', '[data-adjform]', async (e, f) => {
+      e.preventDefault();
+      const awarded = { xp: Number(f.xp.value), coins: Number(f.coins.value), screenMinutes: Number(f.screenMinutes.value) };
+      try { await api('/checkin/' + f.dataset.adjform + '/adjust', { method: 'POST', body: { awarded, note: f.note.value } }); toast('Adjusted'); reload(); }
+      catch (err) { toast(err.message, true); }
+    });
+  }
 
   // ── Shell ─────────────────────────────────────────────────────────
   function shell(active, body) {
-    const nav = [['/hq', 'calendar', 'Daily log'], ['/hq/list', 'list', 'Pack list'], ['/hq/history', 'history', 'History']];
+    const nav = [['/hq', 'calendar', 'Daily log'], ['/hq/list', 'list', 'Pack list'], ['/hq/quests', 'sword', 'Quests'], ['/hq/history', 'history', 'History']];
     root.innerHTML = '<div class="shell"><aside class="side"><div class="brand">Loadout <span>HQ</span></div><nav class="nav">' +
       nav.map(([p, ic, l]) => '<a href="' + href(p) + '" data-link class="' + (active === p ? 'active' : '') + '">' + icon(ic, 18) + l + '</a>').join('') +
-      '<div class="soon">Coming: Quests · Rewards · Settings</div></nav>' +
+      '<div class="soon">Coming: Rewards · Settings</div></nav>' +
       '<div class="foot"><a href="' + href('/') + '" class="btn sm" style="width:100%;justify-content:flex-start">' + icon('eye', 16) + ' Edward\'s view</a>' +
       '<button class="btn sm" data-logout style="width:100%;justify-content:flex-start;margin-top:6px">' + icon('logout', 16) + ' Sign out</button></div></aside>' +
       '<main id="main">' + body + '</main></div>';
@@ -277,7 +362,13 @@
 
     const pending = (ov.pendingCheckins.length + ov.openRequests.length) === 0
       ? '<div class="empty">Nothing waiting on you.</div>'
-      : '<ul class="list">' + ov.openRequests.map(r => '<li><span>' + esc(r.name) + '</span><span class="chip">request</span></li>').join('') + '</ul>';
+      : ov.pendingCheckins.map(p => checkinRow(p.checkin, p.quest, p.date, config, { showDate: true, pending: true })).join('') +
+        ov.openRequests.map(r => '<div class="ci"><div class="cn">' + esc(r.name) + '</div><span class="chip">reward request</span></div>').join('');
+    const board = (ov.questsOnBoard || []).filter(q => q.kind !== 'packCheck');
+    const logged = ov.day.checkins || [];
+    const notLogged = board.filter(q => !logged.some(c => c.questId === q.id) && (q.cadence || 'daily') === 'daily' && q.requiredForStreak !== false);
+    const checkins = (logged.length ? logged.map(c => checkinRow(c, config.quests.find(q => q.id === c.questId), date, config, { pending: c.status === 'pending' })).join('') : '<div class="empty">Nothing logged ' + (date === todayKey() ? 'yet today' : 'that day') + '.</div>') +
+      (notLogged.length ? '<div class="muted small" style="margin-top:10px">Not logged: ' + esc(notLogged.map(q => q.name).join(', ')) + '</div>' : '');
 
     main().innerHTML =
       '<div class="head"><div><h1>Daily log</h1><div class="sub">' + fmtDate(date, { long: true }) + (date === todayKey() ? ' · today' : '') + '</div></div>' +
@@ -293,15 +384,20 @@
         '<div class="stat gold"><div class="lbl">Coins</div><div class="val num">' + ov.balances.coins.toLocaleString() + '</div></div>' +
         '<div class="stat"><div class="lbl">XP · level ' + ov.level.level + '</div><div class="val num">' + ov.balances.xp.toLocaleString() + '</div></div>' +
       '</div>' +
-      '<div class="grid2"><div>' + pack + '</div><div>' +
+      '<div class="grid2"><div>' + pack +
+        '<div class="card" style="margin-top:14px"><div class="row spread" style="margin-bottom:6px"><h3>Quests · ' + relDay(date) + '</h3><span class="muted small">' + logged.filter(c => c.targetMet).length + ' of ' + board.length + ' done</span></div>' + checkins + '</div></div><div>' +
+        '<div class="card" style="border-color:' + (ov.pendingCheckins.length ? 'var(--gold)' : 'var(--border)') + '"><h3 style="margin-bottom:6px">Pending approvals' + (ov.pendingCheckins.length ? ' <span class="chip gold">' + ov.pendingCheckins.length + '</span>' : '') + '</h3>' + pending + '</div>' +
         '<div class="card"><div class="row spread" style="margin-bottom:10px"><h3>This week</h3><span class="muted small">' + fmtDate(monday) + ' – ' + fmtDate(addDays(monday, stripDays[stripDays.length - 1])) + '</span></div><div class="week" style="grid-template-columns:repeat(' + stripDays.length + ',1fr)">' + strip + '</div>' +
         '<div class="muted small" style="margin-top:8px">L list written · S submitted by Edward · V verified (red = something missing)</div></div>' +
         '<div class="card"><h3 style="margin-bottom:6px">Ticked but didn\'t arrive</h3><div class="muted small" style="margin-bottom:6px">Packing problem — it was on the list and he ticked it.</div>' + (missed ? '<ul class="list">' + missed + '</ul>' : '<div class="empty">None this week.</div>') + '</div>' +
         '<div class="card"><h3 style="margin-bottom:6px">Not ticked</h3><div class="muted small" style="margin-bottom:6px">Attention problem — on the list, never ticked.</div>' + (notTicked ? '<ul class="list">' + notTicked + '</ul>' : '<div class="empty">None this week.</div>') + '</div>' +
-        '<div class="card"><h3 style="margin-bottom:6px">Pending approvals</h3>' + pending + '</div>' +
       '</div></div>';
 
     const m = main();
+    m.__checkins = {};
+    for (const c of logged) m.__checkins[c.id] = c;
+    for (const p of ov.pendingCheckins) m.__checkins[p.checkin.id] = p.checkin;
+    bindCheckinActions(m, renderLog);
     m.querySelector('#datepick').addEventListener('change', e => { if (isKey(e.target.value)) go(withDate('/hq', e.target.value)); });
     L.on(m, 'click', '[data-v]', (e, b) => {
       const seg = b.parentElement; const on = b.classList.contains('on');
@@ -450,6 +546,113 @@
       '<div class="card"><h3 style="margin-bottom:10px">Every day</h3>' + (dayRows ? '<table><thead><tr><th>Date</th><th class="c">Submitted</th><th class="c">Ticked</th><th class="c">Arrived</th><th>Ticked, missing</th><th>Not ticked</th><th>Note</th></tr></thead><tbody>' + dayRows + '</tbody></table>' : '<div class="empty">No pack checks in this range yet.</div>') + '</div>';
   }
 
+  // ── Quests editor (CRUD over config.quests / config.powerUps) ─────
+  const DAYS7 = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+  const KINDS = { simple: 'Done / not done', duration: 'Minutes', externalXp: 'External XP', count: 'Per unit', packCheck: 'Pack check' };
+  async function renderQuests() {
+    shell('/hq/quests', '<p class="muted">Loading…</p>');
+    config = await api('/config');
+    let editing = null; // quest id being edited, or 'new'
+    const m = main();
+
+    function questSummary(q) {
+      const award = q.kind === 'count' ? awardText(q.perUnit) + ' per ' + esc(q.unitLabel || 'unit') : awardText(q);
+      const when = (q.cadence || 'daily') === 'weekly' ? (q.timesPerWeek || 1) + '× a week' : (!q.activeDays || !q.activeDays.length || q.activeDays.length === 7 ? 'every day' : q.activeDays.map(d => DAY_LABEL[d]).join(' '));
+      const target = q.kind === 'duration' || q.kind === 'externalXp' ? ' · target ' + q.target + ' ' + esc(q.unitLabel || '') : '';
+      return '<div class="qn">' + esc(q.name) + (q.requiresParentConfirm ? ' <span class="chip">parent confirms</span>' : '') + (q.requiredForStreak === false ? '' : ' <span class="chip ok">streak</span>') + '</div>' +
+        '<div class="qs">' + KINDS[q.kind] + target + ' · ' + when + ' · ' + award + '</div>';
+    }
+    function questForm(q, isNew) {
+      const pu = config.powerUps || [];
+      const isPack = q.kind === 'packCheck';
+      const f = (label, name, val, type = 'number', cls = '') => '<div class="f ' + cls + '"><label>' + label + '</label><input type="' + type + '" name="' + name + '" value="' + esc(val == null ? '' : val) + '"' + (type === 'number' ? ' step="1"' : '') + '></div>';
+      return '<form class="qform" data-qform="' + esc(q.id) + '">' +
+        f('Name', 'name', q.name, 'text', 'span2') +
+        '<div class="f"><label>Kind</label><select name="kind"' + (isPack ? ' disabled' : '') + '>' + Object.keys(KINDS).filter(k => k !== 'packCheck' || isPack).map(k => '<option value="' + k + '"' + (q.kind === k ? ' selected' : '') + '>' + KINDS[k] + '</option>').join('') + '</select></div>' +
+        f('Target', 'target', q.target) + f('Unit label', 'unitLabel', q.unitLabel, 'text', 'span2') +
+        f('XP', 'xp', q.xp) + f('Coins', 'coins', q.coins) + f('Screen min', 'screenMinutes', q.screenMinutes) +
+        f('Per-unit XP', 'perXp', q.perUnit ? q.perUnit.xp : 0) + f('Per-unit coins', 'perCoins', q.perUnit ? q.perUnit.coins : 0) +
+        '<div class="f"><label>Cadence</label><select name="cadence"><option value="daily"' + ((q.cadence || 'daily') === 'daily' ? ' selected' : '') + '>Daily</option><option value="weekly"' + (q.cadence === 'weekly' ? ' selected' : '') + '>Weekly</option></select></div>' +
+        f('Times / week', 'timesPerWeek', q.timesPerWeek || 1) +
+        '<div class="f span3"><label>Active days</label><div class="dayseg">' + DAYS7.map(d => '<button type="button" data-day="' + d + '" class="' + ((!q.activeDays || !q.activeDays.length || q.activeDays.includes(d)) ? 'on' : '') + '">' + DAY_LABEL[d] + '</button>').join('') + '</div></div>' +
+        '<div class="f span2"><label>&nbsp;</label><div class="checkrow"><input type="checkbox" name="requiresParentConfirm" id="rpc_' + esc(q.id) + '"' + (q.requiresParentConfirm ? ' checked' : '') + '><label for="rpc_' + esc(q.id) + '" style="text-transform:none;letter-spacing:0;font-size:13px;color:var(--text);font-weight:500">Parent confirms</label>' +
+        '<input type="checkbox" name="requiredForStreak" id="rfs_' + esc(q.id) + '"' + (q.requiredForStreak !== false ? ' checked' : '') + ' style="margin-left:12px"><label for="rfs_' + esc(q.id) + '" style="text-transform:none;letter-spacing:0;font-size:13px;color:var(--text);font-weight:500">Counts for streak</label></div></div>' +
+        (isPack ? '' : '<div class="f span6"><label>Power-ups</label><div class="puchips">' + (pu.length ? pu.map(p => '<button type="button" data-pu="' + esc(p.id) + '" class="' + ((q.powerUps || []).includes(p.id) ? 'on' : '') + '">' + esc(p.label) + '</button>').join('') : '<span class="muted small">none defined</span>') + '</div></div>') +
+        '<div class="actions"><button class="btn primary sm" type="submit">' + (isNew ? 'Add quest' : 'Save') + '</button><button class="btn sm" type="button" data-cancel>Cancel</button>' +
+        '<div class="right">' + (isNew || isPack ? '' : '<button class="btn sm danger" type="button" data-del="' + esc(q.id) + '">Delete</button>') + '</div></div></form>';
+    }
+    function paint() {
+      const quests = config.quests || [];
+      const cards = quests.map((q, i) => '<div class="qcard' + (q.enabled === false ? ' off' : '') + '" data-q="' + esc(q.id) + '"><div class="qhead">' +
+        '<button class="switch' + (q.enabled === false ? '' : ' on') + '" type="button" role="switch" aria-checked="' + (q.enabled !== false) + '" data-enable="' + esc(q.id) + '" title="Enabled"></button>' +
+        '<div>' + questSummary(q) + '</div><div class="qr">' +
+        '<button class="btn sm icon" type="button" data-move="' + i + ':-1" aria-label="Move up"' + (i === 0 ? ' disabled' : '') + '>' + icon('left', 14) + '</button>' +
+        '<button class="btn sm icon" type="button" data-move="' + i + ':1" aria-label="Move down"' + (i === quests.length - 1 ? ' disabled' : '') + '>' + icon('right', 14) + '</button>' +
+        '<button class="btn sm" type="button" data-edit="' + esc(q.id) + '">' + (editing === q.id ? 'Editing' : 'Edit') + '</button></div></div>' +
+        (editing === q.id ? questForm(q, false) : '') + '</div>').join('');
+      const newCard = editing === 'new' ? '<div class="qcard" data-q="new"><div class="qhead"><div class="qn">New quest</div></div>' + questForm({ id: 'new', name: '', kind: 'duration', target: 20, unitLabel: 'minutes', xp: 8, coins: 2, screenMinutes: 10, activeDays: [], powerUps: [], requiresParentConfirm: false, requiredForStreak: true, enabled: true }, true) + '</div>' : '';
+      const pus = (config.powerUps || []).map((p, i) => '<div class="ci" data-pui="' + i + '"><div style="flex:1;display:grid;grid-template-columns:2fr 3fr 70px 70px auto;gap:8px;align-items:center">' +
+        '<input type="text" value="' + esc(p.label) + '" data-pf="label" placeholder="Label"><input type="text" value="' + esc(p.sub || '') + '" data-pf="sub" placeholder="One-line explanation">' +
+        '<input type="number" value="' + (p.xp | 0) + '" data-pf="xp" title="XP"><input type="number" value="' + (p.coins | 0) + '" data-pf="coins" title="Coins">' +
+        '<button class="btn sm danger" type="button" data-pu-rm="' + i + '">Remove</button></div></div>').join('');
+      m.innerHTML =
+        '<div class="head"><div><h1>Quests</h1><div class="sub">What\'s on Edward\'s board, what it pays, and which days.</div></div><button class="btn primary" type="button" data-new>' + icon('plus', 16) + ' New quest</button></div>' +
+        newCard + cards +
+        '<div class="card" style="margin-top:22px"><div class="row spread" style="margin-bottom:6px"><h3>Power-ups</h3><span class="muted small">Pay for how the work was done, never how it turned out.</span></div>' + pus +
+        '<div class="row" style="margin-top:10px;gap:8px"><button class="btn sm" type="button" data-pu-add>' + icon('plus', 14) + ' Add power-up</button><button class="btn sm primary" type="button" data-pu-save>Save power-ups</button></div></div>';
+    }
+    async function save(msg) {
+      try { config = await api('/config', { method: 'PUT', body: config }); toast(msg || 'Saved'); editing = null; paint(); }
+      catch (e) { toast(e.message, true); }
+    }
+    function readForm(f, q) {
+      const num = n => Number(f[n] && f[n].value) || 0;
+      const kind = f.kind.disabled ? q.kind : f.kind.value;
+      const days = [...f.querySelectorAll('[data-day].on')].map(b => b.dataset.day);
+      const out = { ...q, name: f.name.value.trim(), kind, target: num('target'), unitLabel: f.unitLabel.value.trim(),
+        xp: num('xp'), coins: num('coins'), screenMinutes: num('screenMinutes'),
+        cadence: f.cadence.value, timesPerWeek: Math.max(1, num('timesPerWeek')),
+        activeDays: days.length === 7 ? [] : days,
+        requiresParentConfirm: f.requiresParentConfirm.checked, requiredForStreak: f.requiredForStreak.checked,
+        powerUps: [...f.querySelectorAll('[data-pu].on')].map(b => b.dataset.pu) };
+      if (kind === 'count') out.perUnit = { xp: num('perXp'), coins: num('perCoins'), screenMinutes: 0 }; else delete out.perUnit;
+      if (out.cadence === 'daily') delete out.timesPerWeek;
+      return out;
+    }
+    L.on(m, 'click', '[data-new]', () => { editing = 'new'; paint(); window.scrollTo(0, 0); });
+    L.on(m, 'click', '[data-edit]', (e, b) => { editing = editing === b.dataset.edit ? null : b.dataset.edit; paint(); });
+    L.on(m, 'click', '[data-cancel]', () => { editing = null; paint(); });
+    L.on(m, 'click', '[data-day]', (e, b) => b.classList.toggle('on'));
+    L.on(m, 'click', '[data-pu]', (e, b) => b.classList.toggle('on'));
+    L.on(m, 'click', '[data-enable]', (e, b) => { const q = config.quests.find(x => x.id === b.dataset.enable); q.enabled = q.enabled === false; save(q.enabled ? q.name + ' enabled' : q.name + ' disabled'); });
+    L.on(m, 'click', '[data-move]', (e, b) => { const [i, d] = b.dataset.move.split(':').map(Number); const j = i + d; if (j < 0 || j >= config.quests.length) return; [config.quests[i], config.quests[j]] = [config.quests[j], config.quests[i]]; save('Reordered'); });
+    L.on(m, 'click', '[data-del]', (e, b) => {
+      if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'Really delete?'; return; }
+      config.quests = config.quests.filter(q => q.id !== b.dataset.del); save('Deleted');
+    });
+    L.on(m, 'submit', '[data-qform]', (e, f) => {
+      e.preventDefault();
+      const id = f.dataset.qform;
+      if (id === 'new') {
+        const name = f.name.value.trim(); if (!name) { toast('Name required', true); return; }
+        let base = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'quest', slug = base, n = 2;
+        while (config.quests.some(q => q.id === slug)) slug = base + '-' + n++;
+        config.quests.push(readForm(f, { id: slug, enabled: true })); save('Added ' + name);
+      } else {
+        const i = config.quests.findIndex(q => q.id === id); if (i < 0) return;
+        config.quests[i] = readForm(f, config.quests[i]); save('Saved ' + config.quests[i].name);
+      }
+    });
+    L.on(m, 'click', '[data-pu-add]', () => { (config.powerUps = config.powerUps || []).push({ id: 'pu-' + Date.now().toString(36), label: '', sub: '', xp: 2, coins: 0 }); paint(); });
+    L.on(m, 'click', '[data-pu-rm]', (e, b) => { config.powerUps.splice(Number(b.dataset.puRm), 1); paint(); });
+    L.on(m, 'click', '[data-pu-save]', () => {
+      m.querySelectorAll('[data-pui]').forEach(row => { const p = config.powerUps[Number(row.dataset.pui)]; row.querySelectorAll('[data-pf]').forEach(inp => { p[inp.dataset.pf] = inp.type === 'number' ? Number(inp.value) || 0 : inp.value.trim(); }); });
+      config.powerUps = config.powerUps.filter(p => p.label);
+      save('Power-ups saved');
+    });
+    paint();
+  }
+
   // ── Router ────────────────────────────────────────────────────────
   L.on(document.body, 'click', '[data-logout]', async () => { await api('/hq/logout', { method: 'POST' }); gate('Signed out.'); });
   async function route() {
@@ -462,6 +665,7 @@
         if (p === '/hq') return renderLog();
         if (p === '/hq/list') return renderList();
         if (p === '/hq/history') return renderHistory();
+        if (p === '/hq/quests') return renderQuests();
         const slip = p.match(/^\/hq\/slip\/(\d{4}-\d{2}-\d{2})$/);
         if (slip) return renderSlip(slip[1]);
         go('/hq', { replace: true });
