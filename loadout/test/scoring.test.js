@@ -42,6 +42,15 @@ test('rule 3: pack check pays for logging, whatever the score', () => {
     assert.deepEqual(S.packAward(cfg, { items: items(5) }), { xp: 10, coins: 2, screenMinutes: 0 });
 });
 
+test('bank split: half to bank, odd coin to the spendable side, symmetric for negatives', () => {
+    assert.deepEqual(S.splitCoins({ xp: 10, coins: 2, screenMinutes: 0 }), { xp: 10, coins: 1, bank: 1, screenMinutes: 0 });
+    assert.deepEqual(S.splitCoins({ xp: 0, coins: 3, screenMinutes: 10 }), { xp: 0, coins: 2, bank: 1, screenMinutes: 10 });
+    assert.deepEqual(S.splitCoins({ xp: 0, coins: 1, screenMinutes: 0 }), { xp: 0, coins: 1, bank: 0, screenMinutes: 0 });
+    assert.deepEqual(S.splitCoins({ xp: 0, coins: -3, screenMinutes: 0 }), { xp: 0, coins: -2, bank: -1, screenMinutes: 0 });
+    assert.deepEqual(S.splitCoins({ xp: 0, coins: 20, screenMinutes: 0 }, 0), { xp: 0, coins: 20, bank: 0, screenMinutes: 0 });
+    assert.deepEqual(S.splitCoins({ xp: 0, coins: 20, screenMinutes: 0 }, 1), { xp: 0, coins: 0, bank: 20, screenMinutes: 0 });
+});
+
 test('rule 5: level from lifetime xp, linear 400/level', () => {
     assert.deepEqual(S.levelFor(cfg, 0), { level: 1, into: 0, perLevel: 400, next: 400 });
     assert.deepEqual(S.levelFor(cfg, 399), { level: 1, into: 399, perLevel: 400, next: 400 });

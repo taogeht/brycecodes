@@ -46,9 +46,9 @@ TEST_DATABASE_URL=postgres://…/scratch npm test      # + API integration (TRUN
 - appends the 8 household chores to `loadout.config` as quests (`simple` /
   `count`, coins = old NT value, `requiredForStreak: false`, enabled — prune
   from HQ later);
-- writes one `adjust` ledger entry for the opening coin balance: the sum of
-  every week's *saved* half (5,330 as of 2026-09-19), on the rule that the
-  spend half was already paid out; 1 coin = 1 TWD;
+- writes one `adjust` ledger entry for the opening **bank** balance: the sum of
+  every week's *saved* half (5,330 as of 2026-09-19). The spend half was paid
+  out in cash under the old chart, so spendable coins start at 0; 1 coin = 1 TWD;
 - stores the original blob verbatim in `loadout.legacy` and refuses to run twice.
 
 ```bash
@@ -80,7 +80,7 @@ minute), so the cutover is the script run itself — no second deploy.
 |------------|-----------------------------------------|-------|
 | `config`   | singleton JSONB                         | quests, power-ups, rewards, `pack.recurringItems` |
 | `days`     | `date` PK → JSONB day record            | `packCheck` + `checkins`; written under `SELECT … FOR UPDATE` |
-| `ledger`   | append-only rows (`earn`/`spend`/`adjust`) | balances are `SUM()`s, never stored |
+| `ledger`   | append-only rows (`earn`/`spend`/`adjust`) with `xp`, `coins`, `bank`, `screen_minutes` | balances are `SUM()`s, never stored |
 | `requests` | reward requests (phase 3)               | |
 | `legacy`   | verbatim chores blob + import summary   | audit trail for the opening balance |
 
@@ -134,6 +134,18 @@ phone at the locker — only the copy on `/pack` changes).
 returns done-vs-active days per quest per week. Everything else on
 `/hq/history` — the 2×2, the weakest-weekday headline, the items-that-go-missing
 table — is derived client-side from those two payloads.
+
+## Bank vs coins
+
+The old chart paid half of everything as cash and put half in the bank. Loadout
+keeps that: `lib/scoring.splitCoins(award, share)` runs at every pay site
+(pack submit, check-in delta, confirm, adjust) and writes `coins` (spendable)
+and `bank` on the ledger row. `config.bank.share` defaults to 0.5 and is
+editable in `/hq/settings`; it only affects future awards. Spends (`reward`
+approvals) touch `coins` only. The bank moves only through
+`POST /ledger/adjust` (HQ → Rewards → Adjust balances), which takes explicit
+per-bucket amounts and a required note. Savings goals in the vault track
+spendable coins.
 
 ## Rules the code enforces (don't get these subtly wrong)
 

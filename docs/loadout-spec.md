@@ -12,7 +12,8 @@ the sections below — the original **[CONFIRM]** markers are resolved.
 | Question | Decision |
 |---|---|
 | Persistence | **Postgres**, `loadout.*` schema on the existing `DATABASE_URL`. The spec's JSON-file layout is mirrored as tables. (JSON files already failed once on redeploy — that's why `/chores` moved to Postgres.) |
-| Opening balance | **Carry the "saved" half**: sum of each old week's `saved` (= floor(earned/2)) → 5,330 coins at 1 coin = 1 TWD. Spend halves treated as already paid out. One `adjust` ledger entry, audit blob in `loadout.legacy`. |
+| Opening balance | **Carry the "saved" half into the bank**: sum of each old week's `saved` (= floor(earned/2)) → 5,330 **bank** at 1 coin = 1 TWD; spendable coins start at 0. The spend halves were paid out in cash under the old chart. One `adjust` ledger entry, audit blob in `loadout.legacy`. |
+| Bank vs coins | The old chart's half-spend / half-save rule carries over: every coin award is split at pay time, `bank.share` (default 50%) to the **bank**, the rest to spendable **coins**. Bank is never spent in-app; only a parent adjustment moves it (e.g. "moved 2,000 to his real account"). Savings goals track spendable coins. |
 | Old household chores | **Carry over, prune later** — all 8 imported as enabled quests (`simple`/`count`, coins = old NT, XP 0, not required for streak). Bryce disables the unwanted ones from `/hq/quests` when that screen lands (phase 2). |
 | Phone at school | **No — paper.** Parent prints a slip from `/hq/list`; Edward ticks it at his locker; at home he transcribes into `/pack` and submits. Same award rules. |
 | Auth | HQ behind a single PIN (`HQ_PIN` env → HttpOnly cookie, 5-strikes lockout). Edward's routes are open, like `/chores` was. No user system. |
@@ -20,7 +21,7 @@ the sections below — the original **[CONFIRM]** markers are resolved.
 | Streak on weekends | Days with nothing required are **exempt** (skipped, not broken). With the current config that means Sat/Sun only require the 7-day quests. |
 | Math Academy XP | Self-entry in v1. Still the weakest link. |
 | Mount point | `/loadout` (Edward) and `/loadout/hq` (parent). `/chores` 301s automatically once the migration has run. |
-| Opening balance vs savings goals | The 5,330-coin opening balance clears the basketball (500) and M5Stack (800) goals on day one. Re-price them in `/hq/rewards` before cutover if they're meant to be earned. |
+| Savings goals | Track spendable coins, which start at 0 — so the basketball (500) and M5Stack (800) are real goals from day one. |
 
 ---
 
@@ -82,9 +83,11 @@ avoid hard material.
 the morning (printed as a slip), ticked by Edward at his locker on paper,
 transcribed and submitted by Edward at home, verified by a parent at home.
 
-**Currencies** — three, earned together and spent separately:
+**Currencies** — four, earned together and spent separately:
 - **XP** — no redemption value. Drives levels. Never decreases.
-- **Coins** — redeemed for real things, including money. 1 coin = 1 TWD.
+- **Coins** — redeemed for real things, including cash. 1 coin = 1 TWD.
+- **Bank** — the saved half of every coin award. Real savings; never spent
+  in-app, only moved by a parent adjustment.
 - **Screen minutes** — redeemed for screen time.
 
 **Streak** — consecutive days with all required quests logged. Tracked and
@@ -161,7 +164,9 @@ is the computed total; `paid` is what has actually hit the ledger so far
   "source": { "type": "packCheck", "date": "2026-09-19" }, "note": "" }
 ```
 
-Spends carry negative coins or screen minutes and zero XP.
+Spends carry negative coins or screen minutes and zero XP; they never touch
+`bank`. Earn and adjust rows carry `coins` and `bank` already split — the quest
+config's `coins` is the gross amount, the ledger row is the split.
 
 ---
 
@@ -190,7 +195,13 @@ Implemented as pure functions in `loadout/lib/scoring.js`, locked by
 6. **Redemption is a request, then an approval.** Coins leave the balance on
    approval, not on request. A denied request writes nothing.
 7. **Parent adjustments are ledger entries of kind `adjust`** with a required
-   note.
+   note. Check-in adjustments split like earnings; balance adjustments
+   (`POST /ledger/adjust`) name each bucket explicitly and are the only way
+   the bank moves.
+8. **Every coin award is split at pay time** — `bank.share` to the bank, the
+   rest to spendable coins (`trunc`, so odd coins favour spendable and
+   negatives split symmetrically). Changing the share only affects future
+   awards.
 
 ---
 
@@ -283,6 +294,7 @@ suggestions.
 GET  /today                              Edward's home screen bundle (day, quests, balances, level, streak)
 GET  /balances                           derived from ledger (+ level)
 GET  /ledger?limit=                      newest first
+POST /ledger/adjust                      hq — { xp, coins, bank, screenMinutes, note } explicit buckets, note required
 GET  /config                             open
 PUT  /config                             hq — must keep the pack-check quest
 GET  /day/:date                          full day record

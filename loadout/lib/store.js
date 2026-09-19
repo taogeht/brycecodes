@@ -31,6 +31,7 @@ const SCHEMA_SQL = `
         source JSONB NOT NULL DEFAULT '{}'::jsonb,
         note TEXT NOT NULL DEFAULT ''
     );
+    ALTER TABLE loadout.ledger ADD COLUMN IF NOT EXISTS bank INTEGER NOT NULL DEFAULT 0;
     CREATE INDEX IF NOT EXISTS loadout_ledger_at_idx ON loadout.ledger (at);
     CREATE TABLE IF NOT EXISTS loadout.requests (
         id BIGSERIAL PRIMARY KEY,
@@ -74,7 +75,7 @@ function blankPack(now, by) {
 function ledgerRow(r) {
     return {
         id: `txn_${r.id}`, at: tz.nowISO(new Date(r.at)), kind: r.kind,
-        xp: r.xp, coins: r.coins, screenMinutes: r.screen_minutes, source: r.source, note: r.note,
+        xp: r.xp, coins: r.coins, bank: r.bank | 0, screenMinutes: r.screen_minutes, source: r.source, note: r.note,
     };
 }
 
@@ -153,9 +154,9 @@ module.exports = function makeStore(pool) {
 
     async function appendLedger(entry, client = pool) {
         const { rows } = await client.query(
-            `INSERT INTO loadout.ledger (at, kind, xp, coins, screen_minutes, source, note)
-             VALUES (COALESCE($1, NOW()), $2, $3, $4, $5, $6, $7) RETURNING *`,
-            [entry.at || null, entry.kind, entry.xp | 0, entry.coins | 0, entry.screenMinutes | 0,
+            `INSERT INTO loadout.ledger (at, kind, xp, coins, bank, screen_minutes, source, note)
+             VALUES (COALESCE($1, NOW()), $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+            [entry.at || null, entry.kind, entry.xp | 0, entry.coins | 0, entry.bank | 0, entry.screenMinutes | 0,
              JSON.stringify(entry.source || {}), entry.note || '']
         );
         return ledgerRow(rows[0]);
@@ -168,11 +169,12 @@ module.exports = function makeStore(pool) {
         const { rows } = await client.query(`
             SELECT COALESCE(SUM(xp), 0)::int AS xp,
                    COALESCE(SUM(coins), 0)::int AS coins,
+                   COALESCE(SUM(bank), 0)::int AS bank,
                    COALESCE(SUM(screen_minutes), 0)::int AS screen_minutes,
                    COALESCE(SUM(CASE WHEN xp > 0 THEN xp ELSE 0 END), 0)::int AS lifetime_xp
             FROM loadout.ledger`);
         const r = rows[0];
-        return { xp: r.xp, coins: r.coins, screenMinutes: r.screen_minutes, lifetimeXp: r.lifetime_xp };
+        return { xp: r.xp, coins: r.coins, bank: r.bank, screenMinutes: r.screen_minutes, lifetimeXp: r.lifetime_xp };
     }
 
     async function ledger({ limit = 100 } = {}) {

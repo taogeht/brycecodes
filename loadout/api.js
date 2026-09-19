@@ -28,6 +28,10 @@ function toInt(v, { min = 0, max = 100000 } = {}) {
     const n = Math.round(Number(v));
     return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : null;
 }
+function bankShare(config) {
+    const s = Number(config.bank && config.bank.share);
+    return Number.isFinite(s) ? Math.min(1, Math.max(0, s)) : 0.5;
+}
 function awardDelta(total, paid) {
     const p = paid || S.ZERO;
     return S.award(total.xp - p.xp, total.coins - p.coins, total.screenMinutes - p.screenMinutes);
@@ -116,6 +120,19 @@ module.exports = function loadout(pool, opts = {}) {
         res.json({ ...bal, level: S.levelFor(config, bal.lifetimeXp) });
     }));
 
+    // Rule 7: parent adjustments are ledger rows of kind `adjust` with a
+    // required note. Explicit per-bucket amounts, no split — this is how
+    // "moved 2,000 to his real bank account" or "bonus 50 coins" get recorded.
+    router.post('/ledger/adjust', auth.requireHq, wrap(async (req, res) => {
+        const b = req.body || {};
+        const entry = { xp: toInt(b.xp || 0, { min: -1e6 }), coins: toInt(b.coins || 0, { min: -1e6 }), bank: toInt(b.bank || 0, { min: -1e6 }), screenMinutes: toInt(b.screenMinutes || 0, { min: -1e6 }) };
+        const note = cleanLabel(b.note).slice(0, 300);
+        if (!note) return bad(res, 'A note is required for adjustments.');
+        if (!entry.xp && !entry.coins && !entry.bank && !entry.screenMinutes) return bad(res, 'Nothing to adjust.');
+        const txn = await store.appendLedger({ kind: 'adjust', ...entry, source: { type: 'balance-adjust' }, note });
+        res.json({ txn, balances: await store.balances() });
+    }));
+
     router.get('/ledger', wrap(async (req, res) => {
         res.json(await store.ledger({ limit: Math.min(500, Number(req.query.limit) || 100) }));
     }));
@@ -200,17 +217,18 @@ module.exports = function loadout(pool, opts = {}) {
             day.packCheck.submittedAt = tz.nowISO();
             if (!day.packCheck.awarded) {
                 const txn = await store.appendLedger({
-                    kind: 'earn', ...award,
+                    kind: 'earn', ...S.splitCoins(award, bankShare(config)),
                     source: { type: 'packCheck', date: req.dateKey },
                     note: `Pack check ${req.dateKey}`,
                 }, client);
                 day.packCheck.awarded = award;
                 day.packCheck.ledgerId = txn.id;
             }
-            return { awarded: day.packCheck.awarded };
+            return { awarded: day.packCheck.awarded, paidNow: day.packCheck.awarded };
         });
         if (result.empty) return bad(res, 'Tick at least one item first.');
-        res.json({ day, awarded: result.awarded || day.packCheck.awarded, already: !!result.already });
+        const awarded = result.awarded || day.packCheck.awarded;
+        res.json({ day, awarded, split: result.already ? null : S.splitCoins(awarded, bankShare(config)), already: !!result.already });
     }));
 
     // Parent lets Edward fix a mistaken submit. The award is not clawed back
@@ -249,10 +267,10 @@ module.exports = function loadout(pool, opts = {}) {
     // (add minutes or a power-up, never remove — lowering is a parent
     // adjustment). requiresParentConfirm quests pay nothing until confirmed
     // and are locked for Edward afterwards.
-    async function payDelta(checkin, delta, kind, note, client, date) {
+    async function payDelta(checkin, delta, kind, note, client, date, share) {
         if (isZero(delta)) return null;
         const txn = await store.appendLedger({
-            kind, ...delta,
+            kind, ...S.splitCoins(delta, share),
             source: { type: kind === 'adjust' ? 'checkin-adjust' : 'checkin', date, checkinId: checkin.id, questId: checkin.questId },
             note,
         }, client);
@@ -302,13 +320,13 @@ module.exports = function loadout(pool, opts = {}) {
                 awarded: computed.total, base: computed.base, updatedAt: now });
             let paidNow = S.ZERO;
             if (c.status !== 'pending') {
-                await payDelta(c, delta, isNegative(delta) ? 'adjust' : 'earn', `${quest.name} ${date}`, client, date);
+                await payDelta(c, delta, isNegative(delta) ? 'adjust' : 'earn', `${quest.name} ${date}`, client, date, bankShare(config));
                 paidNow = delta;
             }
             return { checkin: c, paidNow };
         });
         if (result.conflict) return res.status(409).json({ error: 'conflict', message: result.conflict, day });
-        res.json({ day, checkin: result.checkin, paid: result.paidNow, pending: result.checkin.status === 'pending' });
+        res.json({ day, checkin: result.checkin, paid: result.paidNow, split: S.splitCoins(result.paidNow, bankShare(config)), pending: result.checkin.status === 'pending' });
     }));
 
     // Pending check-ins across the last 30 days, oldest first.
@@ -343,7 +361,7 @@ module.exports = function loadout(pool, opts = {}) {
             const q = S.questById(config, c.questId);
             c.status = 'confirmed';
             c.confirmedAt = tz.nowISO();
-            await payDelta(c, awardDelta(c.awarded, c.paid), 'earn', `${q ? q.name : c.questId} ${req.checkinDate} (confirmed)`, client, req.checkinDate);
+            await payDelta(c, awardDelta(c.awarded, c.paid), 'earn', `${q ? q.name : c.questId} ${req.checkinDate} (confirmed)`, client, req.checkinDate, bankShare(config));
             return { checkin: c };
         });
         if (result.missing) return bad(res, 'no such check-in', 404);
@@ -366,7 +384,7 @@ module.exports = function loadout(pool, opts = {}) {
             c.status = 'adjusted';
             c.note = note;
             c.adjustedAt = tz.nowISO();
-            await payDelta(c, awardDelta(awarded, c.paid), 'adjust', note, client, req.checkinDate);
+            await payDelta(c, awardDelta(awarded, c.paid), 'adjust', note, client, req.checkinDate, bankShare(config));
             return { checkin: c };
         });
         if (result.missing) return bad(res, 'no such check-in', 404);

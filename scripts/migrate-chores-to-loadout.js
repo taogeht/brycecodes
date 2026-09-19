@@ -11,8 +11,9 @@
 //   2. maps each chore to a Loadout quest, appended to loadout.config
 //        daily/3x/4x/weekly → cadence + timesPerWeek; quantity → kind 'count'
 //        NT per chore → coins (1 coin = 1 TWD); xp 0; requiredForStreak false
-//   3. writes the opening balance as ONE ledger `adjust` entry:
-//        sum of every week's `saved` half (spend half is treated as paid out)
+//   3. writes the opening balance as ONE ledger `adjust` entry, into the BANK
+//        bucket: the sum of every week's `saved` half. The spend half was paid
+//        out in cash under the old chart, so spendable coins start at 0.
 //   4. stores the original blob verbatim in loadout.legacy as the audit trail
 //
 // Idempotent: refuses to run if loadout.legacy already has the 'chores' row.
@@ -77,8 +78,9 @@ function plan(state) {
             anchorMonday: state.anchorMonday || null,
             chores: chores.length,
             lifetimeEarnedNT: earned,
-            openingCoins: saved,
-            rule: 'opening coins = sum of weekly saved halves; spend halves assumed already paid out; 1 coin = 1 TWD',
+            openingBank: saved,
+            openingCoins: 0,
+            rule: 'opening bank = sum of weekly saved halves (real savings); spend halves were paid out in cash; 1 coin = 1 TWD',
         },
     };
 }
@@ -106,7 +108,7 @@ async function main() {
         const pay = q.kind === 'count' ? `${q.perUnit.coins} coin/${q.unitLabel}` : `${q.coins} coins`;
         console.log(`  ${q.id.padEnd(24)} ${q.kind.padEnd(7)} ${q.cadence}${q.timesPerWeek ? ' x' + q.timesPerWeek : ''}  ${pay}`);
     }
-    console.log(`\nopening balance: +${p.summary.openingCoins} coins (adjust entry)`);
+    console.log(`\nopening balance: +${p.summary.openingBank} bank, 0 coins (adjust entry)`);
 
     if (DRY || !process.env.DATABASE_URL) {
         console.log('\n--dry-run: nothing written.');
@@ -132,9 +134,9 @@ async function main() {
         await client.query(
             `UPDATE loadout.config SET data = $1, updated_at = NOW() WHERE id = 'singleton'`, [JSON.stringify(cfg)]);
         const txn = await store.appendLedger({
-            kind: 'adjust', xp: 0, coins: p.summary.openingCoins, screenMinutes: 0,
+            kind: 'adjust', xp: 0, coins: 0, bank: p.summary.openingBank, screenMinutes: 0,
             source: { type: 'legacy-import', from: 'chores.state' },
-            note: `Opening balance from Mission Control: ${p.summary.weeks} weeks, ${p.summary.lifetimeEarnedNT} NT earned, saved half carried over`,
+            note: `Opening bank balance from Mission Control: ${p.summary.weeks} weeks, ${p.summary.lifetimeEarnedNT} NT earned, saved half carried over; spend half was paid in cash`,
         }, client);
         await client.query(
             `INSERT INTO loadout.legacy (id, source, summary) VALUES ('chores', $1, $2)`,
@@ -150,14 +152,14 @@ async function main() {
 
     // Verify against the source before declaring victory.
     const after = await store.balances();
-    const delta = after.coins - before.coins;
-    if (delta !== p.summary.openingCoins) {
-        throw new Error(`VERIFY FAILED: coin balance moved by ${delta}, expected ${p.summary.openingCoins}`);
+    const delta = after.bank - before.bank;
+    if (delta !== p.summary.openingBank || after.coins !== before.coins) {
+        throw new Error(`VERIFY FAILED: bank moved by ${delta} (expected ${p.summary.openingBank}), coins moved by ${after.coins - before.coins} (expected 0)`);
     }
     const cfg = await store.getConfig();
     const missing = p.quests.filter(q => !cfg.quests.some(c => c.id === q.id));
     if (missing.length) throw new Error(`VERIFY FAILED: quests missing after write: ${missing.map(q => q.id)}`);
-    console.log(`verified: coins ${before.coins} → ${after.coins}, ${cfg.quests.length} quests in config`);
+    console.log(`verified: bank ${before.bank} → ${after.bank}, coins unchanged at ${after.coins}, ${cfg.quests.length} quests in config`);
     await pool.end();
 }
 

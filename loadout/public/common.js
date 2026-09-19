@@ -115,6 +115,7 @@
     sword: '<path d="M14.5 4.5L20 10l-9 9-2-2 9-9-5.5-5.5"/><path d="M4 20l3-3M5 15l4 4"/>',
     eye: '<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
     logout: '<path d="M10 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h5"/><path d="M14 8l4 4-4 4M18 12H9"/>',
+    bank: '<path d="M3 10l9-6 9 6"/><path d="M5 10v7M10 10v7M14 10v7M19 10v7"/><path d="M3 17h18M3 20h18"/>',
   };
   function icon(name, size = 20, cls = '') {
     return '<svg class="ic ' + cls + '" width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (ICONS[name] || '') + '</svg>';

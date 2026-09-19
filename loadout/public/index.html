@@ -54,10 +54,11 @@
   .section-h { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
 
   /* Currency strip */
-  .strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 12px 0; }
-  .tile { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-card); padding: 12px 10px; min-height: 72px; }
-  .tile .lbl { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); font-weight: 500; }
-  .tile .val { font-size: 22px; margin-top: 4px; line-height: 1.1; }
+  .strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 12px 0; }
+  .tile { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-card); padding: 10px 8px; min-height: 68px; min-width: 0; }
+  .tile .lbl { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--muted); font-weight: 500; white-space: nowrap; }
+  .tile .val { font-size: 19px; margin-top: 4px; line-height: 1.1; overflow: hidden; text-overflow: ellipsis; }
+  .award .k { color: var(--muted); }
   .tile .val small { font-size: 12px; font-weight: 500; color: var(--muted); margin-left: 2px; font-family: var(--body); }
   .tile.gold .lbl, .tile.gold .val { color: var(--gold); }
   .tile.gold .val small { color: var(--muted); }
@@ -235,11 +236,13 @@
     const parts = [];
     if (a.xp || zeroOk) parts.push('<span><b>' + sign(a.xp) + '</b> XP</span>');
     if (a.coins || zeroOk) parts.push('<span class="g"><b>' + sign(a.coins) + '</b> coins</span>');
+    if (a.bank) parts.push('<span class="k"><b>' + sign(a.bank) + '</b> bank</span>');
     if (a.screenMinutes) parts.push('<span><b>' + sign(a.screenMinutes) + '</b> min</span>');
     if (!parts.length && dash) parts.push('<span>—</span>');
     return '<span class="award">' + parts.join('') + '</span>';
   }
   function addA(a, b) { return { xp: a.xp + b.xp, coins: a.coins + b.coins, screenMinutes: a.screenMinutes + b.screenMinutes }; }
+  function splitText(s) { return [s.xp ? '+' + s.xp + ' XP' : '', s.coins ? '+' + s.coins + ' coins' : '', s.bank ? '+' + s.bank + ' bank' : '', s.screenMinutes ? '+' + s.screenMinutes + ' min' : ''].filter(Boolean).join(' · '); }
   const ZERO = { xp: 0, coins: 0, screenMinutes: 0 };
   function questTargetLabel(q) {
     if (q.kind === 'externalXp' || q.kind === 'duration') return q.target + ' ' + (q.unitLabel || '');
@@ -322,9 +325,10 @@
       '<div class="bar" role="progressbar" aria-valuenow="' + lv.into + '" aria-valuemax="' + lv.perLevel + '"><i style="width:' + pct + '%"></i></div>' +
       '<div class="muted" style="font-size:12px;margin-top:6px;display:flex;justify-content:space-between"><span>' + lv.into + ' / ' + lv.perLevel + ' XP</span><span>Level ' + (lv.level + 1) + ' at ' + lv.next + ' XP</span></div>' +
       '<div class="strip">' +
-        '<div class="tile"><div class="lbl">' + icon('bolt', 16) + 'XP</div><div class="val num">' + b.xp.toLocaleString() + '</div></div>' +
-        '<div class="tile gold"><div class="lbl">' + icon('coin', 16) + 'Coins</div><div class="val num">' + b.coins.toLocaleString() + '</div></div>' +
-        '<div class="tile"><div class="lbl">' + icon('screen', 16) + 'Screen</div><div class="val num">' + b.screenMinutes + '<small>min</small></div></div>' +
+        '<div class="tile"><div class="lbl">' + icon('bolt', 14) + 'XP</div><div class="val num">' + b.xp.toLocaleString() + '</div></div>' +
+        '<div class="tile gold"><div class="lbl">' + icon('coin', 14) + 'Coins</div><div class="val num">' + b.coins.toLocaleString() + '</div></div>' +
+        '<div class="tile"><div class="lbl">' + icon('bank', 14) + 'Bank</div><div class="val num">' + b.bank.toLocaleString() + '</div></div>' +
+        '<div class="tile"><div class="lbl">' + icon('screen', 14) + 'Screen</div><div class="val num">' + b.screenMinutes + '<small>min</small></div></div>' +
       '</div>' +
       packCard +
       '<div class="section"><div class="section-h"><h2>Today\'s quests</h2><span class="muted" style="font-size:12px">' + doneCount + ' of ' + quests.length + ' done</span></div><div class="card">' + questRows + '</div></div>';
@@ -427,7 +431,7 @@
     try {
       const r = await api('/day/' + packDay.date + '/pack/submit', { method: 'POST' });
       packDay = r.day; paintPack();
-      if (!r.already && r.awarded) toast('+' + r.awarded.xp + ' XP · +' + r.awarded.coins + ' coins');
+      if (!r.already && r.split) toast(splitText(r.split));
     } catch (e) { toast(e.message || 'Could not submit', true); if (btn) btn.disabled = false; }
   }
 
@@ -532,7 +536,8 @@
         '<div class="sum"><span>' + (existing ? 'New since last log' : 'Total') + '</span>' + awardHtml(existing ? delta : a.total, { dash: true }) + '</div>' +
         '<button class="btn primary full" type="button" data-log' + (st.saving || !changed || (q.kind !== 'count' && q.kind !== 'simple' && st.value === 0 && !st.powerUps.size) || (q.kind === 'simple' && !st.value) ? ' disabled' : '') + '>' +
           (q.requiresParentConfirm ? icon('lock', 18) + ' Log for a parent to confirm' : icon('bolt', 18) + ' Log it') + '</button>' +
-        (weekDone ? '<p class="note" style="text-align:center">Already done ' + (q.timesPerWeek || 1) + '× this week.</p>' : '') + '</div>';
+        (weekDone ? '<p class="note" style="text-align:center">Already done ' + (q.timesPerWeek || 1) + '× this week.</p>' : '') +
+        (a.total.coins ? '<p class="note" style="text-align:center;margin-top:8px">Half of every coin goes to the bank.</p>' : '') + '</div>';
 
       app.innerHTML =
         '<div class="top"><a class="back" href="' + href('/') + '" data-link>' + icon('left', 20) + 'Today</a><span class="date">' + fmtDate(date) + '</span></div>' +
@@ -562,7 +567,7 @@
         try {
           const r = await api('/day/' + date + '/checkin', { method: 'POST', body: { questId: q.id, value: st.value, focusMinutes: st.focus, powerUps: [...st.powerUps] } });
           if (r.pending) toast('Logged — a parent will confirm');
-          else if (r.paid && (r.paid.xp || r.paid.coins || r.paid.screenMinutes)) toast(['+' + r.paid.xp + ' XP', '+' + r.paid.coins + ' coins', r.paid.screenMinutes ? '+' + r.paid.screenMinutes + ' min' : ''].filter(Boolean).join(' · '));
+          else if (r.split && (r.split.xp || r.split.coins || r.split.bank || r.split.screenMinutes)) toast(splitText(r.split));
           else toast('Logged');
           if (r.checkin.targetMet) { try { localStorage.removeItem(timerKey(q.id, date)); } catch (x) {} }
           go('/');
@@ -631,9 +636,11 @@
 
     app.innerHTML =
       '<div class="top"><span class="brand">Loadout</span></div><h1>Vault</h1>' +
-      '<div class="strip" style="grid-template-columns:1fr 1fr">' +
-        '<div class="tile gold"><div class="lbl">' + icon('coin', 16) + 'Coins</div><div class="val num">' + b.coins.toLocaleString() + '</div>' + approx + '</div>' +
-        '<div class="tile"><div class="lbl">' + icon('screen', 16) + 'Screen time</div><div class="val num">' + b.screenMinutes + '<small>min</small></div></div></div>' +
+      '<div class="strip" style="grid-template-columns:1fr 1fr 1fr">' +
+        '<div class="tile gold"><div class="lbl">' + icon('coin', 14) + 'Coins</div><div class="val num">' + b.coins.toLocaleString() + '</div>' + approx + '</div>' +
+        '<div class="tile"><div class="lbl">' + icon('bank', 14) + 'Bank</div><div class="val num">' + b.bank.toLocaleString() + '</div>' + (cv.perCoin > 0 ? '<div class="approx">≈ ' + esc(cv.currency || '') + ' ' + (b.bank * cv.perCoin).toLocaleString() + '</div>' : '') + '</div>' +
+        '<div class="tile"><div class="lbl">' + icon('screen', 14) + 'Screen</div><div class="val num">' + b.screenMinutes + '<small>min</small></div></div></div>' +
+      '<p class="note" style="margin:-4px 0 12px">Coins are yours to spend here. The bank is real savings — half of everything you earn goes in, and it stays in.</p>' +
       (reserved ? '<p class="note" style="margin:-4px 0 12px">' + [v.reserved.coins ? v.reserved.coins + ' coins' : '', v.reserved.screenMinutes ? v.reserved.screenMinutes + ' min' : ''].filter(Boolean).join(' and ') + ' spoken for by requests below.</p>' : '') +
       (open.length ? '<div class="card" style="border-color:var(--gold)"><div class="eyebrow gold" style="margin-bottom:6px">Waiting for a parent</div>' + open.map(r => '<div class="req"><div><div class="rq">' + esc(r.name) + '</div><div class="rs">' + (r.kind === 'suggest' ? 'Suggestion' : costHtml(r.cost)) + ' · ' + esc(L.relDay(r.requestedAt.slice(0, 10))) + '</div></div><div class="rb"><button class="btn" type="button" data-cancel-req="' + esc(r.id) + '" style="min-height:36px;font-size:13px">Cancel</button></div></div>').join('') + '</div>' : '') +
       '<div class="section"><div class="section-h"><h2>Rewards</h2></div><div class="card">' + (rewards.length ? rewards.map(rewardRow).join('') : '<div class="muted" style="font-size:14px">No rewards set up yet.</div>') + '</div></div>' +
@@ -676,6 +683,7 @@
       if (s.type === 'checkin-adjust') return [qname(s.questId) + ' · adjusted', 'settings'];
       if (s.type === 'legacy-import') return ['Starting balance', 'star'];
       if (s.type === 'reward') return [s.name || 'Reward', 'vault'];
+      if (s.type === 'balance-adjust') return ['Adjusted by a parent', 'settings'];
       return [e.note || e.kind, 'log'];
     };
     let html = '<div class="top"><span class="brand">Loadout</span></div><h1>Log</h1><p class="muted" style="margin:4px 0 0;font-size:14px">Everything you\'ve earned and spent.</p>';

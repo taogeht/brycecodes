@@ -13,6 +13,9 @@ module.exports = function defaultConfig() {
         // 1 coin = 1 TWD. Set once; changing it retroactively moves the savings
         // goals under him.
         coinValue: { currency: 'TWD', perCoin: 1 },
+        // Half of every coin earned goes to the bank (real savings, not
+        // spendable in-app); the other half is coins he can redeem.
+        bank: { share: 0.5 },
         // Pack check runs on paper at school: parent prints the slip from
         // /hq/list, Edward ticks at his locker, transcribes into /pack at home.
         pack: {

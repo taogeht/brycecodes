@@ -73,9 +73,11 @@ if (!URL_) {
         assert.equal(r.status, 200);
         assert.deepEqual(r.body.awarded, { xp: 10, coins: 2, screenMinutes: 0 });
         assert.equal(r.body.already, false);
+        assert.deepEqual(r.body.split, { xp: 10, coins: 1, bank: 1, screenMinutes: 0 });
         const after = (await call('/balances')).body;
         assert.equal(after.xp - before.xp, 10);
-        assert.equal(after.coins - before.coins, 2);
+        assert.equal(after.coins - before.coins, 1, 'spendable half');
+        assert.equal(after.bank - before.bank, 1, 'bank half');
 
         // locked
         assert.equal((await call(`/day/${today}/pack/tick`, { method: 'POST', body: { itemId: a, checked: false } })).status, 409);
@@ -124,6 +126,7 @@ if (!URL_) {
         r = await call(`/day/${today}/checkin`, { method: 'POST', body: { questId: 'math-academy', value: 35, powerUps: ['started-promptly', 'stayed-with-hard'] } });
         assert.equal(r.body.checkin.targetMet, true);
         assert.deepEqual(r.body.paid, { xp: 11, coins: 3, screenMinutes: 10 });
+        assert.deepEqual(r.body.split, { xp: 11, coins: 2, bank: 1, screenMinutes: 10 });
         assert.deepEqual(r.body.checkin.awarded, { xp: 14, coins: 4, screenMinutes: 10 });
         assert.deepEqual(r.body.checkin.paid, { xp: 14, coins: 4, screenMinutes: 10 });
         // taking a power-up away → refused for Edward
@@ -157,7 +160,7 @@ if (!URL_) {
         r = await call(`/checkin/${id}/confirm`, { method: 'POST', hq: true });
         assert.equal(r.body.checkin.status, 'confirmed');
         const b1 = (await call('/balances')).body;
-        assert.equal(b1.xp - b0.xp, 11); assert.equal(b1.coins - b0.coins, 3); assert.equal(b1.screenMinutes - b0.screenMinutes, 10);
+        assert.equal(b1.xp - b0.xp, 11); assert.equal(b1.coins - b0.coins, 2); assert.equal(b1.bank - b0.bank, 1); assert.equal(b1.screenMinutes - b0.screenMinutes, 10);
         assert.equal((await call(`/checkin/${id}/confirm`, { method: 'POST', hq: true })).body.already, true);
         assert.deepEqual((await call('/balances')).body, b1);
         // Edward is now locked out of it
@@ -167,7 +170,7 @@ if (!URL_) {
         r = await call(`/checkin/${id}/adjust`, { method: 'POST', hq: true, body: { awarded: { xp: 5, coins: 1, screenMinutes: 0 }, note: 'only 10 minutes really' } });
         assert.equal(r.body.checkin.status, 'adjusted');
         const b2 = (await call('/balances')).body;
-        assert.equal(b2.xp - b1.xp, -6); assert.equal(b2.coins - b1.coins, -2); assert.equal(b2.screenMinutes - b1.screenMinutes, -10);
+        assert.equal(b2.xp - b1.xp, -6); assert.equal(b2.coins - b1.coins, -1); assert.equal(b2.bank - b1.bank, -1); assert.equal(b2.screenMinutes - b1.screenMinutes, -10);
         assert.equal(b2.lifetimeXp, b1.lifetimeXp, 'lifetime XP never decreases');
         const adj = (await call('/ledger')).body.find(e => e.kind === 'adjust' && e.source.checkinId === id);
         assert.equal(adj && adj.note, 'only 10 minutes really');
@@ -223,7 +226,7 @@ if (!URL_) {
         r = await call(`/requests/${pocketReq}/approve`, { method: 'POST', hq: true });
         assert.equal(r.status, 200); assert.equal(r.body.request.status, 'approved'); assert.ok(r.body.txn);
         const b1 = await bal();
-        assert.equal(b1.coins, b0.coins - 20); assert.equal(b1.xp, b0.xp);
+        assert.equal(b1.coins, b0.coins - 20); assert.equal(b1.xp, b0.xp); assert.equal(b1.bank, b0.bank, 'spends never touch the bank');
         assert.equal((await call(`/requests/${pocketReq}/approve`, { method: 'POST', hq: true })).status, 409, 'no double approve');
         assert.equal((await bal()).coins, b1.coins);
         // screen-minute reward
@@ -258,6 +261,16 @@ if (!URL_) {
         assert.equal(r.body.request.note, 'Been wanting it', 'child note kept when parent adds none');
         assert.ok((await call('/config')).body.rewards.some(x => x.id === 'lego-set'));
         assert.deepEqual(await bal(), { ...b1, screenMinutes: b0.screenMinutes - 30 }, 'suggestion approval spends nothing');
+    });
+
+    test('parent balance adjust: explicit buckets, note required', async () => {
+        const b0 = (await call('/balances')).body;
+        assert.equal((await call('/ledger/adjust', { method: 'POST', hq: true, body: { bank: -100 } })).status, 400);
+        assert.equal((await call('/ledger/adjust', { method: 'POST', body: { bank: -100, note: 'x' } })).status, 401);
+        const r = await call('/ledger/adjust', { method: 'POST', hq: true, body: { bank: -100, coins: 5, note: 'Moved 100 to his account, 5 coin bonus' } });
+        assert.equal(r.status, 200);
+        assert.equal(r.body.balances.bank, b0.bank - 100); assert.equal(r.body.balances.coins, b0.coins + 5);
+        assert.equal(r.body.txn.kind, 'adjust'); assert.equal(r.body.txn.source.type, 'balance-adjust');
     });
 
     test('history/quests counts done days against days on the board', async () => {

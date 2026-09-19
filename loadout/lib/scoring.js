@@ -80,6 +80,17 @@ function checkinAward(config, quest, { value = null, powerUps = [] } = {}) {
     return { targetMet, base, powerUps: pu, applied, total: addAwards(base, pu) };
 }
 
+// Bank split: every coin award is divided at pay time — `share` of it goes
+// to the bank (real savings, never spendable in-app), the rest is spendable
+// coins. trunc() so positive and negative deltas split symmetrically and
+// odd amounts favour the spendable side (3 → 1 bank, 2 coins), matching the
+// old chart's floor(earned / 2) "saved" half.
+function splitCoins(a, share = 0.5) {
+    const coins = a.coins | 0;
+    const bank = Math.trunc(coins * share);
+    return { xp: a.xp | 0, coins: coins - bank, bank, screenMinutes: a.screenMinutes | 0 };
+}
+
 // Rule 5: levels come from lifetime XP, never the current balance.
 function levelFor(config, lifetimeXp) {
     const per = Math.max(1, Number(config.levels && config.levels.xpPerLevel) || 400);
@@ -138,5 +149,5 @@ function streak(config, daysByKey, todayKey, maxLookback = 400) {
 
 module.exports = {
     ZERO, award, addAwards, questById, powerUpById, questsActiveOn,
-    packAward, checkinAward, levelFor, requiredForStreak, questLogged, dayComplete, streak,
+    packAward, checkinAward, splitCoins, levelFor, requiredForStreak, questLogged, dayComplete, streak,
 };

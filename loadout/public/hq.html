@@ -263,6 +263,7 @@
     const p = [];
     if (a.xp) p.push('<b>' + sign(a.xp) + '</b> XP');
     if (a.coins) p.push('<b style="color:var(--gold)">' + sign(a.coins) + '</b> coins');
+    if (a.bank) p.push('<b>' + sign(a.bank) + '</b> bank');
     if (a.screenMinutes) p.push('<b>' + sign(a.screenMinutes) + '</b> min');
     return p.length ? p.join(' · ') : '—';
   }
@@ -455,7 +456,7 @@
         '<div class="stat"><div class="lbl">Submitted</div><div class="val num">' + ws.submitted + '</div></div>' +
         '<div class="stat"><div class="lbl">Verified</div><div class="val num">' + ws.verified + '</div></div>' +
         '<div class="stat' + (ws.tickedMissing ? ' warn' : '') + '"><div class="lbl">Ticked, not in bag</div><div class="val num">' + ws.tickedMissing + '</div></div>' +
-        '<div class="stat gold"><div class="lbl">Coins</div><div class="val num">' + ov.balances.coins.toLocaleString() + '</div></div>' +
+        '<div class="stat gold"><div class="lbl">Coins · bank</div><div class="val num">' + ov.balances.coins.toLocaleString() + '<small style="color:var(--muted)"> · ' + ov.balances.bank.toLocaleString() + '</small></div></div>' +
         '<div class="stat"><div class="lbl">XP · level ' + ov.level.level + '</div><div class="val num">' + ov.balances.xp.toLocaleString() + '</div></div>' +
       '</div>' +
       '<div class="grid2"><div>' + pack +
@@ -819,8 +820,20 @@
   // ── Rewards editor ────────────────────────────────────────────────
   async function renderRewards() {
     shell('/hq/rewards', '<p class="muted">Loading…</p>');
-    let requests;
-    [config, requests] = await Promise.all([api('/config'), api('/requests?limit=100')]);
+    let requests, bal;
+    [config, requests, bal] = await Promise.all([api('/config'), api('/requests?limit=100'), api('/balances')]);
+    const cv = config.coinValue || {};
+    const money = n => cv.perCoin > 0 ? ' <span class="muted small">≈ ' + esc(cv.currency || '') + ' ' + (n * cv.perCoin).toLocaleString() + '</span>' : '';
+    const balancesCard = '<div class="card" style="margin-bottom:14px"><div class="row spread" style="margin-bottom:10px"><h3>Balances</h3><span class="muted small">always the sum of the ledger</span></div>' +
+      '<div class="stats" style="grid-template-columns:repeat(4,1fr);margin-bottom:12px">' +
+        '<div class="stat gold"><div class="lbl">Coins — spendable</div><div class="val num">' + bal.coins.toLocaleString() + '</div>' + money(bal.coins) + '</div>' +
+        '<div class="stat"><div class="lbl">Bank — savings</div><div class="val num">' + bal.bank.toLocaleString() + '</div>' + money(bal.bank) + '</div>' +
+        '<div class="stat"><div class="lbl">Screen minutes</div><div class="val num">' + bal.screenMinutes + '</div></div>' +
+        '<div class="stat"><div class="lbl">XP · level ' + bal.level.level + '</div><div class="val num">' + bal.xp.toLocaleString() + '</div></div></div>' +
+      '<details><summary class="muted small" style="cursor:pointer">Adjust balances (bonus, correction, money moved to his real account)</summary>' +
+      '<form id="adjbal" class="adjform" style="grid-template-columns:90px 90px 90px 90px 1fr auto;margin-top:8px"><div><label>XP</label><input type="number" name="xp" value="0"></div><div><label>Coins</label><input type="number" name="coins" value="0"></div><div><label>Bank</label><input type="number" name="bank" value="0"></div><div><label>Screen min</label><input type="number" name="screenMinutes" value="0"></div>' +
+      '<div><label>Note (required — Edward sees it in his log)</label><input type="text" name="note" maxlength="300" required placeholder="e.g. Moved 2,000 to his savings account"></div><button class="btn sm primary" type="submit">Apply</button></form>' +
+      '<div class="muted small" style="margin-top:6px">Use negatives to take away. Bank never moves on its own — only through this form.</div></details></div>';
     let editing = null;
     const m = main();
     function form(r, isNew) {
@@ -839,8 +852,13 @@
       const newCard = editing === 'new' ? '<div class="qcard"><div class="qhead"><div class="qn">New reward</div></div>' + form({ id: 'new', name: '', cost: { coins: 20 }, enabled: true }, true) + '</div>' : '';
       const hist = requests.length ? '<table><thead><tr><th>When</th><th>Request</th><th>Cost</th><th>Status</th><th>Note</th></tr></thead><tbody>' + requests.map(r => '<tr><td class="muted small">' + fmtDate(r.requestedAt.slice(0, 10)) + '</td><td>' + esc(r.name) + (r.kind === 'suggest' ? ' <span class="chip">suggestion</span>' : '') + '</td><td>' + costText(r.cost) + '</td><td><span class="chip' + (r.status === 'approved' ? ' ok' : r.status === 'open' ? ' gold' : '') + '">' + r.status + '</span></td><td class="muted small">' + esc(r.note) + '</td></tr>').join('') + '</tbody></table>' : '<div class="empty">No requests yet.</div>';
       m.innerHTML = '<div class="head"><div><h1>Rewards</h1><div class="sub">What coins and screen minutes buy. Open requests are approved from the daily log.</div></div><button class="btn primary" type="button" data-new>' + icon('plus', 16) + ' New reward</button></div>' +
-        newCard + cards + '<div class="card" style="margin-top:22px"><h3 style="margin-bottom:10px">Requests</h3>' + hist + '</div>';
+        balancesCard + newCard + cards + '<div class="card" style="margin-top:22px"><h3 style="margin-bottom:10px">Requests</h3>' + hist + '</div>';
     }
+    L.on(m, 'submit', '#adjbal', async (e, f) => {
+      e.preventDefault();
+      try { await api('/ledger/adjust', { method: 'POST', body: { xp: Number(f.xp.value), coins: Number(f.coins.value), bank: Number(f.bank.value), screenMinutes: Number(f.screenMinutes.value), note: f.note.value } }); toast('Balances adjusted'); renderRewards(); }
+      catch (err) { toast(err.message, true); }
+    });
     async function save(msg) { try { config = await api('/config', { method: 'PUT', body: config }); toast(msg || 'Saved'); editing = null; paint(); } catch (e) { toast(e.message, true); } }
     function read(f, r) {
       const coins = Math.max(0, Number(f.coins.value) || 0), screenMinutes = Math.max(0, Number(f.screenMinutes.value) || 0);
@@ -881,6 +899,8 @@
         '<div class="f span2"><label>XP per level</label><input type="number" name="xpPerLevel" min="50" step="50" value="' + (config.levels && config.levels.xpPerLevel || 400) + '"></div>' +
         '<div class="f span2"><label>Coin currency</label><input type="text" name="currency" value="' + esc(cv.currency || 'TWD') + '"></div>' +
         '<div class="f span2"><label>Value per coin</label><input type="number" name="perCoin" min="0" step="0.01" value="' + (cv.perCoin || 0) + '"></div>' +
+        '<div class="f span2"><label>Share of coins to the bank (%)</label><input type="number" name="bankShare" min="0" max="100" step="5" value="' + Math.round(((config.bank && config.bank.share != null) ? config.bank.share : 0.5) * 100) + '"></div>' +
+        '<div class="f span4"><label>&nbsp;</label><div class="muted small" style="padding-top:8px">Applied to every coin award at the moment it\'s paid. 50% = the old chart\'s half-spend / half-save. Changing it only affects future awards.</div></div>' +
         '<div class="f span6"><label>Pack check mode</label><div class="seg"><button type="button" data-mode="paper" class="' + (pack.mode !== 'phone' ? 'on' : '') + '">Paper slip — ticked at school, entered at home</button><button type="button" data-mode="phone" class="' + (pack.mode === 'phone' ? 'on' : '') + '">Phone at the locker</button></div></div>' +
         '<div class="actions"><button class="btn primary" type="submit">Save settings</button></div></div></form>' +
       '<p class="muted small" style="max-width:720px;margin-top:12px">Set the coin value once and leave it. Changing it retroactively moves the savings goals under him. Balances are never stored — they are always the sum of the ledger, so nothing here rewrites history.</p>';
@@ -890,6 +910,7 @@
       config.child = { ...(config.child || {}), name: f.name.value.trim() || 'Edward' };
       config.levels = { ...(config.levels || { curve: 'linear' }), xpPerLevel: Math.max(50, Number(f.xpPerLevel.value) || 400) };
       config.coinValue = { currency: f.currency.value.trim() || 'TWD', perCoin: Math.max(0, Number(f.perCoin.value) || 0) };
+      config.bank = { ...(config.bank || {}), share: Math.min(1, Math.max(0, (Number(f.bankShare.value) || 0) / 100)) };
       config.pack = { ...(config.pack || {}), mode: m.querySelector('[data-mode].on').dataset.mode };
       try { config = await api('/config', { method: 'PUT', body: config }); toast('Settings saved'); } catch (err) { toast(err.message, true); }
     });
