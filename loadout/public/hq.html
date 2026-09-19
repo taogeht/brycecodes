@@ -245,6 +245,40 @@
     return '<form class="adjform" data-adjform="' + esc(c.id) + '"><div><label>XP</label><input type="number" name="xp" value="' + a.xp + '"></div><div><label>Coins</label><input type="number" name="coins" value="' + a.coins + '"></div><div><label>Screen min</label><input type="number" name="screenMinutes" value="' + a.screenMinutes + '"></div>' +
       '<div><label>Note (required)</label><input type="text" name="note" placeholder="Why?" maxlength="300" required></div><button class="btn sm primary" type="submit">Save</button><button class="btn sm" type="button" data-cancel-adjust>Cancel</button></form>';
   }
+  function costText(c) { const p = []; if (c && c.coins) p.push('<b style="color:var(--gold)">' + c.coins.toLocaleString() + '</b> coins'); if (c && c.screenMinutes) p.push('<b>' + c.screenMinutes + '</b> min'); return p.join(' · ') || '—'; }
+  function requestRow(r, bal) {
+    const isSug = r.kind === 'suggest';
+    const short = bal && !isSug && ((r.cost.coins || 0) > bal.coins || (r.cost.screenMinutes || 0) > bal.screenMinutes);
+    return '<div class="ci" data-req="' + esc(r.id) + '"><div><div class="cn">' + esc(r.name) + ' <span class="chip' + (isSug ? '' : ' gold') + '">' + (isSug ? 'suggestion' : 'redeem') + '</span></div>' +
+      '<div class="cs">' + (isSug ? (r.cost.coins ? 'Edward suggests ' + r.cost.coins + ' coins' : 'no price suggested') + (r.note ? ' · <i>' + esc(r.note) + '</i>' : '') : costText(r.cost) + (short ? ' · <span class="note-bad">balance is short</span>' : '')) + ' · ' + relDay(r.requestedAt.slice(0, 10)) + ' ' + fmtTime(r.requestedAt) + '</div></div>' +
+      '<div class="cb">' + (isSug
+        ? '<form class="adjform" data-sugform="' + esc(r.id) + '" style="padding:0;grid-template-columns:80px 80px auto auto auto"><div><label>Coins</label><input type="number" name="coins" value="' + (r.cost.coins || 0) + '" min="0"></div><div><label>Screen min</label><input type="number" name="screenMinutes" value="0" min="0"></div><label class="checkrow" style="font-size:12px"><input type="checkbox" name="savingsGoal"> savings goal</label><button class="btn sm primary" type="submit">Add reward</button><button class="btn sm" type="button" data-deny="' + esc(r.id) + '">Deny</button></form>'
+        : '<button class="btn sm primary" type="button" data-approve="' + esc(r.id) + '"' + (short ? ' disabled' : '') + '>Approve</button><button class="btn sm" type="button" data-deny="' + esc(r.id) + '">Deny</button>') + '</div></div>';
+  }
+  function bindRequestActions(m, reload) {
+    L.on(m, 'click', '[data-approve]', async (e, b) => {
+      b.disabled = true;
+      try { await api('/requests/' + b.dataset.approve + '/approve', { method: 'POST', body: {} }); toast('Approved — coins spent'); reload(); }
+      catch (err) { b.disabled = false; toast(err.message, true); }
+    });
+    L.on(m, 'click', '[data-deny]', async (e, b) => {
+      const row = b.closest('[data-req]');
+      if (!row.querySelector('[data-denynote]')) {
+        row.insertAdjacentHTML('beforeend', '<form class="adjform" data-denynote="' + esc(b.dataset.deny) + '" style="grid-template-columns:1fr auto auto"><div><label>Reason (Edward sees this)</label><input type="text" name="note" maxlength="300" placeholder="Optional"></div><button class="btn sm danger" type="submit">Deny</button><button class="btn sm" type="button" data-cancel-adjust>Cancel</button></form>');
+        row.querySelector('[data-denynote] input').focus();
+      }
+    });
+    L.on(m, 'submit', '[data-denynote]', async (e, f) => {
+      e.preventDefault();
+      try { await api('/requests/' + f.dataset.denynote + '/deny', { method: 'POST', body: { note: f.note.value } }); toast('Denied'); reload(); }
+      catch (err) { toast(err.message, true); }
+    });
+    L.on(m, 'submit', '[data-sugform]', async (e, f) => {
+      e.preventDefault();
+      try { await api('/requests/' + f.dataset.sugform + '/approve', { method: 'POST', body: { coins: Number(f.coins.value), screenMinutes: Number(f.screenMinutes.value), savingsGoal: f.savingsGoal.checked } }); toast('Added to rewards'); reload(); }
+      catch (err) { toast(err.message, true); }
+    });
+  }
   function bindCheckinActions(m, reload) {
     L.on(m, 'click', '[data-confirm]', async (e, b) => {
       b.disabled = true;
@@ -267,10 +301,10 @@
 
   // ── Shell ─────────────────────────────────────────────────────────
   function shell(active, body) {
-    const nav = [['/hq', 'calendar', 'Daily log'], ['/hq/list', 'list', 'Pack list'], ['/hq/quests', 'sword', 'Quests'], ['/hq/history', 'history', 'History']];
+    const nav = [['/hq', 'calendar', 'Daily log'], ['/hq/list', 'list', 'Pack list'], ['/hq/quests', 'sword', 'Quests'], ['/hq/rewards', 'vault', 'Rewards'], ['/hq/history', 'history', 'History'], ['/hq/settings', 'settings', 'Settings']];
     root.innerHTML = '<div class="shell"><aside class="side"><div class="brand">Loadout <span>HQ</span></div><nav class="nav">' +
       nav.map(([p, ic, l]) => '<a href="' + href(p) + '" data-link class="' + (active === p ? 'active' : '') + '">' + icon(ic, 18) + l + '</a>').join('') +
-      '<div class="soon">Coming: Rewards · Settings</div></nav>' +
+      '</nav>' +
       '<div class="foot"><a href="' + href('/') + '" class="btn sm" style="width:100%;justify-content:flex-start">' + icon('eye', 16) + ' Edward\'s view</a>' +
       '<button class="btn sm" data-logout style="width:100%;justify-content:flex-start;margin-top:6px">' + icon('logout', 16) + ' Sign out</button></div></aside>' +
       '<main id="main">' + body + '</main></div>';
@@ -363,7 +397,7 @@
     const pending = (ov.pendingCheckins.length + ov.openRequests.length) === 0
       ? '<div class="empty">Nothing waiting on you.</div>'
       : ov.pendingCheckins.map(p => checkinRow(p.checkin, p.quest, p.date, config, { showDate: true, pending: true })).join('') +
-        ov.openRequests.map(r => '<div class="ci"><div class="cn">' + esc(r.name) + '</div><span class="chip">reward request</span></div>').join('');
+        ov.openRequests.map(r => requestRow(r, ov.balances)).join('');
     const board = (ov.questsOnBoard || []).filter(q => q.kind !== 'packCheck');
     const logged = ov.day.checkins || [];
     const notLogged = board.filter(q => !logged.some(c => c.questId === q.id) && (q.cadence || 'daily') === 'daily' && q.requiredForStreak !== false);
@@ -398,6 +432,7 @@
     for (const c of logged) m.__checkins[c.id] = c;
     for (const p of ov.pendingCheckins) m.__checkins[p.checkin.id] = p.checkin;
     bindCheckinActions(m, renderLog);
+    bindRequestActions(m, renderLog);
     m.querySelector('#datepick').addEventListener('change', e => { if (isKey(e.target.value)) go(withDate('/hq', e.target.value)); });
     L.on(m, 'click', '[data-v]', (e, b) => {
       const seg = b.parentElement; const on = b.classList.contains('on');
@@ -653,6 +688,85 @@
     paint();
   }
 
+  // ── Rewards editor ────────────────────────────────────────────────
+  async function renderRewards() {
+    shell('/hq/rewards', '<p class="muted">Loading…</p>');
+    let requests;
+    [config, requests] = await Promise.all([api('/config'), api('/requests?limit=100')]);
+    let editing = null;
+    const m = main();
+    function form(r, isNew) {
+      const f = (label, name, val, type = 'number', cls = '') => '<div class="f ' + cls + '"><label>' + label + '</label><input type="' + type + '" name="' + name + '" value="' + esc(val == null ? '' : val) + '"' + (type === 'number' ? ' min="0" step="1"' : '') + '></div>';
+      return '<form class="qform" data-rform="' + esc(r.id) + '">' + f('Name', 'name', r.name, 'text', 'span2') + f('Coins', 'coins', r.cost && r.cost.coins || 0) + f('Screen minutes', 'screenMinutes', r.cost && r.cost.screenMinutes || 0) + f('Note (shown to Edward)', 'note', r.note, 'text', 'span2') +
+        '<div class="f span2"><label>&nbsp;</label><div class="checkrow"><input type="checkbox" name="savingsGoal" id="sg_' + esc(r.id) + '"' + (r.savingsGoal ? ' checked' : '') + '><label for="sg_' + esc(r.id) + '" style="text-transform:none;letter-spacing:0;font-size:13px;color:var(--text);font-weight:500">Savings goal (progress bar in the vault)</label></div></div>' +
+        '<div class="actions"><button class="btn primary sm" type="submit">' + (isNew ? 'Add reward' : 'Save') + '</button><button class="btn sm" type="button" data-cancel>Cancel</button><div class="right">' + (isNew ? '' : '<button class="btn sm danger" type="button" data-del="' + esc(r.id) + '">Delete</button>') + '</div></div></form>';
+    }
+    function paint() {
+      const rs = config.rewards || [];
+      const cards = rs.map((r, i) => '<div class="qcard' + (r.enabled === false ? ' off' : '') + '" data-r="' + esc(r.id) + '"><div class="qhead">' +
+        '<button class="switch' + (r.enabled === false ? '' : ' on') + '" type="button" role="switch" aria-checked="' + (r.enabled !== false) + '" data-enable="' + esc(r.id) + '"></button>' +
+        '<div><div class="qn">' + esc(r.name) + (r.savingsGoal ? ' <span class="chip gold">savings goal</span>' : '') + (r.suggested ? ' <span class="chip">suggested by Edward</span>' : '') + '</div><div class="qs">' + costText(r.cost) + (r.note ? ' · ' + esc(r.note) : '') + '</div></div>' +
+        '<div class="qr"><button class="btn sm icon" type="button" data-move="' + i + ':-1"' + (i === 0 ? ' disabled' : '') + '>' + icon('left', 14) + '</button><button class="btn sm icon" type="button" data-move="' + i + ':1"' + (i === rs.length - 1 ? ' disabled' : '') + '>' + icon('right', 14) + '</button><button class="btn sm" type="button" data-edit="' + esc(r.id) + '">' + (editing === r.id ? 'Editing' : 'Edit') + '</button></div></div>' +
+        (editing === r.id ? form(r, false) : '') + '</div>').join('');
+      const newCard = editing === 'new' ? '<div class="qcard"><div class="qhead"><div class="qn">New reward</div></div>' + form({ id: 'new', name: '', cost: { coins: 20 }, enabled: true }, true) + '</div>' : '';
+      const hist = requests.length ? '<table><thead><tr><th>When</th><th>Request</th><th>Cost</th><th>Status</th><th>Note</th></tr></thead><tbody>' + requests.map(r => '<tr><td class="muted small">' + fmtDate(r.requestedAt.slice(0, 10)) + '</td><td>' + esc(r.name) + (r.kind === 'suggest' ? ' <span class="chip">suggestion</span>' : '') + '</td><td>' + costText(r.cost) + '</td><td><span class="chip' + (r.status === 'approved' ? ' ok' : r.status === 'open' ? ' gold' : '') + '">' + r.status + '</span></td><td class="muted small">' + esc(r.note) + '</td></tr>').join('') + '</tbody></table>' : '<div class="empty">No requests yet.</div>';
+      m.innerHTML = '<div class="head"><div><h1>Rewards</h1><div class="sub">What coins and screen minutes buy. Open requests are approved from the daily log.</div></div><button class="btn primary" type="button" data-new>' + icon('plus', 16) + ' New reward</button></div>' +
+        newCard + cards + '<div class="card" style="margin-top:22px"><h3 style="margin-bottom:10px">Requests</h3>' + hist + '</div>';
+    }
+    async function save(msg) { try { config = await api('/config', { method: 'PUT', body: config }); toast(msg || 'Saved'); editing = null; paint(); } catch (e) { toast(e.message, true); } }
+    function read(f, r) {
+      const coins = Math.max(0, Number(f.coins.value) || 0), screenMinutes = Math.max(0, Number(f.screenMinutes.value) || 0);
+      const out = { ...r, name: f.name.value.trim(), cost: { ...(coins ? { coins } : {}), ...(screenMinutes ? { screenMinutes } : {}) }, savingsGoal: f.savingsGoal.checked };
+      const note = f.note.value.trim(); if (note) out.note = note; else delete out.note;
+      return out;
+    }
+    L.on(m, 'click', '[data-new]', () => { editing = 'new'; paint(); window.scrollTo(0, 0); });
+    L.on(m, 'click', '[data-edit]', (e, b) => { editing = editing === b.dataset.edit ? null : b.dataset.edit; paint(); });
+    L.on(m, 'click', '[data-cancel]', () => { editing = null; paint(); });
+    L.on(m, 'click', '[data-enable]', (e, b) => { const r = config.rewards.find(x => x.id === b.dataset.enable); r.enabled = r.enabled === false; save(r.name + (r.enabled ? ' enabled' : ' disabled')); });
+    L.on(m, 'click', '[data-move]', (e, b) => { const [i, d] = b.dataset.move.split(':').map(Number); const j = i + d; if (j < 0 || j >= config.rewards.length) return; [config.rewards[i], config.rewards[j]] = [config.rewards[j], config.rewards[i]]; save('Reordered'); });
+    L.on(m, 'click', '[data-del]', (e, b) => { if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'Really delete?'; return; } config.rewards = config.rewards.filter(r => r.id !== b.dataset.del); save('Deleted'); });
+    L.on(m, 'submit', '[data-rform]', (e, f) => {
+      e.preventDefault();
+      const id = f.dataset.rform; const name = f.name.value.trim(); if (!name) { toast('Name required', true); return; }
+      const cost = (Number(f.coins.value) || 0) + (Number(f.screenMinutes.value) || 0); if (!cost) { toast('Set a cost in coins or screen minutes', true); return; }
+      if (id === 'new') {
+        let base = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'reward', slug = base, n = 2;
+        while ((config.rewards || []).some(r => r.id === slug)) slug = base + '-' + n++;
+        (config.rewards = config.rewards || []).push(read(f, { id: slug, enabled: true })); save('Added ' + name);
+      } else { const i = config.rewards.findIndex(r => r.id === id); if (i < 0) return; config.rewards[i] = read(f, config.rewards[i]); save('Saved ' + name); }
+    });
+    paint();
+  }
+
+  // ── Settings ──────────────────────────────────────────────────────
+  async function renderSettings() {
+    shell('/hq/settings', '<p class="muted">Loading…</p>');
+    config = await api('/config');
+    const m = main();
+    const cv = config.coinValue || { currency: 'TWD', perCoin: 0 };
+    const pack = config.pack || { mode: 'paper' };
+    m.innerHTML = '<div class="head"><div><h1>Settings</h1><div class="sub">The few numbers the whole system hangs on.</div></div></div>' +
+      '<form id="settings" class="card" style="max-width:720px"><div class="qform" style="border:0;margin:0;padding:0">' +
+        '<div class="f span3"><label>Child\'s name</label><input type="text" name="name" value="' + esc(config.child && config.child.name || 'Edward') + '"></div>' +
+        '<div class="f span3"><label>Timezone</label><input type="text" value="' + esc(config.child && config.child.timezone || 'Asia/Taipei') + '" disabled></div>' +
+        '<div class="f span2"><label>XP per level</label><input type="number" name="xpPerLevel" min="50" step="50" value="' + (config.levels && config.levels.xpPerLevel || 400) + '"></div>' +
+        '<div class="f span2"><label>Coin currency</label><input type="text" name="currency" value="' + esc(cv.currency || 'TWD') + '"></div>' +
+        '<div class="f span2"><label>Value per coin</label><input type="number" name="perCoin" min="0" step="0.01" value="' + (cv.perCoin || 0) + '"></div>' +
+        '<div class="f span6"><label>Pack check mode</label><div class="seg"><button type="button" data-mode="paper" class="' + (pack.mode !== 'phone' ? 'on' : '') + '">Paper slip — ticked at school, entered at home</button><button type="button" data-mode="phone" class="' + (pack.mode === 'phone' ? 'on' : '') + '">Phone at the locker</button></div></div>' +
+        '<div class="actions"><button class="btn primary" type="submit">Save settings</button></div></div></form>' +
+      '<p class="muted small" style="max-width:720px;margin-top:12px">Set the coin value once and leave it. Changing it retroactively moves the savings goals under him. Balances are never stored — they are always the sum of the ledger, so nothing here rewrites history.</p>';
+    L.on(m, 'click', '[data-mode]', (e, b) => { m.querySelectorAll('[data-mode]').forEach(x => x.classList.remove('on')); b.classList.add('on'); });
+    m.querySelector('#settings').addEventListener('submit', async e => {
+      e.preventDefault(); const f = e.target;
+      config.child = { ...(config.child || {}), name: f.name.value.trim() || 'Edward' };
+      config.levels = { ...(config.levels || { curve: 'linear' }), xpPerLevel: Math.max(50, Number(f.xpPerLevel.value) || 400) };
+      config.coinValue = { currency: f.currency.value.trim() || 'TWD', perCoin: Math.max(0, Number(f.perCoin.value) || 0) };
+      config.pack = { ...(config.pack || {}), mode: m.querySelector('[data-mode].on').dataset.mode };
+      try { config = await api('/config', { method: 'PUT', body: config }); toast('Settings saved'); } catch (err) { toast(err.message, true); }
+    });
+  }
+
   // ── Router ────────────────────────────────────────────────────────
   L.on(document.body, 'click', '[data-logout]', async () => { await api('/hq/logout', { method: 'POST' }); gate('Signed out.'); });
   async function route() {
@@ -666,6 +780,8 @@
         if (p === '/hq/list') return renderList();
         if (p === '/hq/history') return renderHistory();
         if (p === '/hq/quests') return renderQuests();
+        if (p === '/hq/rewards') return renderRewards();
+        if (p === '/hq/settings') return renderSettings();
         const slip = p.match(/^\/hq\/slip\/(\d{4}-\d{2}-\d{2})$/);
         if (slip) return renderSlip(slip[1]);
         go('/hq', { replace: true });

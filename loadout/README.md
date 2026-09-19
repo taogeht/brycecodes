@@ -14,8 +14,8 @@ loadout/
 │   ├── auth.js          Parent HQ PIN gate (HQ_PIN env → HttpOnly cookie)
 │   └── default-config.js  Seed config (quests, power-ups, rewards)
 ├── public/
-│   ├── index.html       Edward's HUD (dark, phone-first): Today, Pack, Quest check-in, Log
-│   ├── hq.html          Parent HQ (light, desktop): Daily log (+approvals), Pack list, Quests, History
+│   ├── index.html       Edward's HUD (dark, phone-first): Today, Pack, Quest check-in, Vault, Log
+│   ├── hq.html          Parent HQ (light, desktop): Daily log (+approvals), Pack list, Quests, Rewards, History, Settings
 │   └── common.js        Shared API client, date helpers, router, SVG icons
 └── test/                node:test — unit (tz, scoring) + API integration
 ```
@@ -103,6 +103,30 @@ even below target, and the base pays later when the target is reached.
 - Check-in ids embed the date (`chk_YYYYMMDD_xxxxxxxx`) so `/checkin/:id`
   routes can find the day row without a lookup table.
 
+## Vault (phase 3)
+
+Rewards live in `config.rewards` (`cost: { coins?, screenMinutes? }`,
+`enabled`, `savingsGoal`, `note`). Redemption is a request, then an approval:
+
+- `POST /rewards/:id/request` creates an **open** request. Open requests
+  *reserve* their cost — Edward can't request past `balance − reserved` — but
+  nothing is written to the ledger.
+- `POST /requests/:id/approve` (HQ) locks the row, re-checks the live balance
+  inside the transaction, writes one `spend` row (negative coins / minutes) and
+  marks it approved. Approving twice is a 409.
+- `deny` (HQ, optional note Edward sees) and `cancel` (Edward, open only)
+  write nothing.
+- `POST /requests/suggest { name, coins?, why? }` is a request of kind
+  `suggest`; approving it (with a cost the parent sets, optionally as a
+  savings goal) appends a reward to config. No ledger row.
+- `GET /vault` is the one call Edward's Vault screen needs: balances,
+  reserved/available, rewards with `affordable`/`pending`, open + recent
+  requests, coin value.
+
+`/hq/rewards` edits rewards and shows every request; `/hq/settings` holds the
+child's name, XP per level, coin value and the pack-check mode (paper slip vs
+phone at the locker — only the copy on `/pack` changes).
+
 ## Rules the code enforces (don't get these subtly wrong)
 
 - Pack check pays on **submit with ≥1 tick**, full award regardless of score,
@@ -110,6 +134,7 @@ even below target, and the base pays later when the target is reached.
   arrived and never touches the award.
 - Awards and the day record commit in the **same transaction**.
 - Day keys come from `lib/tz.js` (Taipei). Never `new Date().toISOString().slice(0,10)`.
+- Coins leave the ledger on **approval** only; requests reserve, never spend.
 - Check-in payouts are monotonic deltas over `checkin.paid`; re-logging never
   pays twice for the same thing. `lifetimeXp` only sums positive rows, so a
   negative adjust lowers the balance but never the level.

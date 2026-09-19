@@ -103,6 +103,7 @@ module.exports = function loadout(pool, opts = {}) {
             date: today, weekday: tz.weekday(today), now: tz.nowISO(),
             isSchoolDay: quests.some(q => q.kind === 'packCheck'),
             day, quests, weekCounts, powerUps: config.powerUps || [], balances: bal,
+            packMode: (config.pack && config.pack.mode) || 'paper',
             level: S.levelFor(config, bal.lifetimeXp),
             streak: S.streak(config, days, today),
             child: config.child,
@@ -370,6 +371,108 @@ module.exports = function loadout(pool, opts = {}) {
         });
         if (result.missing) return bad(res, 'no such check-in', 404);
         res.json({ day, checkin: result.checkin });
+    }));
+
+    // ── Vault: rewards, requests, approvals (§5 rule 6) ─────────────────
+    // A request reserves coins (Edward can't request past balance − open
+    // requests); nothing leaves the ledger until a parent approves, which
+    // re-checks the live balance inside the transaction.
+    function costOf(r) { const c = r && r.cost || {}; return { coins: c.coins | 0, screenMinutes: c.screenMinutes | 0 }; }
+    function reservedFrom(open) {
+        return open.filter(r => r.kind === 'redeem').reduce((a, r) => { const c = costOf(r); return { coins: a.coins + c.coins, screenMinutes: a.screenMinutes + c.screenMinutes }; }, { coins: 0, screenMinutes: 0 });
+    }
+    function canAfford(bal, reserved, cost) {
+        return bal.coins - reserved.coins >= cost.coins && bal.screenMinutes - reserved.screenMinutes >= cost.screenMinutes;
+    }
+
+    async function vaultPayload() {
+        const [config, bal, open, recent] = await Promise.all([
+            store.getConfig(), store.balances(), store.requests({ status: 'open' }), store.requests({ limit: 40 }),
+        ]);
+        const reserved = reservedFrom(open);
+        const rewards = (config.rewards || []).filter(r => r.enabled !== false).map(r => {
+            const cost = costOf(r);
+            return { ...r, cost, affordable: canAfford(bal, reserved, cost), pending: open.some(o => o.kind === 'redeem' && o.rewardId === r.id) };
+        });
+        return {
+            balances: bal, reserved, available: { coins: bal.coins - reserved.coins, screenMinutes: bal.screenMinutes - reserved.screenMinutes },
+            level: S.levelFor(config, bal.lifetimeXp), coinValue: config.coinValue || { currency: 'TWD', perCoin: 0 },
+            rewards, open, recent: recent.filter(r => r.status !== 'open').slice(0, 12), child: config.child,
+        };
+    }
+    router.get('/vault', wrap(async (req, res) => res.json(await vaultPayload())));
+
+    router.get('/requests', wrap(async (req, res) => {
+        const status = ['open', 'approved', 'denied', 'cancelled'].includes(req.query.status) ? req.query.status : undefined;
+        res.json(await store.requests({ status, limit: Math.min(500, Number(req.query.limit) || 200) }));
+    }));
+
+    router.post('/rewards/:id/request', wrap(async (req, res) => {
+        const config = await store.getConfig();
+        const reward = (config.rewards || []).find(r => r.id === req.params.id && r.enabled !== false);
+        if (!reward) return bad(res, 'That reward is not available.', 404);
+        const cost = costOf(reward);
+        const [bal, open] = await Promise.all([store.balances(), store.requests({ status: 'open' })]);
+        if (open.some(o => o.kind === 'redeem' && o.rewardId === reward.id)) return res.status(409).json({ error: 'duplicate', message: 'Already requested — waiting for a parent.' });
+        if (!canAfford(bal, reservedFrom(open), cost)) return res.status(409).json({ error: 'insufficient', message: 'Not enough saved up yet.' });
+        const request = await store.createRequest({ kind: 'redeem', rewardId: reward.id, name: reward.name, cost });
+        res.json({ request, vault: await vaultPayload() });
+    }));
+
+    router.post('/requests/suggest', wrap(async (req, res) => {
+        const name = cleanLabel(req.body && req.body.name);
+        if (!name) return bad(res, 'Give the reward a name.');
+        const cost = { coins: toInt(req.body && req.body.coins || 0) || 0, screenMinutes: 0 };
+        const note = cleanLabel(req.body && req.body.why).slice(0, 300);
+        const request = await store.createRequest({ kind: 'suggest', name, cost, note });
+        res.json({ request, vault: await vaultPayload() });
+    }));
+
+    router.post('/requests/:id/cancel', wrap(async (req, res) => {
+        const out = await store.resolveRequest(req.params.id, req0 => req0.status === 'open' ? { status: 'cancelled', note: 'Cancelled by Edward' } : { refuse: 'Already ' + req0.status + '.' });
+        if (out.missing) return bad(res, 'no such request', 404);
+        if (out.refuse) return res.status(409).json({ error: 'resolved', message: out.refuse });
+        res.json({ request: out.request, vault: await vaultPayload() });
+    }));
+
+    router.post('/requests/:id/approve', auth.requireHq, wrap(async (req, res) => {
+        const note = cleanLabel(req.body && req.body.note).slice(0, 300);
+        const config = await store.getConfig();
+        const out = await store.resolveRequest(req.params.id, async (r, client) => {
+            if (r.status !== 'open') return { refuse: 'Already ' + r.status + '.' };
+            if (r.kind === 'redeem') {
+                const cost = costOf(r);
+                const bal = await store.balances(client);
+                if (bal.coins < cost.coins || bal.screenMinutes < cost.screenMinutes) return { refuse: 'Not enough in the balance right now.' };
+                const txn = await store.appendLedger({
+                    kind: 'spend', xp: 0, coins: -cost.coins, screenMinutes: -cost.screenMinutes,
+                    source: { type: 'reward', requestId: r.id, rewardId: r.rewardId, name: r.name }, note: note || r.name,
+                }, client);
+                return { status: 'approved', note, txn };
+            }
+            // suggestion → becomes a reward with the cost the parent sets
+            const coins = toInt(req.body && req.body.coins != null ? req.body.coins : (r.cost && r.cost.coins) || 0) || 0;
+            const screenMinutes = toInt(req.body && req.body.screenMinutes || 0) || 0;
+            if (!coins && !screenMinutes) return { refuse: 'Set a cost (coins or screen minutes) to approve a suggestion.' };
+            let base = r.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'reward', id = base, n = 2;
+            config.rewards = config.rewards || [];
+            while (config.rewards.some(x => x.id === id)) id = base + '-' + n++;
+            const reward = { id, name: r.name, cost: { ...(coins ? { coins } : {}), ...(screenMinutes ? { screenMinutes } : {}) }, enabled: true, savingsGoal: !!(req.body && req.body.savingsGoal), suggested: true };
+            config.rewards.push(reward);
+            await client.query(`UPDATE loadout.config SET data = $1, updated_at = NOW() WHERE id = 'singleton'`, [JSON.stringify(config)]);
+            return { status: 'approved', note, reward };
+        });
+        if (out.missing) return bad(res, 'no such request', 404);
+        if (out.refuse) return res.status(409).json({ error: 'refused', message: out.refuse });
+        res.json({ request: out.request, txn: out.txn || null, reward: out.reward || null });
+    }));
+
+    router.post('/requests/:id/deny', auth.requireHq, wrap(async (req, res) => {
+        const note = cleanLabel(req.body && req.body.note).slice(0, 300);
+        const out = await store.resolveRequest(req.params.id, r => r.status === 'open' ? { status: 'denied', note } : { refuse: 'Already ' + r.status + '.' });
+        if (out.missing) return bad(res, 'no such request', 404);
+        if (out.refuse) return res.status(409).json({ error: 'refused', message: out.refuse });
+        res.json({ request: out.request });
     }));
 
     // ── History (§6 /hq/history, §7 GET /api/history/pack) ──────────────

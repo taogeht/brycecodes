@@ -163,6 +163,33 @@
   .status-chip { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: var(--r-ctl); border: 1px solid var(--border-strong); background: var(--surface-alt); font-size: 13px; font-weight: 600; margin-top: 12px; }
   .status-chip.ok { color: var(--success); border-color: var(--success); }
 
+  /* Vault */
+  .rw { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--border); }
+  .rw:first-child { border-top: 0; padding-top: 2px; }
+  .rw .rn { font-weight: 600; font-size: 16px; }
+  .rw .rs { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .rw .rb { margin-left: auto; flex: none; text-align: right; }
+  .rw .rb .btn { min-height: 40px; padding: 0 14px; font-size: 14px; }
+  .cost { display: inline-flex; gap: 8px; font-size: 13px; font-weight: 600; }
+  .cost .g { color: var(--gold); }
+  .goal { padding: 12px 0; border-top: 1px solid var(--border); }
+  .goal:first-child { border-top: 0; padding-top: 2px; }
+  .goal .gh { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+  .goal .gn { font-weight: 600; font-size: 16px; }
+  .goal .gp { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .goal .bar { margin-top: 8px; height: 10px; }
+  .goal.reached .bar > i { background: var(--success); }
+  .req { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--border); }
+  .req:first-child { border-top: 0; padding-top: 0; }
+  .req .rq { font-weight: 600; }
+  .req .rs { font-size: 13px; color: var(--muted); }
+  .req .rb { margin-left: auto; flex: none; }
+  .field { margin-top: 10px; }
+  .field label { display: block; font-size: 12px; color: var(--muted); font-weight: 600; margin-bottom: 4px; }
+  .field input { width: 100%; min-height: 46px; padding: 8px 12px; border-radius: var(--r-ctl); border: 1px solid var(--border-strong); background: var(--surface-alt); outline: 0; font-size: 16px; }
+  .field input:focus { border-color: var(--gold); }
+  .approx { font-size: 12px; color: var(--muted); font-weight: 500; }
+
   /* Log */
   .lday { margin-top: 18px; }
   .lrow { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--border); }
@@ -232,7 +259,7 @@
 
   function tabbar(active) {
     const items = [
-      ['/', 'home', 'Today'], ['/pack', 'bag', 'Pack'], ['/vault', 'vault', 'Vault', true], ['/log', 'log', 'Log'],
+      ['/', 'home', 'Today'], ['/pack', 'bag', 'Pack'], ['/vault', 'vault', 'Vault'], ['/log', 'log', 'Log'],
     ];
     tabs.innerHTML = items.map(([p, ic, label, soon]) =>
       '<a class="tab' + (p === active ? ' active' : '') + (soon ? ' soon' : '') + '" href="' + href(p) + '" data-link' +
@@ -305,6 +332,7 @@
 
   // ── Pack check ────────────────────────────────────────────────────
   let packDay = null;     // day record for today
+  let packMode = 'paper'; // 'paper' = ticks happen on a printed slip, entered at home
   let pending = new Set(); // itemIds with an in-flight tick
   const BLANKS = 2;
 
@@ -312,7 +340,7 @@
     tabbar('/pack');
     const date = todayKey();
     app.innerHTML = '<div class="top"><a class="back" href="' + href('/') + '" data-link>' + icon('left', 20) + 'Today</a><span class="date">' + fmtDate(date) + '</span></div><p class="muted">Loading…</p>';
-    try { packDay = await api('/day/' + date); } catch (e) { app.innerHTML = errorView(e); return; }
+    try { const t = await api('/today'); packDay = t.day; packMode = t.packMode || 'paper'; } catch (e) { app.innerHTML = errorView(e); return; }
     paintPack();
   }
 
@@ -342,7 +370,7 @@
         '<div class="award">' + (pc.awarded ? awardHtml(pc.awarded) : '') + '</div>' +
         '<div class="muted" style="font-size:13px;margin-top:4px">' + (v ? 'Bag checked: ' + v.arrived.length + ' arrived' + (v.missing.length ? ', ' + v.missing.length + ' missing' : '') + (v.note ? ' — ' + esc(v.note) : '') : 'A parent will check the bag tonight.') + '</div></div></div>';
     } else {
-      head = '<h1>Pack check</h1><p class="muted" style="margin:4px 0 0;font-size:15px">Fill this in from your slip when you get home. Tick what you actually packed.</p>';
+      head = '<h1>Pack check</h1><p class="muted" style="margin:4px 0 0;font-size:15px">' + (packMode === 'phone' ? 'At your locker: tick each thing as it goes in the bag.' : 'Fill this in from your slip when you get home. Tick what you actually packed.') + '</p>';
     }
 
     const fromMorning = parentItems.length
@@ -360,7 +388,7 @@
       (locked ? '' :
         '<div class="section"><button class="btn primary full" type="button" data-submit' + (ticked === 0 ? ' disabled' : '') + '>' + icon('lock', 20) + ' Packed — lock it in</button>' +
         '<p class="note">' + (ticked ? ticked + ' ticked. ' : 'Tick at least one thing to submit. ') + 'Submitting pays the pack-check award whether you got 3 of 5 or 5 of 5 — a parent checks the bag separately.</p></div>') +
-      '<p class="note" style="text-align:center">Ticks happen on the paper slip at your locker. This screen is for entering them at home.</p>';
+      '<p class="note" style="text-align:center">' + (packMode === 'phone' ? 'Do this at your locker, not at your desk. Under 90 seconds.' : 'Ticks happen on the paper slip at your locker. This screen is for entering them at home.') + '</p>';
   }
 
   async function tick(id) {
@@ -553,6 +581,85 @@
   L.on(app, 'click', '[data-timer]', (e, b) => questCtl && questCtl.timer(b.dataset.timer));
   L.on(app, 'click', '[data-log]', (e, b) => questCtl && questCtl.log(b));
 
+  // ── Vault ────────────────────────────────────────────────────────
+  let vaultSuggesting = false;
+  function costHtml(c) {
+    const p = [];
+    if (c.coins) p.push('<span class="g">' + c.coins.toLocaleString() + ' coins</span>');
+    if (c.screenMinutes) p.push('<span>' + c.screenMinutes + ' min</span>');
+    return '<span class="cost">' + (p.join('') || '<span>free</span>') + '</span>';
+  }
+  async function renderVault() {
+    tabbar('/vault');
+    app.innerHTML = '<div class="top"><span class="brand">Loadout</span></div><h1>Vault</h1><p class="muted">Loading…</p>';
+    let v;
+    try { v = await api('/vault'); } catch (e) { app.innerHTML = errorView(e); return; }
+    paintVault(v);
+  }
+  function paintVault(v) {
+    const b = v.balances, cv = v.coinValue || {};
+    const approx = cv.perCoin > 0 ? '<div class="approx">≈ ' + esc(cv.currency || '') + ' ' + (b.coins * cv.perCoin).toLocaleString() + '</div>' : '';
+    const reserved = v.reserved.coins || v.reserved.screenMinutes;
+    const open = v.open.filter(r => r.status === 'open');
+    const rewards = v.rewards.filter(r => !r.savingsGoal);
+    const goals = v.rewards.filter(r => r.savingsGoal);
+    const rewardRow = r => {
+      const need = Math.max(0, r.cost.coins - v.available.coins);
+      const needMin = Math.max(0, r.cost.screenMinutes - v.available.screenMinutes);
+      let btn;
+      if (r.pending) btn = '<span class="pill">' + icon('lock', 14) + ' Requested</span>';
+      else if (r.affordable) btn = '<button class="btn primary" type="button" data-redeem="' + esc(r.id) + '">Redeem</button>';
+      else btn = '<span class="muted" style="font-size:12px">' + (need ? need.toLocaleString() + ' more coins' : needMin + ' more min') + '</span>';
+      return '<div class="rw"><div><div class="rn">' + esc(r.name) + '</div><div class="rs">' + costHtml(r.cost) + (r.note ? ' · ' + esc(r.note) : '') + '</div></div><div class="rb">' + btn + '</div></div>';
+    };
+    const goalRow = r => {
+      const pct = Math.min(100, Math.round(100 * b.coins / Math.max(1, r.cost.coins)));
+      const reached = b.coins >= r.cost.coins;
+      return '<div class="goal' + (reached ? ' reached' : '') + '"><div class="gh"><div class="gn">' + esc(r.name) + '</div><div class="gp">' + b.coins.toLocaleString() + ' / ' + r.cost.coins.toLocaleString() + '</div></div>' +
+        '<div class="bar"><i style="width:' + pct + '%"></i></div>' +
+        '<div class="gh" style="margin-top:6px"><span class="muted" style="font-size:12px">' + (reached ? 'Saved up!' : (r.cost.coins - b.coins).toLocaleString() + ' to go') + '</span>' +
+        (reached ? (r.pending ? '<span class="pill">' + icon('lock', 14) + ' Requested</span>' : (r.affordable ? '<button class="btn primary" type="button" data-redeem="' + esc(r.id) + '" style="min-height:40px">Redeem</button>' : '<span class="muted" style="font-size:12px">coins spoken for</span>')) : '') + '</div></div>';
+    };
+    const suggest = vaultSuggesting
+      ? '<div class="card"><div class="eyebrow">Suggest a reward</div><form id="suggest"><div class="field"><label>What is it?</label><input type="text" name="name" maxlength="120" placeholder="e.g. Trip to the climbing gym" required></div>' +
+        '<div class="field"><label>What should it cost? (coins, optional)</label><input type="number" name="coins" inputmode="numeric" min="0" placeholder="Parents decide"></div>' +
+        '<div class="field"><label>Why? (optional)</label><input type="text" name="why" maxlength="300"></div>' +
+        '<div style="display:flex;gap:8px;margin-top:14px"><button class="btn primary" type="submit" style="flex:1">Send to parents</button><button class="btn" type="button" data-suggest-cancel>Cancel</button></div></form></div>'
+      : '<button class="btn ghost full" type="button" data-suggest>' + icon('plus', 18) + ' Suggest a reward</button>';
+    const recent = v.recent.map(r => '<div class="req"><div><div class="rq">' + esc(r.name) + '</div><div class="rs">' + esc(L.relDay(r.resolvedAt ? r.resolvedAt.slice(0, 10) : r.requestedAt.slice(0, 10))) + (r.note && r.status !== 'cancelled' ? ' · ' + esc(r.note) : '') + '</div></div>' +
+      '<div class="rb"><span class="pill' + (r.status === 'approved' ? ' hot' : '') + '" style="font-size:12px">' + (r.status === 'approved' ? (r.kind === 'suggest' ? 'Added' : 'Approved') : r.status === 'denied' ? 'Denied' : 'Cancelled') + '</span></div></div>').join('');
+
+    app.innerHTML =
+      '<div class="top"><span class="brand">Loadout</span></div><h1>Vault</h1>' +
+      '<div class="strip" style="grid-template-columns:1fr 1fr">' +
+        '<div class="tile gold"><div class="lbl">' + icon('coin', 16) + 'Coins</div><div class="val num">' + b.coins.toLocaleString() + '</div>' + approx + '</div>' +
+        '<div class="tile"><div class="lbl">' + icon('screen', 16) + 'Screen time</div><div class="val num">' + b.screenMinutes + '<small>min</small></div></div></div>' +
+      (reserved ? '<p class="note" style="margin:-4px 0 12px">' + [v.reserved.coins ? v.reserved.coins + ' coins' : '', v.reserved.screenMinutes ? v.reserved.screenMinutes + ' min' : ''].filter(Boolean).join(' and ') + ' spoken for by requests below.</p>' : '') +
+      (open.length ? '<div class="card" style="border-color:var(--gold)"><div class="eyebrow gold" style="margin-bottom:6px">Waiting for a parent</div>' + open.map(r => '<div class="req"><div><div class="rq">' + esc(r.name) + '</div><div class="rs">' + (r.kind === 'suggest' ? 'Suggestion' : costHtml(r.cost)) + ' · ' + esc(L.relDay(r.requestedAt.slice(0, 10))) + '</div></div><div class="rb"><button class="btn" type="button" data-cancel-req="' + esc(r.id) + '" style="min-height:36px;font-size:13px">Cancel</button></div></div>').join('') + '</div>' : '') +
+      '<div class="section"><div class="section-h"><h2>Rewards</h2></div><div class="card">' + (rewards.length ? rewards.map(rewardRow).join('') : '<div class="muted" style="font-size:14px">No rewards set up yet.</div>') + '</div></div>' +
+      (goals.length ? '<div class="section"><div class="section-h"><h2>Saving up for</h2></div><div class="card">' + goals.map(goalRow).join('') + '</div></div>' : '') +
+      '<div class="section">' + suggest + '</div>' +
+      (recent.length ? '<div class="section"><div class="section-h"><h2>Recent</h2></div><div class="card">' + recent + '</div></div>' : '') +
+      '<p class="note" style="text-align:center">Redeeming asks a parent. Coins only leave the vault when they say yes.</p>';
+  }
+  L.on(app, 'click', '[data-redeem]', async (e, b) => {
+    b.disabled = true;
+    try { const r = await api('/rewards/' + b.dataset.redeem + '/request', { method: 'POST' }); toast('Sent to your parents'); paintVault(r.vault); }
+    catch (err) { b.disabled = false; toast(err.message, true); }
+  });
+  L.on(app, 'click', '[data-cancel-req]', async (e, b) => {
+    b.disabled = true;
+    try { const r = await api('/requests/' + b.dataset.cancelReq + '/cancel', { method: 'POST' }); toast('Cancelled'); paintVault(r.vault); }
+    catch (err) { b.disabled = false; toast(err.message, true); }
+  });
+  L.on(app, 'click', '[data-suggest]', () => { vaultSuggesting = true; renderVault(); });
+  L.on(app, 'click', '[data-suggest-cancel]', () => { vaultSuggesting = false; renderVault(); });
+  L.on(app, 'submit', '#suggest', async (e, f) => {
+    e.preventDefault();
+    try { const r = await api('/requests/suggest', { method: 'POST', body: { name: f.name.value, coins: f.coins.value, why: f.why.value } }); vaultSuggesting = false; toast('Suggestion sent'); paintVault(r.vault); }
+    catch (err) { toast(err.message, true); }
+  });
+
   // ── Log ──────────────────────────────────────────────────────────
   async function renderLog() {
     tabbar('/log');
@@ -599,7 +706,7 @@
     window.scrollTo(0, 0);
     if (p === '/') return renderToday();
     if (p === '/pack') return renderPack();
-    if (p === '/vault') return soonView('Vault');
+    if (p === '/vault') return renderVault();
     if (p === '/log') return renderLog();
     const qm = p.match(/^\/quest\/([^/]+)$/);
     if (qm) return renderQuest(decodeURIComponent(qm[1]));

@@ -38,7 +38,7 @@ const SCHEMA_SQL = `
         reward_id TEXT,
         name TEXT NOT NULL,
         cost JSONB NOT NULL DEFAULT '{}'::jsonb,
-        status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'approved', 'denied')),
+        status TEXT NOT NULL DEFAULT 'open',
         requested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         resolved_at TIMESTAMPTZ,
         note TEXT NOT NULL DEFAULT ''
@@ -46,6 +46,11 @@ const SCHEMA_SQL = `
     -- Verbatim copy of the old chores.state blob at import time, plus the
     -- figures the migration derived from it. This is the audit trail for the
     -- opening balance; scripts/migrate-chores-to-loadout.js writes it.
+    -- 'cancelled' was added in phase 3; re-assert the constraint so an
+    -- earlier-bootstrapped table picks it up.
+    ALTER TABLE loadout.requests DROP CONSTRAINT IF EXISTS requests_status_check;
+    ALTER TABLE loadout.requests ADD CONSTRAINT requests_status_check
+        CHECK (status IN ('open', 'approved', 'denied', 'cancelled'));
     CREATE TABLE IF NOT EXISTS loadout.legacy (
         id TEXT PRIMARY KEY DEFAULT 'chores',
         imported_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -175,16 +180,53 @@ module.exports = function makeStore(pool) {
         return rows.map(ledgerRow);
     }
 
-    async function requests({ status } = {}) {
+    async function requests({ status, limit = 200 } = {}) {
         const { rows } = status
-            ? await pool.query(`SELECT * FROM loadout.requests WHERE status = $1 ORDER BY id DESC`, [status])
-            : await pool.query(`SELECT * FROM loadout.requests ORDER BY id DESC LIMIT 200`);
+            ? await pool.query(`SELECT * FROM loadout.requests WHERE status = $1 ORDER BY id DESC LIMIT $2`, [status, limit])
+            : await pool.query(`SELECT * FROM loadout.requests ORDER BY id DESC LIMIT $1`, [limit]);
         return rows.map(requestRow);
+    }
+
+    async function createRequest({ kind, rewardId = null, name, cost = {}, note = '' }) {
+        const { rows } = await pool.query(
+            `INSERT INTO loadout.requests (kind, reward_id, name, cost, note) VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+            [kind, rewardId, name, JSON.stringify(cost), note]);
+        return requestRow(rows[0]);
+    }
+
+    // Lock one request row and resolve it inside fn(row, client). fn returns
+    // { status, note?, extra? } to write, or { refuse } to leave it untouched.
+    async function resolveRequest(id, fn) {
+        const num = Number(String(id).replace(/^req_/, ''));
+        if (!Number.isInteger(num)) return { missing: true };
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+            const { rows } = await client.query(`SELECT * FROM loadout.requests WHERE id = $1 FOR UPDATE`, [num]);
+            if (!rows.length) { await client.query('ROLLBACK'); return { missing: true }; }
+            const req = requestRow(rows[0]);
+            const out = await fn(req, client);
+            if (out && out.status) {
+                const { rows: upd } = await client.query(
+                    `UPDATE loadout.requests SET status = $2, resolved_at = NOW(), note = $3 WHERE id = $1 RETURNING *`,
+                    [num, out.status, out.note || req.note]);
+                out.request = requestRow(upd[0]);
+            } else if (out) {
+                out.request = req;
+            }
+            await client.query('COMMIT');
+            return out || { request: req };
+        } catch (err) {
+            await client.query('ROLLBACK').catch(() => {});
+            throw err;
+        } finally {
+            client.release();
+        }
     }
 
     return {
         bootstrap, getConfig, saveConfig, getDay, withDay, daysBetween,
-        appendLedger, balances, ledger, requests,
+        appendLedger, balances, ledger, requests, createRequest, resolveRequest,
         newId, blankDay, blankPack, ledgerRow, requestRow, pool,
     };
 };

@@ -29,7 +29,8 @@ if (!URL_) {
 
     test.before(async () => {
         await loadout.bootstrap();
-        await pool.query('TRUNCATE loadout.days, loadout.ledger, loadout.requests, loadout.legacy');
+        await pool.query('TRUNCATE loadout.days, loadout.ledger, loadout.requests, loadout.legacy, loadout.config');
+        await loadout.bootstrap(); // re-seed the default config
         const app = express();
         app.use(express.json());
         app.use('/api/loadout', loadout.router);
@@ -187,6 +188,76 @@ if (!URL_) {
         }
         const t = (await call('/today')).body;
         assert.equal(t.weekCounts.bins, 1);
+    });
+
+    test('vault: request reserves, approve spends once, deny/cancel write nothing, suggestions become rewards', async () => {
+        const bal = async () => (await call('/balances')).body;
+        // seed some coins
+        await call('/config', { method: 'PUT', hq: true, body: (await call('/config')).body }); // no-op, ensures config exists
+        const cur = await bal();
+        await pool.query(`INSERT INTO loadout.ledger (kind, coins, screen_minutes, note) VALUES ('adjust', $1, $2, 'test seed')`, [50 - cur.coins, 30 - cur.screenMinutes]);
+        const b0 = await bal();
+        let v = (await call('/vault')).body;
+        const dinner = v.rewards.find(r => r.id === 'friday-dinner');   // 35 coins
+        const pocket = v.rewards.find(r => r.id === 'pocket-money');    // 20 coins
+        const pass = v.rewards.find(r => r.id === 'game-pass-30');      // 30 screen minutes
+        assert.equal(dinner.affordable, true); assert.equal(pocket.affordable, true); assert.equal(pass.affordable, true);
+        // request dinner (35) → reserved; pocket (20) is now unaffordable with 50 − 35 = 15 available
+        let r = await call('/rewards/friday-dinner/request', { method: 'POST' });
+        assert.equal(r.status, 200);
+        assert.equal(r.body.vault.available.coins, b0.coins - 35);
+        assert.equal(r.body.vault.rewards.find(x => x.id === 'pocket-money').affordable, false);
+        assert.equal((await call('/rewards/pocket-money/request', { method: 'POST' })).status, 409);
+        assert.equal((await call('/rewards/friday-dinner/request', { method: 'POST' })).status, 409, 'duplicate');
+        assert.deepEqual(await bal(), b0, 'nothing spent on request');
+        const dinnerReq = r.body.request.id;
+        // deny writes nothing and frees the reservation
+        r = await call(`/requests/${dinnerReq}/deny`, { method: 'POST', hq: true, body: { note: 'Not this week' } });
+        assert.equal(r.body.request.status, 'denied'); assert.equal(r.body.request.note, 'Not this week');
+        assert.deepEqual(await bal(), b0);
+        assert.equal((await call('/vault')).body.available.coins, b0.coins);
+        // request + approve pocket money → spend row, once
+        r = await call('/rewards/pocket-money/request', { method: 'POST' });
+        const pocketReq = r.body.request.id;
+        assert.equal((await call(`/requests/${pocketReq}/approve`, { method: 'POST' })).status, 401);
+        r = await call(`/requests/${pocketReq}/approve`, { method: 'POST', hq: true });
+        assert.equal(r.status, 200); assert.equal(r.body.request.status, 'approved'); assert.ok(r.body.txn);
+        const b1 = await bal();
+        assert.equal(b1.coins, b0.coins - 20); assert.equal(b1.xp, b0.xp);
+        assert.equal((await call(`/requests/${pocketReq}/approve`, { method: 'POST', hq: true })).status, 409, 'no double approve');
+        assert.equal((await bal()).coins, b1.coins);
+        // screen-minute reward
+        r = await call('/rewards/game-pass-30/request', { method: 'POST' });
+        r = await call(`/requests/${r.body.request.id}/approve`, { method: 'POST', hq: true });
+        assert.equal((await bal()).screenMinutes, b0.screenMinutes - 30);
+        // 30 coins left: dinner (35) is out of reach, pocket money (20) is not
+        assert.equal((await call('/rewards/friday-dinner/request', { method: 'POST' })).status, 409);
+        // cancel
+        r = await call('/rewards/pocket-money/request', { method: 'POST' });
+        assert.equal(r.status, 200);
+        const c = r.body.request.id;
+        r = await call(`/requests/${c}/cancel`, { method: 'POST' });
+        assert.equal(r.body.request.status, 'cancelled');
+        assert.equal((await call(`/requests/${c}/approve`, { method: 'POST', hq: true })).status, 409);
+        // approve re-checks the live balance: request with 30, drain to 15 behind its back, approve → refused, still open
+        r = await call('/rewards/pocket-money/request', { method: 'POST' });
+        const d = r.body.request.id;
+        await pool.query(`INSERT INTO loadout.ledger (kind, coins, note) VALUES ('adjust', -15, 'test drain')`);
+        r = await call(`/requests/${d}/approve`, { method: 'POST', hq: true });
+        assert.equal(r.status, 409);
+        assert.equal((await call('/requests?status=open')).body.some(x => x.id === d), true);
+        assert.equal((await call(`/requests/${d}/deny`, { method: 'POST', hq: true, body: { note: 'balance moved' } })).body.request.status, 'denied');
+        await pool.query(`INSERT INTO loadout.ledger (kind, coins, note) VALUES ('adjust', 15, 'test undrain')`);
+        // suggestion → reward
+        r = await call('/requests/suggest', { method: 'POST', body: { name: 'Lego set', coins: 300, why: 'Been wanting it' } });
+        assert.equal(r.body.request.kind, 'suggest');
+        const sid = r.body.request.id;
+        assert.equal((await call(`/requests/${sid}/approve`, { method: 'POST', hq: true, body: { coins: 0 } })).status, 409, 'needs a cost');
+        r = await call(`/requests/${sid}/approve`, { method: 'POST', hq: true, body: { coins: 400, savingsGoal: true } });
+        assert.equal(r.body.reward.id, 'lego-set'); assert.equal(r.body.reward.cost.coins, 400); assert.equal(r.body.reward.savingsGoal, true);
+        assert.equal(r.body.request.note, 'Been wanting it', 'child note kept when parent adds none');
+        assert.ok((await call('/config')).body.rewards.some(x => x.id === 'lego-set'));
+        assert.deepEqual(await bal(), { ...b1, screenMinutes: b0.screenMinutes - 30 }, 'suggestion approval spends nothing');
     });
 
     test('date param is validated', async () => {

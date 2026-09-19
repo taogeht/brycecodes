@@ -19,7 +19,8 @@ the sections below — the original **[CONFIRM]** markers are resolved.
 | `coinValue.perCoin` | **1 TWD.** Set once; don't change retroactively. |
 | Streak on weekends | Days with nothing required are **exempt** (skipped, not broken). With the current config that means Sat/Sun only require the 7-day quests. |
 | Math Academy XP | Self-entry in v1. Still the weakest link. |
-| Mount point | `/loadout` (Edward) and `/loadout/hq` (parent). `/chores` stays live until phase 2 cutover, then 301s. |
+| Mount point | `/loadout` (Edward) and `/loadout/hq` (parent). `/chores` 301s automatically once the migration has run. |
+| Opening balance vs savings goals | The 5,330-coin opening balance clears the basketball (500) and M5Stack (800) goals on day one. Re-price them in `/hq/rewards` before cutover if they're meant to be earned. |
 
 ---
 
@@ -224,7 +225,13 @@ adjusted check-ins lock entirely.
 **`/log`** — the ledger, newest first, grouped by day: pack checks, quests,
 adjustments (with the parent's note), the starting balance.
 
-**`/vault`** — phase 3.
+**`/vault` — Reward vault.** Coins (with ≈ currency when `coinValue.perCoin`
+is set) and screen minutes; "spoken for" line when requests are open; open
+requests with Cancel; rewards with Redeem when affordable (balance minus
+reserved), "N more coins" otherwise, "Requested" while open; savings goals as
+progress bars that grow a Redeem button when reached; "Suggest a reward"
+(name, optional price, why); recent approved / denied / cancelled with the
+parent's note.
 
 ### Parent (1280px, desktop, light) — `public/hq.html`
 
@@ -255,7 +262,12 @@ Adjust) and a **Pending approvals** card with Confirm / Adjust for
 times-per-week, active days, parent-confirms, counts-for-streak, power-ups),
 two-step delete, new quest. Power-ups are edited on the same page.
 
-**`/hq/rewards`**, **`/hq/settings`** — phase 3.
+**`/hq/rewards`** — reward cards (enable switch, reorder, edit, two-step
+delete, new) and the full request history. **`/hq/settings`** — child's name,
+XP per level, coin currency + value, pack-check mode. Open requests are acted
+on from the Daily log's Pending approvals card: Approve / Deny (with a reason
+Edward sees) for redemptions, "Add reward" with cost + savings-goal flag for
+suggestions.
 
 ---
 
@@ -282,8 +294,13 @@ POST /day/:date/checkin                  { questId, value, focusMinutes, powerUp
 GET  /checkins/pending                   hq — pending across the last 30 days
 POST /checkin/:id/confirm                hq — pays a pending check-in once
 POST /checkin/:id/adjust                 hq — { awarded, note } → adjust row for the difference
---- phase 3 ---
-POST /rewards/:id/request · POST /requests/:id/approve · POST /requests/:id/deny
+GET  /vault                              Edward's vault bundle
+GET  /requests?status=                   open | approved | denied | cancelled
+POST /rewards/:id/request                reserves; 409 if unaffordable or already open
+POST /requests/suggest                   { name, coins?, why? }
+POST /requests/:id/cancel                Edward, open only
+POST /requests/:id/approve               hq — redeem: spend row (live balance re-check); suggest: { coins, screenMinutes, savingsGoal } → new reward
+POST /requests/:id/deny                  hq — { note? }
 ```
 
 ---
@@ -328,7 +345,10 @@ pending → confirm → adjust in HQ, Today quest rows live, Log tab,
 `/hq/quests` editor (quests + power-ups). `/chores` 301s automatically once the
 migration has run — see the cutover runbook in `loadout/README.md`.
 
-**Phase 3 — vault.** Rewards, requests, approvals, savings goals, `/hq/rewards`.
+**Phase 3 — vault. ✅** `/vault` (balances, redeemable rewards, savings goals
+with progress, suggest-a-reward, open + recent requests), request → approve /
+deny / cancel with reservation and a live balance re-check on approval,
+`/hq/rewards`, `/hq/settings`.
 
 **Phase 4 — history.** Full week view, weekday patterns, ticked-vs-arrived.
 
