@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Loadout HQ</title>
+<meta name="theme-color" content="#F5F4F0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ground: #F5F4F0; --surface: #FFFFFF; --surface-alt: #FAF9F6; --border: #E2DFD8; --border-strong: #CFCBC2;
+    --text: #1A1D24; --muted: #5C6270; --gold: #A9701A; --green: #2F7A5C; --red: #B4433A;
+    --gold-bg: #FBF3E4; --green-bg: #E9F4EE; --red-bg: #F9E9E7;
+    --display: 'Space Grotesk', system-ui, sans-serif; --body: 'IBM Plex Sans', system-ui, sans-serif;
+    --r-ctl: 10px; --r-card: 12px; --r-hero: 16px; --r-pill: 999px;
+    --side: 220px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--ground); color: var(--text); font-family: var(--body); font-size: 15px; line-height: 1.45; }
+  button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+  input, textarea, select { font: inherit; color: inherit; }
+  a { color: inherit; text-decoration: none; }
+  .ic { display: inline-block; vertical-align: middle; flex: none; }
+  h1 { font-family: var(--display); font-weight: 700; font-size: 26px; margin: 0; letter-spacing: -.01em; }
+  h2 { font-family: var(--display); font-weight: 700; font-size: 17px; margin: 0; }
+  h3 { font-family: var(--display); font-weight: 700; font-size: 14px; margin: 0; }
+  .eyebrow { font-family: var(--display); font-weight: 700; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+  .muted { color: var(--muted); }
+  .small { font-size: 13px; }
+  .num { font-family: var(--display); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  .shell { display: grid; grid-template-columns: var(--side) 1fr; min-height: 100vh; }
+  .side { background: var(--surface); border-right: 1px solid var(--border); padding: 20px 14px; position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; }
+  .side .brand { font-family: var(--display); font-weight: 700; letter-spacing: .18em; text-transform: uppercase; font-size: 13px; padding: 6px 10px 18px; }
+  .side .brand span { color: var(--gold); }
+  .nav a { display: flex; align-items: center; gap: 10px; padding: 10px 10px; border-radius: var(--r-ctl); font-weight: 500; color: var(--muted); min-height: 40px; }
+  .nav a.active { background: var(--ground); color: var(--text); }
+  .nav a:hover { color: var(--text); }
+  .nav .soon { padding: 14px 10px 0; font-size: 12px; color: var(--muted); }
+  .side .foot { margin-top: auto; }
+  main { padding: 28px 36px 60px; max-width: 1180px; width: 100%; }
+  .head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+  .head .sub { color: var(--muted); margin-top: 2px; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-card); padding: 18px; }
+  .card.hero { border-radius: var(--r-hero); }
+  .card + .card { margin-top: 14px; }
+  .grid2 { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; align-items: start; }
+  .stats { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-bottom: 18px; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-card); padding: 12px 14px; }
+  .stat .lbl { font-size: 12px; color: var(--muted); font-weight: 500; }
+  .stat .val { font-size: 22px; margin-top: 2px; line-height: 1.1; }
+  .stat .val small { font-size: 12px; color: var(--muted); font-family: var(--body); font-weight: 500; margin-left: 2px; }
+  .stat.warn .val { color: var(--red); }
+  .stat.gold .val { color: var(--gold); }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 38px; padding: 0 14px; border-radius: var(--r-ctl); font-weight: 600; font-size: 14px; border: 1px solid var(--border-strong); background: var(--surface); white-space: nowrap; }
+  .btn:hover { background: var(--surface-alt); }
+  .btn.primary { background: var(--text); color: #fff; border-color: var(--text); }
+  .btn.primary:hover { background: #2B2F38; }
+  .btn.gold { background: var(--gold); color: #fff; border-color: var(--gold); }
+  .btn.sm { min-height: 32px; padding: 0 10px; font-size: 13px; }
+  .btn.icon { padding: 0; width: 38px; }
+  .btn[disabled] { opacity: .45; cursor: default; }
+  .btn.danger { color: var(--red); }
+  .seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: var(--r-ctl); overflow: hidden; }
+  .seg > * { display: inline-flex; align-items: center; min-height: 38px; padding: 0 12px; font-weight: 500; font-size: 14px; border-right: 1px solid var(--border-strong); }
+  .seg > *:last-child { border-right: 0; }
+  .seg > .on { background: var(--text); color: #fff; }
+  .seg > *:hover:not(.on) { background: var(--surface-alt); }
+  input[type=text], input[type=date], input[type=password], textarea { min-height: 38px; padding: 6px 10px; border: 1px solid var(--border-strong); border-radius: var(--r-ctl); background: var(--surface); outline: 0; width: 100%; }
+  input:focus, textarea:focus { border-color: var(--text); }
+  .row { display: flex; align-items: center; gap: 10px; }
+  .row.wrap { flex-wrap: wrap; }
+  .spread { justify-content: space-between; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: var(--r-pill); font-size: 12px; font-weight: 600; border: 1px solid var(--border); background: var(--surface-alt); color: var(--muted); }
+  .chip.ok { color: var(--green); background: var(--green-bg); border-color: transparent; }
+  .chip.gold { color: var(--gold); background: var(--gold-bg); border-color: transparent; }
+  .chip.bad { color: var(--red); background: var(--red-bg); border-color: transparent; }
+  .chip.btn-chip { cursor: pointer; min-height: 30px; padding: 0 10px 0 8px; }
+  .chip.btn-chip:hover { border-color: var(--border-strong); color: var(--text); }
+
+  /* Item editor */
+  .items .it { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+  .items .it .n { width: 22px; text-align: right; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .items .it input { flex: 1; }
+  .items .it .x { width: 34px; height: 38px; display: grid; place-items: center; color: var(--muted); border-radius: var(--r-ctl); }
+  .items .it .x:hover { color: var(--red); background: var(--red-bg); }
+
+  /* Verification table */
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 12px; color: var(--muted); font-weight: 600; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+  td { padding: 9px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tr:last-child td { border-bottom: 0; }
+  td.c, th.c { text-align: center; }
+  .tick { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 7px; border: 1.5px solid var(--border-strong); color: transparent; }
+  .tick.on { background: var(--green); border-color: var(--green); color: #fff; }
+  .tick.child { border-style: dashed; }
+  .vseg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 8px; overflow: hidden; }
+  .vseg button { min-width: 64px; min-height: 30px; font-size: 12px; font-weight: 600; color: var(--muted); border-right: 1px solid var(--border-strong); }
+  .vseg button:last-child { border-right: 0; }
+  .vseg button.on.a { background: var(--green); color: #fff; }
+  .vseg button.on.m { background: var(--red); color: #fff; }
+  .note-bad { color: var(--red); font-weight: 600; }
+
+  /* Week strip */
+  .week { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+  .wday { border: 1px solid var(--border); border-radius: var(--r-ctl); padding: 10px; background: var(--surface-alt); text-align: left; min-height: 96px; display: flex; flex-direction: column; gap: 6px; }
+  .wday.today { border-color: var(--text); }
+  .wday.cur { background: var(--gold-bg); }
+  .wday .d { font-family: var(--display); font-weight: 700; font-size: 13px; }
+  .wday .d span { color: var(--muted); font-weight: 500; font-family: var(--body); }
+  .wday .dots { display: flex; gap: 4px; }
+  .dot { width: 18px; height: 18px; border-radius: 5px; display: grid; place-items: center; font-size: 10px; font-weight: 700; font-family: var(--display); color: var(--muted); background: var(--surface); border: 1px solid var(--border); }
+  .dot.on { color: #fff; background: var(--green); border-color: var(--green); }
+  .dot.warn { color: #fff; background: var(--red); border-color: var(--red); }
+  .wday .cnt { font-size: 12px; color: var(--muted); margin-top: auto; }
+
+  .list li { padding: 8px 0; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; gap: 10px; }
+  .list li:last-child { border-bottom: 0; }
+  .list { list-style: none; margin: 0; padding: 0; }
+  .empty { color: var(--muted); font-size: 14px; padding: 10px 0; }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(8px); background: var(--text); color: #fff; padding: 10px 16px; border-radius: var(--r-ctl); font-weight: 600; font-size: 14px; opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none; z-index: 20; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.err { background: var(--red); }
+
+  /* PIN gate */
+  .gate { min-height: 100vh; display: grid; place-items: center; padding: 20px; }
+  .gate .card { width: 360px; max-width: 100%; padding: 28px; }
+  .gate input { font-size: 24px; letter-spacing: .3em; text-align: center; font-family: var(--display); min-height: 52px; }
+
+  /* Print slip */
+  .slip { background: #fff; color: #000; border: 1px solid var(--border); border-radius: var(--r-card); padding: 28px 32px; max-width: 520px; font-family: var(--body); }
+  .slip .t { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 14px; }
+  .slip .t b { font-family: var(--display); letter-spacing: .16em; text-transform: uppercase; font-size: 13px; }
+  .slip .h { font-family: var(--display); font-weight: 700; font-size: 13px; letter-spacing: .1em; text-transform: uppercase; margin: 16px 0 6px; }
+  .slip .li { display: flex; align-items: center; gap: 12px; min-height: 34px; font-size: 17px; }
+  .slip .bx { width: 22px; height: 22px; border: 2px solid #000; border-radius: 5px; flex: none; }
+  .slip .line { flex: 1; border-bottom: 1.5px solid #000; height: 24px; }
+  .slip .f { margin-top: 18px; font-size: 12px; color: #333; border-top: 1px solid #999; padding-top: 8px; }
+  @media print {
+    body { background: #fff; }
+    .shell { display: block; }
+    .side, .no-print { display: none !important; }
+    main { padding: 0; max-width: none; }
+    .slip { border: 0; border-radius: 0; padding: 0; max-width: none; }
+    @page { margin: 16mm; }
+  }
+  @media (max-width: 900px) {
+    .shell { grid-template-columns: 1fr; }
+    .side { position: static; height: auto; flex-direction: row; align-items: center; gap: 4px; padding: 10px 12px; overflow-x: auto; }
+    .side .brand { padding: 0 8px 0 0; white-space: nowrap; }
+    .nav { display: flex; gap: 2px; } .nav .soon { display: none; } .side .foot { margin: 0 0 0 auto; }
+    main { padding: 18px 16px 40px; }
+    .grid2 { grid-template-columns: 1fr; } .stats { grid-template-columns: repeat(3, 1fr); }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div class="toast" id="toast" role="status"></div>
+<script src="/loadout/common.js"></script>
+<script>
+(function () {
+  'use strict';
+  const { api, esc, icon, path, go, href, linkify, todayKey, addDays, mondayOf, weekday, fmtDate, relDay, fmtTime, isSchoolDay, nextSchoolDay, DAY_LABEL } = L;
+  const root = document.getElementById('root');
+  linkify(document.body);
+  let config = null;
+
+  let toastTimer;
+  function toast(msg, err) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.className = 'toast show' + (err ? ' err' : '');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.className = 'toast', 2400);
+  }
+  function q(name) { return new URLSearchParams(location.search).get(name); }
+  function withDate(p, date) { return p + '?date=' + date; }
+  function isKey(s) { return /^\d{4}-\d{2}-\d{2}$/.test(s || ''); }
+
+  // ── Shell ─────────────────────────────────────────────────────────
+  function shell(active, body) {
+    const nav = [['/hq', 'calendar', 'Daily log'], ['/hq/list', 'list', 'Pack list'], ['/hq/history', 'history', 'History']];
+    root.innerHTML = '<div class="shell"><aside class="side"><div class="brand">Loadout <span>HQ</span></div><nav class="nav">' +
+      nav.map(([p, ic, l]) => '<a href="' + href(p) + '" data-link class="' + (active === p ? 'active' : '') + '">' + icon(ic, 18) + l + '</a>').join('') +
+      '<div class="soon">Coming: Quests · Rewards · Settings</div></nav>' +
+      '<div class="foot"><a href="' + href('/') + '" class="btn sm" style="width:100%;justify-content:flex-start">' + icon('eye', 16) + ' Edward\'s view</a>' +
+      '<button class="btn sm" data-logout style="width:100%;justify-content:flex-start;margin-top:6px">' + icon('logout', 16) + ' Sign out</button></div></aside>' +
+      '<main id="main">' + body + '</main></div>';
+  }
+  const main = () => document.getElementById('main');
+
+  // ── PIN gate ──────────────────────────────────────────────────────
+  function gate(msg) {
+    root.innerHTML = '<div class="gate"><form class="card" id="pinform"><div class="eyebrow" style="margin-bottom:6px">Loadout HQ</div><h1 style="margin-bottom:16px">Parent PIN</h1>' +
+      '<input type="password" inputmode="numeric" autocomplete="current-password" id="pin" placeholder="••••" autofocus>' +
+      '<div class="small" id="pinmsg" style="min-height:20px;margin:8px 0;color:var(--red)">' + esc(msg || '') + '</div>' +
+      '<button class="btn primary" style="width:100%;min-height:44px" type="submit">Unlock</button></form></div>';
+    document.getElementById('pinform').addEventListener('submit', async e => {
+      e.preventDefault();
+      try { await api('/hq/login', { method: 'POST', body: { pin: document.getElementById('pin').value } }); route(); }
+      catch (err) { document.getElementById('pinmsg').textContent = err.message; document.getElementById('pin').select(); }
+    });
+  }
+  async function guard(fn) {
+    try { return await fn(); }
+    catch (e) { if (e.status === 401) { gate(); return; } throw e; }
+  }
+
+  // ── Stat tiles from history (this week) ───────────────────────────
+  function weekStats(hist, monday) {
+    const days = hist.days.filter(d => d.date >= monday && d.date <= addDays(monday, 6) && d.written);
+    const sum = k => days.reduce((a, d) => a + d.counts[k], 0);
+    const schoolDaysSoFar = [0, 1, 2, 3, 4].map(i => addDays(monday, i)).filter(k => k <= todayKey()).length;
+    return { listed: days.length, schoolDaysSoFar, submitted: days.filter(d => d.submitted).length, verified: days.filter(d => d.verified).length,
+      ticked: sum('ticked'), arrived: sum('arrived'), tickedMissing: sum('tickedMissing'), notTicked: sum('notTicked'), items: sum('items') };
+  }
+
+  // ── Daily log ─────────────────────────────────────────────────────
+  async function renderLog() {
+    const date = isKey(q('date')) ? q('date') : todayKey();
+    shell('/hq', '<p class="muted">Loading…</p>');
+    const weeksBack = Math.min(52, Math.max(2, Math.round((new Date(mondayOf(todayKey())) - new Date(mondayOf(date))) / 6048e5) + 2));
+    const [ov, hist] = await Promise.all([api('/hq/overview?date=' + date), api('/history/pack?weeks=' + weeksBack)]);
+    config = ov.config;
+    const monday = mondayOf(date);
+    const ws = weekStats(hist, monday);
+    const pc = ov.day.packCheck;
+
+    // Pack card for the day
+    let pack;
+    if (!pc || !pc.items.length) {
+      pack = '<div class="card hero"><div class="row spread"><div><div class="eyebrow">Pack check · ' + relDay(date) + '</div><h2 style="margin-top:4px">No list for this day</h2>' +
+        '<p class="muted small" style="margin:6px 0 0">' + (isSchoolDay(date) ? 'Nothing downstream works without the list.' : 'Weekend — no pack check unless you write one.') + '</p></div>' +
+        '<a class="btn primary" href="' + href(withDate('/hq/list', date)) + '" data-link>' + icon('list', 16) + ' Write the list</a></div></div>';
+    } else {
+      const v = pc.verification;
+      const st = v ? new Map([...v.arrived.map(id => [id, 'a']), ...v.missing.map(id => [id, 'm'])]) : new Map();
+      const rows = pc.items.map(i => '<tr data-item="' + esc(i.id) + '"><td>' + esc(i.label) + (i.source === 'child' ? ' <span class="chip">added by Edward</span>' : '') + '</td>' +
+        '<td class="c"><span class="tick' + (i.checked ? ' on' : '') + (i.source === 'child' ? ' child' : '') + '">' + icon('check', 14) + '</span></td>' +
+        '<td class="c"><span class="vseg"><button type="button" class="a' + (st.get(i.id) === 'a' ? ' on' : '') + '" data-v="a">Arrived</button><button type="button" class="m' + (st.get(i.id) === 'm' ? ' on' : '') + '" data-v="m">Missing</button></span></td></tr>').join('');
+      const status = pc.submittedAt
+        ? '<span class="chip ok">' + icon('check', 12) + ' Submitted ' + fmtTime(pc.submittedAt) + '</span>'
+        : '<span class="chip">Not submitted yet</span>';
+      const verifiedChip = v ? '<span class="chip gold">Verified ' + fmtTime(v.verifiedAt) + '</span>' : '';
+      pack = '<div class="card hero"><div class="row spread" style="margin-bottom:12px"><div><div class="eyebrow">Pack check · ' + relDay(date) + '</div><h2 style="margin-top:4px">' + pc.items.filter(i => i.checked).length + ' of ' + pc.items.length + ' ticked</h2></div>' +
+        '<div class="row wrap">' + status + verifiedChip + '</div></div>' +
+        '<table><thead><tr><th>Item</th><th class="c" style="width:70px">Ticked</th><th class="c" style="width:150px">In the bag?</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+        '<div class="row" style="margin-top:14px;gap:8px"><button class="btn sm" type="button" data-all-arrived>All arrived</button><button class="btn sm" type="button" data-ticked-arrived>Ticked = arrived</button></div>' +
+        '<div style="margin-top:12px"><input type="text" id="vnote" placeholder="Note (e.g. reading log ticked but not in bag)" value="' + esc(v ? v.note : '') + '" maxlength="500"></div>' +
+        '<div class="row spread" style="margin-top:12px"><div class="row" style="gap:8px"><button class="btn primary" type="button" data-verify>' + icon('check', 16) + ' Save verification</button>' +
+        '<a class="btn" href="' + href(withDate('/hq/list', date)) + '" data-link>Edit list</a></div>' +
+        (pc.submittedAt ? '<button class="btn sm danger" type="button" data-reopen>Reopen for Edward</button>' : '') + '</div>' +
+        (pc.awarded ? '<p class="muted small" style="margin:12px 0 0">Awarded on submit: +' + pc.awarded.xp + ' XP, +' + pc.awarded.coins + ' coins. Verification is for the record and never changes the award.</p>' : '') +
+        '</div>';
+    }
+
+    // Week strip
+    const byDate = new Map(hist.days.map(d => [d.date, d]));
+    const stripDays = [0, 1, 2, 3, 4, 5, 6].filter(i => i < 5 || (byDate.get(addDays(monday, i)) || {}).written || addDays(monday, i) === date);
+    const strip = stripDays.map(i => {
+      const k = addDays(monday, i); const d = byDate.get(k);
+      const dots = '<span class="dot' + (d && d.written ? ' on' : '') + '" title="List written">L</span>' +
+        '<span class="dot' + (d && d.submitted ? ' on' : '') + '" title="Submitted">S</span>' +
+        '<span class="dot' + (d && d.verified ? (d.counts.tickedMissing || d.counts.notTickedMissing ? ' warn' : ' on') : '') + '" title="Verified">V</span>';
+      const cnt = d && d.written ? d.counts.ticked + '/' + d.counts.items + ' ticked' + (d.verified ? ' · ' + d.counts.arrived + ' arrived' : '') : (k > todayKey() ? 'upcoming' : 'no list');
+      return '<a class="wday' + (k === todayKey() ? ' today' : '') + (k === date ? ' cur' : '') + '" href="' + href(withDate('/hq', k)) + '" data-link>' +
+        '<div class="d">' + DAY_LABEL[weekday(k)] + ' <span>' + k.slice(8) + '</span></div><div class="dots">' + dots + '</div><div class="cnt">' + cnt + '</div></a>';
+    }).join('');
+
+    const missed = hist.days.filter(d => d.date >= monday && d.date <= addDays(monday, 6) && d.tickedMissing.length)
+      .flatMap(d => d.tickedMissing.map(l => '<li><span>' + esc(l) + '</span><span class="muted small">' + fmtDate(d.date) + '</span></li>')).join('');
+    const notTicked = hist.days.filter(d => d.date >= monday && d.date <= addDays(monday, 6) && d.submitted && d.notTicked.length)
+      .flatMap(d => d.notTicked.map(l => '<li><span>' + esc(l) + '</span><span class="muted small">' + fmtDate(d.date) + '</span></li>')).join('');
+
+    const pending = (ov.pendingCheckins.length + ov.openRequests.length) === 0
+      ? '<div class="empty">Nothing waiting on you.</div>'
+      : '<ul class="list">' + ov.openRequests.map(r => '<li><span>' + esc(r.name) + '</span><span class="chip">request</span></li>').join('') + '</ul>';
+
+    main().innerHTML =
+      '<div class="head"><div><h1>Daily log</h1><div class="sub">' + fmtDate(date, { long: true }) + (date === todayKey() ? ' · today' : '') + '</div></div>' +
+      '<div class="row"><a class="btn icon" href="' + href(withDate('/hq', addDays(date, -1))) + '" data-link aria-label="Previous day">' + icon('left', 18) + '</a>' +
+      '<a class="btn" href="' + href('/hq') + '" data-link>Today</a>' +
+      '<a class="btn icon" href="' + href(withDate('/hq', addDays(date, 1))) + '" data-link aria-label="Next day">' + icon('right', 18) + '</a>' +
+      '<input type="date" value="' + date + '" id="datepick" style="width:auto"></div></div>' +
+      '<div class="stats">' +
+        '<div class="stat"><div class="lbl">Lists written</div><div class="val num">' + ws.listed + '<small>/ ' + ws.schoolDaysSoFar + ' days</small></div></div>' +
+        '<div class="stat"><div class="lbl">Submitted</div><div class="val num">' + ws.submitted + '</div></div>' +
+        '<div class="stat"><div class="lbl">Verified</div><div class="val num">' + ws.verified + '</div></div>' +
+        '<div class="stat' + (ws.tickedMissing ? ' warn' : '') + '"><div class="lbl">Ticked, not in bag</div><div class="val num">' + ws.tickedMissing + '</div></div>' +
+        '<div class="stat gold"><div class="lbl">Coins</div><div class="val num">' + ov.balances.coins.toLocaleString() + '</div></div>' +
+        '<div class="stat"><div class="lbl">XP · level ' + ov.level.level + '</div><div class="val num">' + ov.balances.xp.toLocaleString() + '</div></div>' +
+      '</div>' +
+      '<div class="grid2"><div>' + pack + '</div><div>' +
+        '<div class="card"><div class="row spread" style="margin-bottom:10px"><h3>This week</h3><span class="muted small">' + fmtDate(monday) + ' – ' + fmtDate(addDays(monday, stripDays[stripDays.length - 1])) + '</span></div><div class="week" style="grid-template-columns:repeat(' + stripDays.length + ',1fr)">' + strip + '</div>' +
+        '<div class="muted small" style="margin-top:8px">L list written · S submitted by Edward · V verified (red = something missing)</div></div>' +
+        '<div class="card"><h3 style="margin-bottom:6px">Ticked but didn\'t arrive</h3><div class="muted small" style="margin-bottom:6px">Packing problem — it was on the list and he ticked it.</div>' + (missed ? '<ul class="list">' + missed + '</ul>' : '<div class="empty">None this week.</div>') + '</div>' +
+        '<div class="card"><h3 style="margin-bottom:6px">Not ticked</h3><div class="muted small" style="margin-bottom:6px">Attention problem — on the list, never ticked.</div>' + (notTicked ? '<ul class="list">' + notTicked + '</ul>' : '<div class="empty">None this week.</div>') + '</div>' +
+        '<div class="card"><h3 style="margin-bottom:6px">Pending approvals</h3>' + pending + '</div>' +
+      '</div></div>';
+
+    const m = main();
+    m.querySelector('#datepick').addEventListener('change', e => { if (isKey(e.target.value)) go(withDate('/hq', e.target.value)); });
+    L.on(m, 'click', '[data-v]', (e, b) => {
+      const seg = b.parentElement; const on = b.classList.contains('on');
+      seg.querySelectorAll('button').forEach(x => x.classList.remove('on'));
+      if (!on) b.classList.add('on');
+    });
+    L.on(m, 'click', '[data-all-arrived]', () => m.querySelectorAll('tr[data-item]').forEach(tr => { tr.querySelectorAll('[data-v]').forEach(x => x.classList.remove('on')); tr.querySelector('[data-v=a]').classList.add('on'); }));
+    L.on(m, 'click', '[data-ticked-arrived]', () => m.querySelectorAll('tr[data-item]').forEach(tr => {
+      const ticked = tr.querySelector('.tick').classList.contains('on');
+      tr.querySelectorAll('[data-v]').forEach(x => x.classList.remove('on'));
+      tr.querySelector(ticked ? '[data-v=a]' : '[data-v=m]').classList.add('on');
+    }));
+    L.on(m, 'click', '[data-verify]', async () => {
+      const arrived = [], missing = [];
+      m.querySelectorAll('tr[data-item]').forEach(tr => {
+        if (tr.querySelector('[data-v=a].on')) arrived.push(tr.dataset.item);
+        else if (tr.querySelector('[data-v=m].on')) missing.push(tr.dataset.item);
+      });
+      try { await api('/day/' + date + '/pack/verify', { method: 'POST', body: { arrived, missing, note: m.querySelector('#vnote').value } }); toast('Verification saved'); renderLog(); }
+      catch (e) { toast(e.message, true); }
+    });
+    L.on(m, 'click', '[data-reopen]', async () => {
+      try { await api('/day/' + date + '/pack/reopen', { method: 'POST' }); toast('Reopened — Edward can edit again'); renderLog(); }
+      catch (e) { toast(e.message, true); }
+    });
+  }
+
+  // ── Pack list writer ──────────────────────────────────────────────
+  async function renderList() {
+    const t = todayKey();
+    const taipeiHour = Number(new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Taipei', hour: 'numeric', hourCycle: 'h23' }).format(new Date()));
+    const defaultDate = isSchoolDay(t) && taipeiHour < 12 ? t : nextSchoolDay(t);
+    const date = isKey(q('date')) ? q('date') : defaultDate;
+    shell('/hq/list', '<p class="muted">Loading…</p>');
+    const [cfg, day, last] = await Promise.all([api('/config'), api('/day/' + date), api('/hq/last-list?before=' + date)]);
+    config = cfg;
+    const pc = day.packCheck;
+    const locked = !!(pc && pc.submittedAt);
+    let items = pc ? pc.items.filter(i => i.source === 'parent').map(i => ({ id: i.id, label: i.label })) : [];
+    const childItems = pc ? pc.items.filter(i => i.source === 'child') : [];
+    const recurring = (config.pack && config.pack.recurringItems) || [];
+
+    function paintItems() {
+      const box = main().querySelector('#items');
+      box.innerHTML = items.map((it, i) => '<div class="it"><span class="n">' + (i + 1) + '</span><input type="text" value="' + esc(it.label) + '" data-i="' + i + '" placeholder="Item" maxlength="120"' + (locked ? ' disabled' : '') + '>' +
+        (locked ? '' : '<button class="x" type="button" data-rm="' + i + '" aria-label="Remove">' + icon('x', 16) + '</button>') + '</div>').join('') +
+        (items.length ? '' : '<div class="empty">Empty list. Add items, pick recurring ones, or copy the last list.</div>');
+      main().querySelector('#count').textContent = items.length + ' item' + (items.length === 1 ? '' : 's');
+    }
+    function syncFromInputs() {
+      main().querySelectorAll('#items input[data-i]').forEach(inp => { items[Number(inp.dataset.i)].label = inp.value; });
+    }
+    function addItem(label = '') { syncFromInputs(); items.push({ label }); paintItems(); const inps = main().querySelectorAll('#items input'); if (inps.length) inps[inps.length - 1].focus(); }
+
+    function recurringHtml() {
+      return recurring.length ? recurring.map((r, i) => '<span class="chip btn-chip" data-rec="' + i + '">' + icon('plus', 12) + esc(r.label) + '<button type="button" data-rec-rm="' + i + '" aria-label="Remove recurring" style="margin-left:2px;color:inherit;opacity:.6">' + icon('x', 12) + '</button></span>').join('') : '<span class="empty">None yet.</span>';
+    }
+    const dateSeg = [['Today', t], ['Tomorrow', addDays(t, 1)], ['Next school day', nextSchoolDay(t)]]
+      .map(([l, k]) => '<a href="' + href(withDate('/hq/list', k)) + '" data-link class="' + (k === date ? 'on' : '') + '">' + l + '</a>').join('');
+
+    main().innerHTML =
+      '<div class="head"><div><h1>Write the pack list</h1><div class="sub">' + fmtDate(date, { long: true }) + (['Today', 'Tomorrow', 'Yesterday'].includes(relDay(date)) ? ' · ' + relDay(date).toLowerCase() : '') + (isSchoolDay(date) ? '' : ' · <span class="note-bad">weekend</span>') + '</div></div>' +
+      '<div class="row"><span class="seg">' + dateSeg + '</span><input type="date" value="' + date + '" id="datepick" style="width:auto"></div></div>' +
+      (locked ? '<div class="card" style="border-color:var(--gold);background:var(--gold-bg);margin-bottom:14px"><div class="row">' + icon('lock', 18) + '<div><b>Edward has already submitted this day.</b> <span class="muted">The list is locked. Reopen it from the <a href="' + href(withDate('/hq', date)) + '" data-link style="text-decoration:underline">daily log</a> if you need to change it.</span></div></div></div>' : '') +
+      '<div class="grid2"><div class="card hero"><div class="row spread"><h2>Bring home</h2><span class="muted small" id="count"></span></div>' +
+        '<div class="items" id="items"></div>' +
+        (locked ? '' : '<div class="row" style="margin-top:12px;gap:8px"><button class="btn sm" type="button" data-add>' + icon('plus', 14) + ' Add item</button>' +
+          (last ? '<button class="btn sm" type="button" data-copy>' + icon('copy', 14) + ' Copy last list (' + fmtDate(last.date) + ', ' + last.items.length + ')</button>' : '') +
+          (items.length ? '<button class="btn sm danger" type="button" data-clear>Clear</button>' : '') + '</div>') +
+        (childItems.length ? '<div style="margin-top:16px"><div class="eyebrow" style="margin-bottom:6px">Added by Edward</div><ul class="list">' + childItems.map(i => '<li><span>' + esc(i.label) + '</span><span class="chip' + (i.checked ? ' ok' : '') + '">' + (i.checked ? 'ticked' : 'not ticked') + '</span></li>').join('') + '</ul></div>' : '') +
+        '<div class="row spread" style="margin-top:18px"><div class="row" style="gap:8px">' +
+          (locked ? '' : '<button class="btn primary" type="button" data-save>' + icon('check', 16) + ' Save list</button>') +
+          '<a class="btn" href="' + href('/hq/slip/' + date) + '" data-link' + (items.length ? '' : ' style="opacity:.5;pointer-events:none"') + '>' + icon('print', 16) + ' Print slip</a></div>' +
+          '<span class="muted small" id="savestate">' + (pc && pc.writtenAt ? 'Saved ' + fmtTime(pc.writtenAt) + (pc.items.some(i => i.checked) ? ' · Edward has ticked ' + pc.items.filter(i => i.checked).length : '') : 'Not saved yet') + '</span></div>' +
+      '</div>' +
+      '<div><div class="card"><h3 style="margin-bottom:4px">Recurring items</h3><div class="muted small" style="margin-bottom:10px">Click to add to the list. Saved across days.</div>' +
+        '<div class="row wrap" id="recur" style="gap:6px">' + recurringHtml() + '</div>' +
+        '<form class="row" id="recform" style="margin-top:12px"><input type="text" placeholder="New recurring item" maxlength="120" id="recinput"><button class="btn sm" type="submit">Add</button></form></div>' +
+        '<div class="card"><h3 style="margin-bottom:6px">How the loop works</h3><ol class="muted small" style="margin:0;padding-left:18px;line-height:1.7"><li>Write the list here, print the slip.</li><li>Edward ticks the slip at his locker after last period.</li><li>At home he enters the ticks in Loadout and submits — that pays the award.</li><li>You check the bag in the daily log: what actually arrived.</li></ol></div>' +
+      '</div></div>';
+
+    paintItems();
+    const m = main();
+    m.querySelector('#datepick').addEventListener('change', e => { if (isKey(e.target.value)) go(withDate('/hq/list', e.target.value)); });
+    L.on(m, 'click', '[data-add]', () => addItem());
+    L.on(m, 'click', '[data-rm]', (e, b) => { syncFromInputs(); items.splice(Number(b.dataset.rm), 1); paintItems(); });
+    L.on(m, 'click', '[data-clear]', () => { items = []; paintItems(); });
+    L.on(m, 'click', '[data-copy]', () => { syncFromInputs(); items = items.filter(i => i.label.trim()); const have = new Set(items.map(i => i.label.trim().toLowerCase())); last.items.forEach(i => { if (!have.has(i.label.toLowerCase())) items.push({ label: i.label }); }); paintItems(); });
+    L.on(m, 'keydown', '#items input', (e, inp) => {
+      if (e.key === 'Enter') { e.preventDefault(); if (Number(inp.dataset.i) === items.length - 1) addItem(); else m.querySelector('#items input[data-i="' + (Number(inp.dataset.i) + 1) + '"]').focus(); }
+      if (e.key === 'Backspace' && inp.value === '' && items.length > 1) { e.preventDefault(); syncFromInputs(); items.splice(Number(inp.dataset.i), 1); paintItems(); const prev = m.querySelector('#items input[data-i="' + Math.max(0, Number(inp.dataset.i) - 1) + '"]'); if (prev) prev.focus(); }
+    });
+    L.on(m, 'click', '[data-rec]', (e, chip) => { if (e.target.closest('[data-rec-rm]') || locked) return; syncFromInputs(); const r = recurring[Number(chip.dataset.rec)]; if (!items.some(i => i.label.trim().toLowerCase() === r.label.toLowerCase())) { items = items.filter(i => i.label.trim()); items.push({ label: r.label }); paintItems(); } });
+    L.on(m, 'click', '[data-rec-rm]', async (e, b) => { e.stopPropagation(); recurring.splice(Number(b.dataset.recRm), 1); await saveRecurring(); });
+    m.querySelector('#recform').addEventListener('submit', async e => {
+      e.preventDefault(); const v = m.querySelector('#recinput').value.trim(); if (!v) return;
+      recurring.push({ id: 'rec_' + Date.now().toString(36), label: v }); await saveRecurring();
+    });
+    async function saveRecurring() {
+      config.pack = config.pack || { mode: 'paper' }; config.pack.recurringItems = recurring;
+      try { await api('/config', { method: 'PUT', body: config }); toast('Recurring items saved'); m.querySelector('#recur').innerHTML = recurringHtml(); m.querySelector('#recinput').value = ''; }
+      catch (e) { toast(e.message, true); }
+    }
+    L.on(m, 'click', '[data-save]', async (e, b) => {
+      syncFromInputs(); const clean = items.filter(i => i.label.trim());
+      if (!clean.length) { toast('Add at least one item', true); return; }
+      b.disabled = true;
+      try { await api('/day/' + date + '/pack/items', { method: 'POST', body: { items: clean } }); toast('List saved for ' + relDay(date)); renderList(); }
+      catch (err) { b.disabled = false; toast(err.message, true); }
+    });
+  }
+
+  // ── Print slip ────────────────────────────────────────────────────
+  async function renderSlip(date) {
+    shell('/hq/list', '<p class="muted">Loading…</p>');
+    const day = await api('/day/' + date);
+    const items = day.packCheck ? day.packCheck.items.filter(i => i.source === 'parent') : [];
+    main().innerHTML =
+      '<div class="head no-print"><div><h1>Print slip</h1><div class="sub">' + fmtDate(date, { long: true }) + '</div></div><div class="row"><a class="btn" href="' + href(withDate('/hq/list', date)) + '" data-link>' + icon('left', 16) + ' Back to list</a><button class="btn primary" type="button" onclick="window.print()">' + icon('print', 16) + ' Print</button></div></div>' +
+      '<div class="slip"><div class="t"><b>Loadout · Pack check</b><span>' + fmtDate(date, { long: true }) + '</span></div>' +
+      '<div class="h">Bring home</div>' + (items.length ? items.map(i => '<div class="li"><span class="bx"></span><span>' + esc(i.label) + '</span></div>').join('') : '<div class="li muted">No items on the list.</div>') +
+      '<div class="h">Came up today</div>' + '<div class="li"><span class="bx"></span><span class="line"></span></div>'.repeat(3) +
+      '<div class="f">Tick each thing as it goes in the bag — at your locker, after last period. At home, enter the ticks in Loadout and hit <b>Packed</b>.</div></div>';
+  }
+
+  // ── History (seed of phase 4) ─────────────────────────────────────
+  async function renderHistory() {
+    const weeks = Math.min(52, Math.max(1, Number(q('weeks')) || 4));
+    shell('/hq/history', '<p class="muted">Loading…</p>');
+    const hist = await api('/history/pack?weeks=' + weeks);
+    const pct = (a, b) => b ? Math.round(100 * a / b) + '%' : '—';
+    const wdRows = ['mon', 'tue', 'wed', 'thu', 'fri'].map(wd => {
+      const s = hist.byWeekday[wd];
+      if (!s) return '<tr><td>' + DAY_LABEL[wd] + '</td><td colspan="6" class="muted">no lists</td></tr>';
+      return '<tr><td><b>' + DAY_LABEL[wd] + '</b></td><td class="c">' + s.days + '</td><td class="c">' + s.submitted + '</td><td class="c">' + pct(s.ticked, s.items) + '</td><td class="c">' + (s.verified ? pct(s.arrived, s.items) : '—') + '</td>' +
+        '<td class="c' + (s.tickedMissing ? ' note-bad' : '') + '">' + s.tickedMissing + '</td><td class="c' + (s.notTickedMissing ? ' note-bad' : '') + '">' + s.notTicked + '</td></tr>';
+    }).join('');
+    const dayRows = hist.days.slice().reverse().map(d => '<tr><td><a href="' + href(withDate('/hq', d.date)) + '" data-link style="text-decoration:underline">' + fmtDate(d.date) + '</a></td>' +
+      '<td class="c">' + (d.submitted ? '<span class="chip ok">yes</span>' : '<span class="chip">no</span>') + '</td><td class="c">' + d.counts.ticked + '/' + d.counts.items + '</td>' +
+      '<td class="c">' + (d.verified ? d.counts.arrived + '/' + d.counts.items : '—') + '</td><td>' + (d.tickedMissing.length ? '<span class="note-bad">' + esc(d.tickedMissing.join(', ')) + '</span>' : '') + '</td><td>' + esc(d.notTicked.join(', ')) + '</td><td class="muted small">' + esc(d.note) + '</td></tr>').join('');
+    main().innerHTML =
+      '<div class="head"><div><h1>Pack history</h1><div class="sub">' + fmtDate(hist.from) + ' – ' + fmtDate(hist.to) + '</div></div>' +
+      '<span class="seg">' + [4, 8, 12].map(w => '<a href="' + href('/hq/history?weeks=' + w) + '" data-link class="' + (w === weeks ? 'on' : '') + '">' + w + ' weeks</a>').join('') + '</span></div>' +
+      '<div class="card"><h3 style="margin-bottom:10px">By weekday</h3><table><thead><tr><th>Day</th><th class="c">Lists</th><th class="c">Submitted</th><th class="c">Ticked</th><th class="c">Arrived</th><th class="c">Ticked, missing</th><th class="c">Not ticked</th></tr></thead><tbody>' + wdRows + '</tbody></table>' +
+      '<div class="muted small" style="margin-top:8px">Ticked-but-missing is a packing problem. Not-ticked is an attention problem. They need different fixes.</div></div>' +
+      '<div class="card"><h3 style="margin-bottom:10px">Every day</h3>' + (dayRows ? '<table><thead><tr><th>Date</th><th class="c">Submitted</th><th class="c">Ticked</th><th class="c">Arrived</th><th>Ticked, missing</th><th>Not ticked</th><th>Note</th></tr></thead><tbody>' + dayRows + '</tbody></table>' : '<div class="empty">No pack checks in this range yet.</div>') + '</div>';
+  }
+
+  // ── Router ────────────────────────────────────────────────────────
+  L.on(document.body, 'click', '[data-logout]', async () => { await api('/hq/logout', { method: 'POST' }); gate('Signed out.'); });
+  async function route() {
+    const p = path();
+    window.scrollTo(0, 0);
+    try {
+      const s = await api('/hq/session');
+      if (!s.hq) return gate();
+      await guard(async () => {
+        if (p === '/hq') return renderLog();
+        if (p === '/hq/list') return renderList();
+        if (p === '/hq/history') return renderHistory();
+        const slip = p.match(/^\/hq\/slip\/(\d{4}-\d{2}-\d{2})$/);
+        if (slip) return renderSlip(slip[1]);
+        go('/hq', { replace: true });
+      });
+    } catch (e) {
+      root.innerHTML = '<div class="gate"><div class="card"><b>Could not load</b><div class="muted small" style="margin:6px 0 14px">' + esc(e.message) + '</div><button class="btn" onclick="location.reload()">Try again</button></div></div>';
+    }
+  }
+  window.addEventListener('routechange', route);
+  route();
+})();
+</script>
+</body>
+</html>

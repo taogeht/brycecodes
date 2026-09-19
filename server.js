@@ -121,6 +121,18 @@ app.use('/EnglishAngel', express.static(path.join(__dirname, 'englishangel')));
 app.use('/timesheet', express.static(path.join(__dirname, 'timesheet')));
 app.use('/chores', express.static(path.join(__dirname, 'chores', 'public')));
 
+// Loadout (Edward's quest tracker — successor to /chores). Two single-file
+// SPAs: index.html for Edward, hq.html for the parent HQ. Both use History
+// routing, so anything under /loadout that isn't a real file falls back to
+// the right page.
+app.use('/loadout', express.static(path.join(__dirname, 'loadout', 'public')));
+app.get(['/loadout/hq', '/loadout/hq/*'], (req, res) => {
+    res.sendFile(path.join(__dirname, 'loadout', 'public', 'hq.html'));
+});
+app.get('/loadout/*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'loadout', 'public', 'index.html'));
+});
+
 // 12x12: serve CRA build output
 app.use('/12x12', express.static(path.join(__dirname, '12x12', 'client', 'build')));
 // SPA fallback for 12x12 (CRA in-app routing)
@@ -184,6 +196,12 @@ app.post('/api/timesheet', (req, res) => {
         res.status(500).json({ error: "Failed to save timesheet data" });
     }
 });
+
+// Loadout API — see loadout/api.js. Schema lives in loadout.* and is
+// bootstrapped here alongside the chores/invoice block above.
+const loadout = require('./loadout/api')(pool);
+loadout.bootstrap();
+app.use('/api/loadout', loadout.router);
 
 // API for Chores persistence — single JSONB row in chores.state
 app.get('/api/chores', async (req, res) => {

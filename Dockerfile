@@ -21,6 +21,10 @@ COPY englishangel/ ./englishangel/
 COPY timesheet/ ./timesheet/
 COPY chores/public/ ./chores/public/
 
+# ── Loadout (Edward's quest tracker; API module + two SPAs + one-off migration) ──
+COPY loadout/ ./loadout/
+COPY scripts/ ./scripts/
+
 # ── alphabet-help ──
 COPY alphabet-help/ ./alphabet-help/
 

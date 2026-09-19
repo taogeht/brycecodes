@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Loadout</title>
+<meta name="theme-color" content="#11141B">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ground: #11141B; --surface: #1A1F2B; --surface-alt: #151923;
+    --border: #262D3B; --border-strong: #2C3342;
+    --text: #F2F0EA; --muted: #A3ABBD; --gold: #E8A33D; --success: #4CAF8E; --danger: #E06C6C;
+    --display: 'Space Grotesk', system-ui, sans-serif; --body: 'IBM Plex Sans', system-ui, sans-serif;
+    --r-ctl: 10px; --r-card: 12px; --r-hero: 16px; --r-pill: 999px;
+    --nav-h: 64px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--ground); color: var(--text); font-family: var(--body); font-size: 16px; line-height: 1.4; }
+  body { min-height: 100dvh; padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom)); }
+  main { max-width: 480px; margin: 0 auto; padding: 16px 16px 24px; }
+  button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+  input { font: inherit; color: inherit; }
+  a { color: inherit; text-decoration: none; }
+  .ic { display: inline-block; vertical-align: middle; flex: none; }
+
+  /* Type */
+  .eyebrow { font-family: var(--display); font-weight: 700; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+  .eyebrow.gold { color: var(--gold); }
+  h1 { font-family: var(--display); font-weight: 700; font-size: 24px; line-height: 1.15; margin: 0; letter-spacing: -.01em; }
+  h2 { font-family: var(--display); font-weight: 700; font-size: 18px; margin: 0; }
+  .muted { color: var(--muted); }
+  .num { font-family: var(--display); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  /* Header */
+  .top { display: flex; align-items: center; justify-content: space-between; min-height: 44px; margin-bottom: 14px; }
+  .top .brand { font-family: var(--display); font-weight: 700; letter-spacing: .18em; text-transform: uppercase; font-size: 13px; }
+  .top .date { font-size: 13px; color: var(--muted); font-weight: 500; }
+  .back { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; padding-right: 10px; margin-left: -6px; color: var(--muted); font-weight: 500; font-size: 14px; }
+
+  /* Cards */
+  .card { display: block; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-card); padding: 14px; }
+  .card + .card, .section + .section { margin-top: 12px; }
+  .hero { border-radius: var(--r-hero); border-color: var(--gold); padding: 18px 16px; }
+  .hero.done { border-color: var(--success); }
+  .hero .icon-wrap { width: 40px; height: 40px; border-radius: var(--r-ctl); background: var(--surface-alt); border: 1px solid var(--border-strong); display: grid; place-items: center; color: var(--gold); }
+  .hero.done .icon-wrap { color: var(--success); }
+  .hero .row { display: flex; gap: 12px; align-items: flex-start; }
+  .hero h2 { font-size: 20px; margin-bottom: 2px; }
+  .hero p { margin: 0; color: var(--muted); font-size: 14px; }
+  .section { margin-top: 20px; }
+  .section-h { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
+
+  /* Currency strip */
+  .strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 12px 0; }
+  .tile { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-card); padding: 12px 10px; min-height: 72px; }
+  .tile .lbl { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); font-weight: 500; }
+  .tile .val { font-size: 22px; margin-top: 4px; line-height: 1.1; }
+  .tile .val small { font-size: 12px; font-weight: 500; color: var(--muted); margin-left: 2px; font-family: var(--body); }
+  .tile.gold .lbl, .tile.gold .val { color: var(--gold); }
+  .tile.gold .val small { color: var(--muted); }
+
+  /* Level + streak */
+  .level { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .bar { height: 8px; background: var(--surface-alt); border: 1px solid var(--border); border-radius: var(--r-pill); overflow: hidden; margin-top: 8px; }
+  .bar > i { display: block; height: 100%; background: var(--gold); border-radius: var(--r-pill); transition: width .4s ease; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: var(--r-pill); border: 1px solid var(--border-strong); background: var(--surface-alt); font-size: 13px; font-weight: 500; min-height: 32px; }
+  .pill.hot { color: var(--gold); border-color: var(--gold); }
+  .pill.soon { color: var(--muted); font-size: 11px; padding: 3px 8px; min-height: 0; letter-spacing: .08em; text-transform: uppercase; font-family: var(--display); font-weight: 700; }
+
+  /* Buttons */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 0 18px; border-radius: var(--r-ctl); font-weight: 600; font-size: 16px; border: 1px solid var(--border-strong); background: var(--surface-alt); transition: transform .08s ease, background .15s; }
+  .btn:active { transform: scale(.985); }
+  .btn.primary { background: var(--gold); color: #1A1400; border-color: var(--gold); }
+  .btn.full { width: 100%; min-height: 56px; font-size: 17px; }
+  .btn[disabled] { opacity: .45; cursor: default; transform: none; }
+  .btn.ghost { border-style: dashed; color: var(--muted); font-weight: 500; }
+
+  /* Quest rows */
+  .qrow { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--border); }
+  .qrow:first-child { border-top: 0; padding-top: 4px; }
+  .qrow .qname { font-weight: 600; }
+  .qrow .qsub { font-size: 13px; color: var(--muted); }
+  .qrow .qmeta { margin-left: auto; text-align: right; flex: none; }
+  .award { display: inline-flex; gap: 8px; font-size: 12px; color: var(--muted); font-weight: 500; white-space: nowrap; }
+  .award b { color: var(--text); font-weight: 600; }
+  .award .g { color: var(--gold); }
+
+  /* Pack rows */
+  .prow { display: flex; align-items: center; gap: 14px; min-height: 60px; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--r-card); background: var(--surface); margin-top: 8px; user-select: none; }
+  .prow.on { border-color: var(--success); background: var(--surface-alt); }
+  .prow .box { width: 30px; height: 30px; flex: none; border-radius: 8px; border: 2px solid var(--border-strong); display: grid; place-items: center; color: transparent; transition: background .12s, border-color .12s; }
+  .prow.on .box { background: var(--success); border-color: var(--success); color: #0B1A14; }
+  .prow .lbl { font-size: 17px; font-weight: 500; flex: 1; line-height: 1.25; overflow-wrap: anywhere; }
+  .prow.on .lbl { color: var(--text); }
+  .prow.locked { opacity: .9; }
+  .prow input { flex: 1; min-height: 44px; background: transparent; border: 0; border-bottom: 1px dashed var(--border-strong); outline: 0; font-size: 17px; padding: 0 2px; }
+  .prow input::placeholder { color: var(--border-strong); }
+  .prow input:focus { border-bottom-color: var(--gold); }
+  .prow .tag { font-size: 11px; color: var(--muted); font-family: var(--display); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; flex: none; }
+  .banner { display: flex; gap: 12px; align-items: center; padding: 14px; border-radius: var(--r-card); border: 1px solid var(--success); background: var(--surface-alt); margin-top: 12px; }
+  .banner .ic { color: var(--success); }
+  .banner .award { color: var(--text); font-size: 14px; }
+  .note { font-size: 13px; color: var(--muted); margin: 14px 0 0; line-height: 1.45; }
+  .empty { text-align: center; padding: 28px 16px; color: var(--muted); }
+  .empty .ic { color: var(--border-strong); margin-bottom: 8px; }
+
+  /* Tab bar */
+  .tabbar { position: fixed; left: 0; right: 0; bottom: 0; height: calc(var(--nav-h) + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom); background: var(--surface-alt); border-top: 1px solid var(--border); display: flex; justify-content: center; z-index: 10; }
+  .tabbar .in { display: flex; width: 100%; max-width: 480px; }
+  .tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-height: var(--nav-h); font-size: 11px; font-weight: 600; letter-spacing: .04em; color: var(--muted); }
+  .tab.active { color: var(--gold); }
+  .tab.soon { opacity: .35; pointer-events: none; }
+
+  /* Toast */
+  .toast { position: fixed; left: 50%; bottom: calc(var(--nav-h) + 16px + env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(8px); background: var(--text); color: var(--ground); padding: 10px 16px; border-radius: var(--r-ctl); font-weight: 600; font-size: 14px; opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none; z-index: 20; white-space: nowrap; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.err { background: var(--danger); color: #fff; }
+
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<main id="app" aria-live="polite"></main>
+<nav class="tabbar" aria-label="Main">
+  <div class="in" id="tabs"></div>
+</nav>
+<div class="toast" id="toast" role="status"></div>
+<script src="/loadout/common.js"></script>
+<script>
+(function () {
+  'use strict';
+  const { api, esc, icon, path, go, href, linkify, todayKey, fmtDate, fmtTime } = L;
+  const app = document.getElementById('app');
+  const tabs = document.getElementById('tabs');
+  linkify(document.body);
+
+  // ── Toast ─────────────────────────────────────────────────────────
+  let toastTimer;
+  function toast(msg, err) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.className = 'toast show' + (err ? ' err' : '');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.className = 'toast', 2200);
+  }
+
+  function awardHtml(a, { zeroOk = false } = {}) {
+    if (!a) return '';
+    const parts = [];
+    if (a.xp || zeroOk) parts.push('<span><b>+' + a.xp + '</b> XP</span>');
+    if (a.coins || zeroOk) parts.push('<span class="g"><b>+' + a.coins + '</b> coins</span>');
+    if (a.screenMinutes) parts.push('<span><b>+' + a.screenMinutes + '</b> min</span>');
+    return '<span class="award">' + parts.join('') + '</span>';
+  }
+
+  function tabbar(active) {
+    const items = [
+      ['/', 'home', 'Today'], ['/pack', 'bag', 'Pack'], ['/vault', 'vault', 'Vault', true], ['/log', 'log', 'Log', true],
+    ];
+    tabs.innerHTML = items.map(([p, ic, label, soon]) =>
+      '<a class="tab' + (p === active ? ' active' : '') + (soon ? ' soon' : '') + '" href="' + href(p) + '" data-link' +
+      (soon ? ' aria-disabled="true"' : '') + '>' + icon(ic, 22) + '<span>' + label + '</span></a>').join('');
+  }
+
+  // ── Today ─────────────────────────────────────────────────────────
+  async function renderToday() {
+    tabbar('/');
+    app.innerHTML = '<div class="top"><span class="brand">Loadout</span></div><p class="muted">Loading…</p>';
+    let t;
+    try { t = await api('/today'); } catch (e) { app.innerHTML = errorView(e); return; }
+    const b = t.balances, lv = t.level, pc = t.day.packCheck;
+    const pct = Math.round(100 * lv.into / lv.perLevel);
+
+    let packCard;
+    const items = pc ? pc.items : [];
+    const ticked = items.filter(i => i.checked).length;
+    if (pc && pc.submittedAt) {
+      const v = pc.verification;
+      packCard = '<a class="card hero done" href="' + href('/pack') + '" data-link><div class="row"><div class="icon-wrap">' + icon('check', 22) + '</div><div>' +
+        '<div class="eyebrow" style="color:var(--success)">Packed ' + fmtTime(pc.submittedAt) + '</div><h2>Pack check done</h2>' +
+        '<p>' + ticked + ' of ' + items.length + ' ticked · ' + awardHtml(pc.awarded) + '</p>' +
+        '<p style="margin-top:6px">' + (v ? 'Bag checked: ' + v.arrived.length + ' arrived' + (v.missing.length ? ', ' + v.missing.length + ' missing' : '') : 'Waiting for a parent to check the bag') + '</p>' +
+        '</div></div></a>';
+    } else if (items.length) {
+      packCard = '<a class="card hero" href="' + href('/pack') + '" data-link><div class="row"><div class="icon-wrap">' + icon('bag', 22) + '</div><div style="flex:1">' +
+        '<div class="eyebrow gold">Pack check</div><h2>' + items.length + ' thing' + (items.length === 1 ? '' : 's') + ' on today\'s slip</h2>' +
+        '<p>Fill it in from your slip when you get home.</p>' +
+        '<div style="margin-top:14px"><span class="btn primary" style="min-height:44px">Open pack check ' + icon('right', 18) + '</span></div>' +
+        '</div></div></a>';
+    } else if (t.isSchoolDay) {
+      packCard = '<div class="card"><div class="row" style="display:flex;gap:12px;align-items:center"><span class="muted">' + icon('bag', 22) + '</span><div><b>No slip written yet</b><div class="muted" style="font-size:13px">Ask a parent to write today\'s list — or add your own items on the Pack tab.</div></div></div></div>';
+    } else {
+      packCard = '<div class="card"><div style="display:flex;gap:12px;align-items:center"><span class="muted">' + icon('bag', 22) + '</span><div><b>No pack check today</b><div class="muted" style="font-size:13px">School days only. Enjoy the weekend.</div></div></div></div>';
+    }
+
+    const quests = t.quests.filter(q => q.kind !== 'packCheck');
+    const questRows = quests.length ? quests.map(q => {
+      const target = q.kind === 'externalXp' || q.kind === 'duration' ? q.target + ' ' + (q.unitLabel || '') : q.kind === 'count' ? 'per ' + (q.unitLabel || 'unit') : (q.cadence === 'weekly' ? (q.timesPerWeek || 1) + '× a week' : 'daily');
+      const a = q.kind === 'count' ? q.perUnit : q;
+      return '<div class="qrow"><div><div class="qname">' + esc(q.name) + '</div><div class="qsub">' + esc(target) + '</div></div>' +
+        '<div class="qmeta">' + awardHtml(a) + '<div style="margin-top:4px"><span class="pill soon">Soon</span></div></div></div>';
+    }).join('') : '<div class="muted" style="font-size:14px">Nothing else on the board today.</div>';
+
+    app.innerHTML =
+      '<div class="top"><span class="brand">Loadout</span><span class="date">' + fmtDate(t.date) + '</span></div>' +
+      '<div class="level"><div><div class="eyebrow">Level ' + lv.level + '</div><h1>' + esc(t.child.name) + '</h1></div>' +
+      '<span class="pill' + (t.streak > 0 ? ' hot' : '') + '">' + icon('flame', 18) + ' <span class="num">' + t.streak + '</span> day streak</span></div>' +
+      '<div class="bar" role="progressbar" aria-valuenow="' + lv.into + '" aria-valuemax="' + lv.perLevel + '"><i style="width:' + pct + '%"></i></div>' +
+      '<div class="muted" style="font-size:12px;margin-top:6px;display:flex;justify-content:space-between"><span>' + lv.into + ' / ' + lv.perLevel + ' XP</span><span>Level ' + (lv.level + 1) + ' at ' + lv.next + ' XP</span></div>' +
+      '<div class="strip">' +
+        '<div class="tile"><div class="lbl">' + icon('bolt', 16) + 'XP</div><div class="val num">' + b.xp.toLocaleString() + '</div></div>' +
+        '<div class="tile gold"><div class="lbl">' + icon('coin', 16) + 'Coins</div><div class="val num">' + b.coins.toLocaleString() + '</div></div>' +
+        '<div class="tile"><div class="lbl">' + icon('screen', 16) + 'Screen</div><div class="val num">' + b.screenMinutes + '<small>min</small></div></div>' +
+      '</div>' +
+      packCard +
+      '<div class="section"><div class="section-h"><h2>Today\'s quests</h2><span class="muted" style="font-size:12px">' + quests.length + '</span></div><div class="card">' + questRows + '</div>' +
+      '<p class="note">Quest check-ins and power-ups arrive in the next update. Pack check is live now.</p></div>';
+  }
+
+  // ── Pack check ────────────────────────────────────────────────────
+  let packDay = null;     // day record for today
+  let pending = new Set(); // itemIds with an in-flight tick
+  const BLANKS = 2;
+
+  async function renderPack() {
+    tabbar('/pack');
+    const date = todayKey();
+    app.innerHTML = '<div class="top"><a class="back" href="' + href('/') + '" data-link>' + icon('left', 20) + 'Today</a><span class="date">' + fmtDate(date) + '</span></div><p class="muted">Loading…</p>';
+    try { packDay = await api('/day/' + date); } catch (e) { app.innerHTML = errorView(e); return; }
+    paintPack();
+  }
+
+  function itemRow(i, locked) {
+    return '<div class="prow' + (i.checked ? ' on' : '') + (locked ? ' locked' : '') + '" role="checkbox" aria-checked="' + !!i.checked + '" tabindex="0" data-tick="' + esc(i.id) + '">' +
+      '<span class="box">' + icon('check', 18) + '</span><span class="lbl">' + esc(i.label) + '</span>' + (i.source === 'child' ? '<span class="tag">Mine</span>' : '') + '</div>';
+  }
+
+  function blankRow(n) {
+    return '<div class="prow" data-blank="' + n + '"><button class="box" type="button" aria-label="Tick and add" data-blank-tick="' + n + '">' + icon('check', 18) + '</button>' +
+      '<input type="text" inputmode="text" enterkeyhint="done" autocomplete="off" placeholder="Something that came up…" maxlength="120" data-blank-input="' + n + '"></div>';
+  }
+
+  function paintPack() {
+    const pc = packDay.packCheck;
+    const items = pc ? pc.items : [];
+    const parentItems = items.filter(i => i.source === 'parent');
+    const childItems = items.filter(i => i.source === 'child');
+    const locked = !!(pc && pc.submittedAt);
+    const ticked = items.filter(i => i.checked).length;
+    const date = packDay.date;
+
+    let head;
+    if (locked) {
+      const v = pc.verification;
+      head = '<div class="banner">' + icon('check', 26) + '<div><div style="font-weight:600">Packed · ' + ticked + ' of ' + items.length + ' ticked</div>' +
+        '<div class="award">' + (pc.awarded ? awardHtml(pc.awarded) : '') + '</div>' +
+        '<div class="muted" style="font-size:13px;margin-top:4px">' + (v ? 'Bag checked: ' + v.arrived.length + ' arrived' + (v.missing.length ? ', ' + v.missing.length + ' missing' : '') + (v.note ? ' — ' + esc(v.note) : '') : 'A parent will check the bag tonight.') + '</div></div></div>';
+    } else {
+      head = '<h1>Pack check</h1><p class="muted" style="margin:4px 0 0;font-size:15px">Fill this in from your slip when you get home. Tick what you actually packed.</p>';
+    }
+
+    const fromMorning = parentItems.length
+      ? parentItems.map(i => itemRow(i, locked)).join('')
+      : '<div class="empty">' + icon('bag', 28) + '<div>No slip from this morning.</div></div>';
+
+    const blanks = locked ? '' : Array.from({ length: BLANKS }, (_, n) => blankRow(n)).join('') +
+      '<button class="btn ghost full" type="button" style="min-height:48px;margin-top:8px" data-add-line>' + icon('plus', 18) + ' Add one more line</button>';
+
+    app.innerHTML =
+      '<div class="top"><a class="back" href="' + href('/') + '" data-link>' + icon('left', 20) + 'Today</a><span class="date">' + fmtDate(date) + '</span></div>' +
+      head +
+      '<div class="section"><div class="eyebrow">From this morning</div>' + fromMorning + '</div>' +
+      '<div class="section"><div class="eyebrow">Came up today</div>' + childItems.map(i => itemRow(i, locked)).join('') + blanks + '</div>' +
+      (locked ? '' :
+        '<div class="section"><button class="btn primary full" type="button" data-submit' + (ticked === 0 ? ' disabled' : '') + '>' + icon('lock', 20) + ' Packed — lock it in</button>' +
+        '<p class="note">' + (ticked ? ticked + ' ticked. ' : 'Tick at least one thing to submit. ') + 'Submitting pays the pack-check award whether you got 3 of 5 or 5 of 5 — a parent checks the bag separately.</p></div>') +
+      '<p class="note" style="text-align:center">Ticks happen on the paper slip at your locker. This screen is for entering them at home.</p>';
+  }
+
+  async function tick(id) {
+    const pc = packDay.packCheck;
+    if (!pc || pc.submittedAt || pending.has(id)) return;
+    const item = pc.items.find(i => i.id === id);
+    if (!item) return;
+    const next = !item.checked;
+    item.checked = next; pending.add(id); paintPack();
+    try {
+      packDay = await api('/day/' + packDay.date + '/pack/tick', { method: 'POST', body: { itemId: id, checked: next } });
+    } catch (e) {
+      item.checked = !next; toast(e.status === 409 ? 'Already submitted' : 'Could not save', true);
+      if (e.status === 409 && e.data && e.data.day) packDay = e.data.day;
+    } finally { pending.delete(id); paintPack(); }
+  }
+
+  async function addBlank(n, checked) {
+    const input = app.querySelector('[data-blank-input="' + n + '"]');
+    if (!input || input.disabled) return;
+    const label = input.value.trim();
+    if (!label) { input.focus(); return; }
+    input.disabled = true;
+    try {
+      const r = await api('/day/' + packDay.date + '/pack/items/add', { method: 'POST', body: { label, checked } });
+      packDay = r.day; paintPack();
+    } catch (e) {
+      input.disabled = false; toast(e.status === 409 ? 'Already submitted' : 'Could not add', true);
+      if (e.status === 409 && e.data && e.data.day) { packDay = e.data.day; paintPack(); }
+    }
+  }
+
+  async function submit() {
+    const btn = app.querySelector('[data-submit]');
+    if (btn) btn.disabled = true;
+    try {
+      const r = await api('/day/' + packDay.date + '/pack/submit', { method: 'POST' });
+      packDay = r.day; paintPack();
+      if (!r.already && r.awarded) toast('+' + r.awarded.xp + ' XP · +' + r.awarded.coins + ' coins');
+    } catch (e) { toast(e.message || 'Could not submit', true); if (btn) btn.disabled = false; }
+  }
+
+  L.on(app, 'click', '[data-tick]', (e, row) => tick(row.dataset.tick));
+  L.on(app, 'keydown', '[data-tick]', (e, row) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); tick(row.dataset.tick); } });
+  // pointerdown lands before the input's focusout, so the blur-save below
+  // knows to stand aside and let the click add the item as ticked.
+  let tickingBlank = null;
+  L.on(app, 'pointerdown', '[data-blank-tick]', (e, b) => { tickingBlank = b.dataset.blankTick; });
+  L.on(app, 'click', '[data-blank-tick]', (e, b) => { tickingBlank = null; addBlank(b.dataset.blankTick, true); });
+  L.on(app, 'keydown', '[data-blank-input]', (e, inp) => { if (e.key === 'Enter') { e.preventDefault(); addBlank(inp.dataset.blankInput, false); } });
+  L.on(app, 'click', '[data-add-line]', (e, b) => {
+    const n = app.querySelectorAll('[data-blank]').length;
+    b.insertAdjacentHTML('beforebegin', blankRow(n));
+    app.querySelector('[data-blank-input="' + n + '"]').focus();
+  });
+  L.on(app, 'click', '[data-submit]', submit);
+  // Save a typed-but-unsubmitted line when the input loses focus.
+  app.addEventListener('focusout', e => {
+    const inp = e.target.closest && e.target.closest('[data-blank-input]');
+    if (!inp || inp.disabled || !inp.value.trim()) return;
+    if (tickingBlank === inp.dataset.blankInput) return;
+    addBlank(inp.dataset.blankInput, false);
+  });
+
+  function errorView(e) {
+    return '<div class="empty">' + icon('alert', 28) + '<div><b>Could not load</b><br><span style="font-size:13px">' + esc(e.message) + '</span></div><div style="margin-top:14px"><button class="btn" type="button" onclick="location.reload()">Try again</button></div></div>';
+  }
+
+  function soonView(name) {
+    tabbar(path());
+    app.innerHTML = '<div class="top"><a class="back" href="' + href('/') + '" data-link>' + icon('left', 20) + 'Today</a></div><div class="empty">' + icon('lock', 28) + '<div><b>' + esc(name) + '</b><br><span style="font-size:13px">Opens in a later update.</span></div></div>';
+  }
+
+  function route() {
+    const p = path();
+    window.scrollTo(0, 0);
+    if (p === '/') return renderToday();
+    if (p === '/pack') return renderPack();
+    if (p === '/vault') return soonView('Vault');
+    if (p === '/log') return soonView('Log');
+    go('/', { replace: true });
+  }
+  window.addEventListener('routechange', route);
+  route();
+  // Re-fetch when the tab comes back (he'll leave it open on the phone).
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) route(); });
+})();
+</script>
+</body>
+</html>
