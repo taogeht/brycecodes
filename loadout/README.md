@@ -15,7 +15,7 @@ loadout/
 │   └── default-config.js  Seed config (quests, power-ups, rewards)
 ├── public/
 │   ├── index.html       Edward's HUD (dark, phone-first): Today, Pack, Quest check-in, Vault, Log
-│   ├── hq.html          Parent HQ (light, desktop): Daily log (+approvals), Pack list, Quests, Rewards, History, Settings
+│   ├── hq.html          Parent HQ (light, desktop): Daily log (+approvals), Pack list, Quests, Rewards, History (week grid, 2×2, trouble items), Settings
 │   └── common.js        Shared API client, date helpers, router, SVG icons
 └── test/                node:test — unit (tz, scoring) + API integration
 ```
@@ -126,6 +126,14 @@ Rewards live in `config.rewards` (`cost: { coins?, screenMinutes? }`,
 `/hq/rewards` edits rewards and shows every request; `/hq/settings` holds the
 child's name, XP per level, coin value and the pack-check mode (paper slip vs
 phone at the locker — only the copy on `/pack` changes).
+
+## History (phase 4)
+
+`GET /history/pack?weeks=` returns per-day pack stats (with per-item
+`checked` / `arrived`) plus `byWeekday` aggregates; `GET /history/quests?weeks=`
+returns done-vs-active days per quest per week. Everything else on
+`/hq/history` — the 2×2, the weakest-weekday headline, the items-that-go-missing
+table — is derived client-side from those two payloads.
 
 ## Rules the code enforces (don't get these subtly wrong)
 

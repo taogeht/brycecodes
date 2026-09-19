@@ -260,6 +260,16 @@ if (!URL_) {
         assert.deepEqual(await bal(), { ...b1, screenMinutes: b0.screenMinutes - 30 }, 'suggestion approval spends nothing');
     });
 
+    test('history/quests counts done days against days on the board', async () => {
+        const h = (await call('/history/quests?weeks=1')).body;
+        const math = h.quests.find(x => x.id === 'math-academy');
+        assert.ok(math && math.totals.active >= 1 && math.totals.done >= 1, JSON.stringify(math));
+        assert.ok(math.totals.done <= math.totals.active);
+        assert.equal(h.quests.some(x => x.id === 'pack-check'), false);
+        const bins = h.quests.find(x => x.id === 'bins');
+        assert.equal(bins.cadence, 'weekly'); assert.equal(bins.totals.active, 1); assert.equal(bins.totals.done, 1);
+    });
+
     test('date param is validated', async () => {
         assert.equal((await call('/day/2026-13-01')).status, 400);
         assert.equal((await call('/day/nope')).status, 400);

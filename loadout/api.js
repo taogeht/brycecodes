@@ -530,6 +530,38 @@ module.exports = function loadout(pool, opts = {}) {
         res.json({ from, to, today, weeks, days, byWeekday });
     }));
 
+    // Quest completion by week: for each enabled non-pack quest, how many
+    // days it was on the board (up to today) and how many were done.
+    router.get('/history/quests', wrap(async (req, res) => {
+        const weeks = Math.min(52, Math.max(1, Number(req.query.weeks) || 4));
+        const today = tz.dateKey();
+        const from = tz.mondayOf(tz.addDays(today, -7 * (weeks - 1)));
+        const [config, days] = await Promise.all([store.getConfig(), store.daysBetween(from, today)]);
+        const quests = (config.quests || []).filter(q => q.enabled !== false && q.kind !== 'packCheck');
+        const out = quests.map(q => ({ id: q.id, name: q.name, kind: q.kind, cadence: q.cadence || 'daily', timesPerWeek: q.timesPerWeek || 1,
+            requiredForStreak: q.requiredForStreak !== false, weeks: [], totals: { active: 0, done: 0 } }));
+        for (let w = 0; w < weeks; w++) {
+            const mon = tz.addDays(from, 7 * w);
+            for (const o of out) {
+                const q = quests.find(x => x.id === o.id);
+                let active = 0, done = 0;
+                for (let i = 0; i < 7; i++) {
+                    const k = tz.addDays(mon, i);
+                    if (k > today) break;
+                    const onBoard = S.questsActiveOn(config, k).some(x => x.id === q.id);
+                    if (!onBoard) continue;
+                    active++;
+                    const d = days[k];
+                    if (d && (d.checkins || []).some(c => c.questId === q.id && c.targetMet)) done++;
+                }
+                if (o.cadence === 'weekly') active = Math.min(active, o.timesPerWeek);
+                o.weeks.push({ monday: mon, active, done: Math.min(done, active || done) });
+                o.totals.active += active; o.totals.done += Math.min(done, active || done);
+            }
+        }
+        res.json({ from, to: today, weeks, quests: out });
+    }));
+
     // ── HQ daily-log bundle ─────────────────────────────────────────────
     router.get('/hq/overview', auth.requireHq, wrap(async (req, res) => {
         const date = tz.isDateKey(req.query.date) ? req.query.date : tz.dateKey();

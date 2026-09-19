@@ -248,10 +248,16 @@ day). Item editor with Enter-to-add and Backspace-to-remove, **Copy last list**,
 (`/hq/slip/:date`, print CSS: checkboxes + three blank lines + instructions).
 Locked once Edward has submitted.
 
-**`/hq/history`** — by-weekday table (lists, submitted, ticked %, arrived %,
-ticked-but-missing, not-ticked) and per-day rows. Ticked-but-missing is a
-packing problem, not-ticked is an attention problem — they need different
-fixes. Seeded now; phase 4 expands it.
+**`/hq/history`** — range 4/8/12/26 weeks. Summary tiles (lists written /
+school days, submitted, bag checked, arrival %, packing problems, attention
+problems); a headline that names the weakest weekday and which failure mode
+dominates; **week grid** (rows = weeks, Mon–Fri cells coloured green / red /
+amber / grey, click → daily log); **by weekday** with submit / tick / arrival
+bars; the **ticked-vs-arrived 2×2** (ticked & missing = packing problem, not
+ticked & missing = attention problem, with the fix each implies); **items that
+go missing** (per label: listed, ticked %, arrived %, packing, attention) —
+the actionable table; **quests** (done days / days on the board, one square
+per week); and the collapsible every-day list.
 
 **`/hq`** also lists the day's check-ins (value, power-ups, status, award,
 Adjust) and a **Pending approvals** card with Confirm / Adjust for
@@ -350,7 +356,10 @@ with progress, suggest-a-reward, open + recent requests), request → approve /
 deny / cancel with reservation and a live balance re-check on approval,
 `/hq/rewards`, `/hq/settings`.
 
-**Phase 4 — history.** Full week view, weekday patterns, ticked-vs-arrived.
+**Phase 4 — history. ✅** `/hq/history`: summary tiles, a headline naming the
+weak weekday and whether it's a packing or attention pattern, the week × Mon–Fri
+grid (click-through), by-weekday rates, the ticked-vs-arrived 2×2, the
+items-that-go-missing table, quest completion by week, and the every-day list.
 
 ---
 

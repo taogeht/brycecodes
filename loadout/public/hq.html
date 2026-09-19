@@ -164,6 +164,46 @@
   .qform .actions { grid-column: span 6; display: flex; gap: 8px; align-items: center; padding-top: 4px; }
   .qform .actions .right { margin-left: auto; display: flex; gap: 8px; }
 
+  /* History */
+  .wgrid { width: 100%; border-collapse: separate; border-spacing: 4px; }
+  .wgrid th { font-size: 11px; color: var(--muted); font-weight: 600; text-align: center; padding: 2px 0 4px; border: 0; }
+  .wgrid th.wk { text-align: left; }
+  .wgrid td { padding: 0; border: 0; }
+  .wgrid td.wk { font-size: 12px; color: var(--muted); white-space: nowrap; padding-right: 8px; font-variant-numeric: tabular-nums; }
+  .cell { display: block; min-height: 56px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-alt); padding: 6px 8px; font-size: 11px; color: var(--muted); line-height: 1.3; }
+  .cell.none { background: transparent; border-style: dashed; }
+  .cell.future { background: transparent; border-color: transparent; }
+  .cell.ok { background: var(--green-bg); border-color: transparent; color: var(--green); }
+  .cell.warn { background: var(--red-bg); border-color: transparent; color: var(--red); }
+  .cell.open { background: var(--gold-bg); border-color: transparent; color: var(--gold); }
+  .cell.today { outline: 2px solid var(--text); outline-offset: -2px; }
+  .cell b { display: block; font-size: 13px; font-family: var(--display); }
+  .cell:hover { filter: brightness(.97); }
+  .rate { display: flex; align-items: center; gap: 8px; min-width: 120px; }
+  .rate .rb { flex: 1; height: 8px; background: var(--ground); border: 1px solid var(--border); border-radius: 999px; overflow: hidden; }
+  .rate .rb i { display: block; height: 100%; background: var(--green); }
+  .rate .rb i.bad { background: var(--red); }
+  .rate .rb i.gold { background: var(--gold); }
+  .rate span { font-size: 12px; font-variant-numeric: tabular-nums; min-width: 34px; text-align: right; }
+  .matrix { display: grid; grid-template-columns: 120px 1fr 1fr; gap: 6px; align-items: stretch; }
+  .matrix .mh { font-size: 12px; color: var(--muted); font-weight: 600; display: flex; align-items: center; justify-content: center; text-align: center; }
+  .matrix .mc { border-radius: 10px; padding: 14px; border: 1px solid var(--border); background: var(--surface-alt); }
+  .matrix .mc .n { font-family: var(--display); font-weight: 700; font-size: 26px; line-height: 1; }
+  .matrix .mc .l { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .matrix .mc.good { background: var(--green-bg); border-color: transparent; } .matrix .mc.good .n { color: var(--green); }
+  .matrix .mc.pack { background: var(--red-bg); border-color: transparent; } .matrix .mc.pack .n { color: var(--red); }
+  .matrix .mc.attn { background: var(--gold-bg); border-color: transparent; } .matrix .mc.attn .n { color: var(--gold); }
+  .headline { padding: 12px 14px; border-radius: 10px; background: var(--surface-alt); border: 1px solid var(--border); font-size: 14px; margin-bottom: 14px; }
+  .headline b { font-weight: 600; }
+  .qbar { display: flex; gap: 3px; }
+  .qbar i { display: block; width: 14px; height: 14px; border-radius: 3px; background: var(--ground); border: 1px solid var(--border); }
+  .qbar i.p { background: var(--green); border-color: var(--green); }
+  .qbar i.h { background: var(--gold); border-color: var(--gold); }
+  .qbar i.z { background: var(--red-bg); border-color: var(--red-bg); }
+  details.days summary { cursor: pointer; font-family: var(--display); font-weight: 700; font-size: 14px; padding: 4px 0; list-style: none; display: flex; align-items: center; gap: 8px; }
+  details.days summary::-webkit-details-marker { display: none; }
+  details.days[open] summary .ic { transform: rotate(90deg); }
+
   /* PIN gate */
   .gate { min-height: 100vh; display: grid; place-items: center; padding: 20px; }
   .gate .card { width: 360px; max-width: 100%; padding: 28px; }
@@ -203,7 +243,7 @@
 <script>
 (function () {
   'use strict';
-  const { api, esc, icon, path, go, href, linkify, todayKey, addDays, mondayOf, weekday, fmtDate, relDay, fmtTime, isSchoolDay, nextSchoolDay, DAY_LABEL } = L;
+  const { api, esc, icon, path, go, href, linkify, todayKey, addDays, mondayOf, weekday, fmtDate, relDay, fmtTime, isSchoolDay, nextSchoolDay, DAY_LABEL, DAY_LONG } = L;
   const root = document.getElementById('root');
   linkify(document.body);
   let config = null;
@@ -558,27 +598,115 @@
       '<div class="f">Tick each thing as it goes in the bag — at your locker, after last period. At home, enter the ticks in Loadout and hit <b>Packed</b>.</div></div>';
   }
 
-  // ── History (seed of phase 4) ─────────────────────────────────────
+  // ── History (phase 4) ─────────────────────────────────────────────
+  const WD5 = ['mon', 'tue', 'wed', 'thu', 'fri'];
+  function pct(a, b) { return b ? Math.round(100 * a / b) : null; }
+  function rateHtml(a, b, cls) { const p = pct(a, b); return '<div class="rate"><div class="rb"><i class="' + (cls || '') + '" style="width:' + (p || 0) + '%"></i></div><span>' + (p === null ? '—' : p + '%') + '</span></div>'; }
+
   async function renderHistory() {
     const weeks = Math.min(52, Math.max(1, Number(q('weeks')) || 4));
     shell('/hq/history', '<p class="muted">Loading…</p>');
-    const hist = await api('/history/pack?weeks=' + weeks);
-    const pct = (a, b) => b ? Math.round(100 * a / b) + '%' : '—';
-    const wdRows = ['mon', 'tue', 'wed', 'thu', 'fri'].map(wd => {
+    const [hist, qh] = await Promise.all([api('/history/pack?weeks=' + weeks), api('/history/quests?weeks=' + weeks)]);
+    const today = todayKey();
+    const byDate = new Map(hist.days.map(d => [d.date, d]));
+    const written = hist.days.filter(d => d.written);
+    const verified = written.filter(d => d.verified);
+
+    // ── summary + 2×2 over verified items ──
+    const items = verified.flatMap(d => d.items.filter(i => i.arrived !== null));
+    const m = { ta: 0, tm: 0, na: 0, nm: 0 };
+    for (const i of items) m[(i.checked ? 't' : 'n') + (i.arrived ? 'a' : 'm')]++;
+    const rangeEnd = today < hist.to ? today : hist.to;
+    const schoolDaysSoFar = (() => { let n = 0; for (let k = hist.from; k <= rangeEnd; k = addDays(k, 1)) if (isSchoolDay(k)) n++; return n; })();
+    const sum = (arr, k) => arr.reduce((a, d) => a + d.counts[k], 0);
+    const tiles =
+      '<div class="stats">' +
+        '<div class="stat"><div class="lbl">Lists written</div><div class="val num">' + written.length + '<small>/ ' + schoolDaysSoFar + ' school days</small></div></div>' +
+        '<div class="stat"><div class="lbl">Submitted</div><div class="val num">' + written.filter(d => d.submitted).length + '<small>/ ' + written.length + '</small></div></div>' +
+        '<div class="stat"><div class="lbl">Bag checked</div><div class="val num">' + verified.length + '<small>/ ' + written.length + '</small></div></div>' +
+        '<div class="stat"><div class="lbl">Arrived</div><div class="val num">' + (items.length ? pct(m.ta + m.na, items.length) + '<small>%</small>' : '—') + '</div></div>' +
+        '<div class="stat' + (m.tm ? ' warn' : '') + '"><div class="lbl">Packing problems</div><div class="val num">' + m.tm + '</div></div>' +
+        '<div class="stat' + (m.nm ? ' warn' : '') + '"><div class="lbl">Attention problems</div><div class="val num">' + m.nm + '</div></div>' +
+      '</div>';
+
+    // ── headline: the weekday that fails most, if any ──
+    let headline = '';
+    const wdStats = WD5.map(wd => { const s = hist.byWeekday[wd]; return s ? { wd, ...s, problems: s.tickedMissing + s.notTickedMissing, verifiedItems: s.arrived + s.missing } : null; }).filter(Boolean);
+    const worst = wdStats.filter(w => w.verifiedItems >= 3).sort((a, b) => (b.problems / b.verifiedItems) - (a.problems / a.verifiedItems))[0];
+    if (worst && worst.problems) {
+      headline = '<div class="headline">' + icon('alert', 16) + ' <b>' + DAY_LONG[worst.wd] + '</b> is the weak spot: ' + worst.problems + ' of ' + worst.verifiedItems + ' checked items didn\'t make it home' +
+        (worst.tickedMissing > worst.notTickedMissing ? ' — mostly <b>ticked but missing</b>, so the tick is happening before the item goes in the bag.' : worst.notTickedMissing > worst.tickedMissing ? ' — mostly <b>never ticked</b>, so the list isn\'t being read at the locker.' : ' — an even split of packing and attention misses.') + '</div>';
+    } else if (items.length && !m.tm && !m.nm) {
+      headline = '<div class="headline">' + icon('check', 16) + ' Everything that was checked arrived. Nothing to fix here.</div>';
+    }
+
+    // ── week grid ──
+    const mondays = []; for (let k = hist.from; k <= hist.to; k = addDays(k, 7)) mondays.push(k);
+    const cellFor = k => {
+      const d = byDate.get(k);
+      if (k > today) return '<span class="cell future"></span>';
+      if (!d || !d.written) return '<a class="cell none' + (k === today ? ' today' : '') + '" href="' + href(withDate('/hq', k)) + '" data-link>' + (k === today ? 'today' : 'no list') + '</a>';
+      const probs = d.counts.tickedMissing + d.counts.notTickedMissing;
+      const cls = !d.submitted ? 'open' : !d.verified ? '' : probs ? 'warn' : 'ok';
+      const line2 = !d.submitted ? 'not submitted' : !d.verified ? 'not checked' : probs ? probs + ' missing' : 'all arrived';
+      return '<a class="cell ' + cls + (k === today ? ' today' : '') + '" href="' + href(withDate('/hq', k)) + '" data-link><b>' + d.counts.ticked + '/' + d.counts.items + '</b>' + line2 + '</a>';
+    };
+    const grid = '<table class="wgrid"><thead><tr><th class="wk">Week</th>' + WD5.map(wd => '<th>' + DAY_LABEL[wd] + '</th>').join('') + '</tr></thead><tbody>' +
+      mondays.slice().reverse().map(mon => '<tr><td class="wk">' + fmtDate(mon).slice(4) + '</td>' + WD5.map((wd, i) => '<td>' + cellFor(addDays(mon, i)) + '</td>').join('') + '</tr>').join('') + '</tbody></table>';
+
+    // ── by weekday ──
+    const wdRows = WD5.map(wd => {
       const s = hist.byWeekday[wd];
-      if (!s) return '<tr><td>' + DAY_LABEL[wd] + '</td><td colspan="6" class="muted">no lists</td></tr>';
-      return '<tr><td><b>' + DAY_LABEL[wd] + '</b></td><td class="c">' + s.days + '</td><td class="c">' + s.submitted + '</td><td class="c">' + pct(s.ticked, s.items) + '</td><td class="c">' + (s.verified ? pct(s.arrived, s.items) : '—') + '</td>' +
-        '<td class="c' + (s.tickedMissing ? ' note-bad' : '') + '">' + s.tickedMissing + '</td><td class="c' + (s.notTickedMissing ? ' note-bad' : '') + '">' + s.notTicked + '</td></tr>';
+      if (!s) return '<tr><td><b>' + DAY_LABEL[wd] + '</b></td><td colspan="6" class="muted small">no lists yet</td></tr>';
+      const vItems = s.arrived + s.missing;
+      return '<tr><td><b>' + DAY_LABEL[wd] + '</b> <span class="muted small">' + s.days + ' list' + (s.days === 1 ? '' : 's') + '</span></td>' +
+        '<td>' + rateHtml(s.submitted, s.days) + '</td><td>' + rateHtml(s.ticked, s.items, 'gold') + '</td><td>' + (s.verified ? rateHtml(s.arrived, vItems) : '<span class="muted small">not checked</span>') + '</td>' +
+        '<td class="c' + (s.tickedMissing ? ' note-bad' : '') + '">' + s.tickedMissing + '</td><td class="c' + (s.notTickedMissing ? ' note-bad' : '') + '">' + s.notTickedMissing + '</td></tr>';
     }).join('');
-    const dayRows = hist.days.slice().reverse().map(d => '<tr><td><a href="' + href(withDate('/hq', d.date)) + '" data-link style="text-decoration:underline">' + fmtDate(d.date) + '</a></td>' +
+
+    // ── trouble items (by label, case-insensitive) ──
+    const byLabel = new Map();
+    for (const d of written) for (const i of d.items) {
+      const key = i.label.trim().toLowerCase();
+      if (!byLabel.has(key)) byLabel.set(key, { label: i.label.trim(), listed: 0, ticked: 0, checked: 0, arrived: 0, tm: 0, nm: 0 });
+      const t = byLabel.get(key);
+      t.listed++; if (i.checked) t.ticked++;
+      if (i.arrived !== null) { t.checked++; if (i.arrived) t.arrived++; else if (i.checked) t.tm++; else t.nm++; }
+    }
+    const trouble = [...byLabel.values()].filter(t => t.tm + t.nm > 0).sort((a, b) => (b.tm + b.nm) - (a.tm + a.nm) || b.listed - a.listed).slice(0, 12);
+    const troubleRows = trouble.map(t => '<tr><td><b>' + esc(t.label) + '</b></td><td class="c">' + t.listed + '</td><td>' + rateHtml(t.ticked, t.listed, 'gold') + '</td><td>' + rateHtml(t.arrived, t.checked) + '</td><td class="c' + (t.tm ? ' note-bad' : '') + '">' + t.tm + '</td><td class="c' + (t.nm ? ' note-bad' : '') + '">' + t.nm + '</td></tr>').join('');
+
+    // ── quests ──
+    const questRows = qh.quests.filter(x => x.totals.active > 0).sort((a, b) => (b.requiredForStreak - a.requiredForStreak) || (pct(b.totals.done, b.totals.active) - pct(a.totals.done, a.totals.active))).map(x =>
+      '<tr><td><b>' + esc(x.name) + '</b>' + (x.cadence === 'weekly' ? ' <span class="muted small">' + x.timesPerWeek + '×/wk</span>' : '') + (x.requiredForStreak ? '' : ' <span class="chip">not for streak</span>') + '</td>' +
+      '<td>' + rateHtml(x.totals.done, x.totals.active) + '</td><td class="c">' + x.totals.done + ' / ' + x.totals.active + '</td>' +
+      '<td><div class="qbar">' + x.weeks.map(w => '<i class="' + (w.active === 0 ? '' : w.done >= w.active ? 'p' : w.done > 0 ? 'h' : 'z') + '" title="' + fmtDate(w.monday) + ': ' + w.done + '/' + w.active + '"></i>').join('') + '</div></td></tr>').join('');
+
+    // ── every day ──
+    const dayRows = hist.days.filter(d => d.written || d.submitted).slice().reverse().map(d => '<tr><td><a href="' + href(withDate('/hq', d.date)) + '" data-link style="text-decoration:underline">' + fmtDate(d.date) + '</a></td>' +
       '<td class="c">' + (d.submitted ? '<span class="chip ok">yes</span>' : '<span class="chip">no</span>') + '</td><td class="c">' + d.counts.ticked + '/' + d.counts.items + '</td>' +
       '<td class="c">' + (d.verified ? d.counts.arrived + '/' + d.counts.items : '—') + '</td><td>' + (d.tickedMissing.length ? '<span class="note-bad">' + esc(d.tickedMissing.join(', ')) + '</span>' : '') + '</td><td>' + esc(d.notTicked.join(', ')) + '</td><td class="muted small">' + esc(d.note) + '</td></tr>').join('');
+
     main().innerHTML =
-      '<div class="head"><div><h1>Pack history</h1><div class="sub">' + fmtDate(hist.from) + ' – ' + fmtDate(hist.to) + '</div></div>' +
-      '<span class="seg">' + [4, 8, 12].map(w => '<a href="' + href('/hq/history?weeks=' + w) + '" data-link class="' + (w === weeks ? 'on' : '') + '">' + w + ' weeks</a>').join('') + '</span></div>' +
-      '<div class="card"><h3 style="margin-bottom:10px">By weekday</h3><table><thead><tr><th>Day</th><th class="c">Lists</th><th class="c">Submitted</th><th class="c">Ticked</th><th class="c">Arrived</th><th class="c">Ticked, missing</th><th class="c">Not ticked</th></tr></thead><tbody>' + wdRows + '</tbody></table>' +
-      '<div class="muted small" style="margin-top:8px">Ticked-but-missing is a packing problem. Not-ticked is an attention problem. They need different fixes.</div></div>' +
-      '<div class="card"><h3 style="margin-bottom:10px">Every day</h3>' + (dayRows ? '<table><thead><tr><th>Date</th><th class="c">Submitted</th><th class="c">Ticked</th><th class="c">Arrived</th><th>Ticked, missing</th><th>Not ticked</th><th>Note</th></tr></thead><tbody>' + dayRows + '</tbody></table>' : '<div class="empty">No pack checks in this range yet.</div>') + '</div>';
+      '<div class="head"><div><h1>History</h1><div class="sub">' + fmtDate(hist.from) + ' – ' + fmtDate(hist.to) + '</div></div>' +
+      '<span class="seg">' + [4, 8, 12, 26].map(w => '<a href="' + href('/hq/history?weeks=' + w) + '" data-link class="' + (w === weeks ? 'on' : '') + '">' + w + ' weeks</a>').join('') + '</span></div>' +
+      tiles + headline +
+      '<div class="grid2" style="grid-template-columns:1.2fr 1fr">' +
+        '<div class="card"><div class="row spread" style="margin-bottom:8px"><h3>Pack check by week</h3><span class="muted small">click a day to open it</span></div>' + grid +
+          '<div class="muted small" style="margin-top:8px">Ticked / listed. Green = everything arrived · red = something missing · amber = not submitted · grey = not checked yet.</div></div>' +
+        '<div class="card"><h3 style="margin-bottom:8px">Ticked vs arrived</h3><div class="muted small" style="margin-bottom:10px">Every item on a day you checked the bag.</div>' +
+          '<div class="matrix"><div></div><div class="mh">Arrived</div><div class="mh">Missing</div>' +
+          '<div class="mh">Ticked</div><div class="mc good"><div class="n">' + m.ta + '</div><div class="l">packed and brought</div></div><div class="mc pack"><div class="n">' + m.tm + '</div><div class="l">packing problem — ticked, not in the bag</div></div>' +
+          '<div class="mh">Not ticked</div><div class="mc"><div class="n">' + m.na + '</div><div class="l">arrived anyway</div></div><div class="mc attn"><div class="n">' + m.nm + '</div><div class="l">attention problem — never read the list</div></div></div>' +
+          '<div class="muted small" style="margin-top:12px">Packing problems mean the tick happens before the item is in the bag — move the tick to the moment it goes in. Attention problems mean the list isn\'t being looked at — shorten it, or move the slip to where he\'ll see it.</div></div>' +
+      '</div>' +
+      '<div class="card" style="margin-top:14px"><h3 style="margin-bottom:10px">By weekday</h3><table><thead><tr><th>Day</th><th>Submitted</th><th>Ticked</th><th>Arrived</th><th class="c">Packing</th><th class="c">Attention</th></tr></thead><tbody>' + wdRows + '</tbody></table></div>' +
+      '<div class="card"><h3 style="margin-bottom:4px">Items that go missing</h3><div class="muted small" style="margin-bottom:10px">The specific things worth a fix — a home for the reading log, a second copy of the textbook.</div>' +
+        (trouble.length ? '<table><thead><tr><th>Item</th><th class="c">Listed</th><th>Ticked</th><th>Arrived</th><th class="c">Packing</th><th class="c">Attention</th></tr></thead><tbody>' + troubleRows + '</tbody></table>' : '<div class="empty">Nothing has gone missing in this range.</div>') + '</div>' +
+      '<div class="card"><div class="row spread" style="margin-bottom:10px"><h3>Quests</h3><span class="muted small">done days / days on the board · one square per week</span></div>' +
+        (questRows ? '<table><thead><tr><th>Quest</th><th>Done</th><th class="c">Days</th><th>By week</th></tr></thead><tbody>' + questRows + '</tbody></table>' : '<div class="empty">No quests on the board in this range.</div>') + '</div>' +
+      '<div class="card"><details class="days"><summary>' + icon('right', 14) + ' Every day (' + hist.days.filter(d => d.written || d.submitted).length + ')</summary>' +
+        (dayRows ? '<table style="margin-top:10px"><thead><tr><th>Date</th><th class="c">Submitted</th><th class="c">Ticked</th><th class="c">Arrived</th><th>Ticked, missing</th><th>Not ticked</th><th>Note</th></tr></thead><tbody>' + dayRows + '</tbody></table>' : '<div class="empty">No pack checks in this range yet.</div>') + '</details></div>';
   }
 
   // ── Quests editor (CRUD over config.quests / config.powerUps) ─────
