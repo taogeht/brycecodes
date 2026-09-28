@@ -1,166 +1,34 @@
 #!/usr/bin/env node
 'use strict';
-// One-shot import of the old Mission Control chore tracker into Loadout.
-//
-//   DATABASE_URL=… node scripts/migrate-chores-to-loadout.js --dry-run
-//   DATABASE_URL=… node scripts/migrate-chores-to-loadout.js
-//   node scripts/migrate-chores-to-loadout.js --input chores-export.json --dry-run
-//
-// What it does (spec §9 phase 0):
-//   1. reads the chores.state singleton (or --input <file> from GET /api/chores)
-//   2. maps each chore to a Loadout quest, appended to loadout.config
-//        daily/3x/4x/weekly → cadence + timesPerWeek; quantity → kind 'count'
-//        NT per chore → coins (1 coin = 1 TWD); xp 0; requiredForStreak false
-//   3. writes the opening balance as ONE ledger `adjust` entry, into the BANK
-//        bucket: the sum of every week's `saved` half. The spend half was paid
-//        out in cash under the old chart, so spendable coins start at 0.
-//   4. stores the original blob verbatim in loadout.legacy as the audit trail
-//
-// Idempotent: refuses to run if loadout.legacy already has the 'chores' row.
-// Never touches chores.state — drop that schema by hand once you're happy.
-
+// Compatibility entrypoint. Normal server startup runs the same V2 upgrade.
+// --dry-run only reads the old source; --input is supported for offline review.
 const fs = require('fs');
-const path = require('path');
 const { Pool } = require('pg');
 const makeStore = require('../loadout/lib/store');
-const tz = require('../loadout/lib/tz');
-
 const args = process.argv.slice(2);
-const DRY = args.includes('--dry-run');
-const inputIdx = args.indexOf('--input');
-const INPUT = inputIdx >= 0 ? args[inputIdx + 1] : null;
-
-function slug(name, taken) {
-    let base = String(name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'chore';
-    let s = base, n = 2;
-    while (taken.has(s)) s = `${base}-${n++}`;
-    taken.add(s);
-    return s;
-}
-
-function mapChore(chore, taken) {
-    const nt = Number(chore.nt) || 0;
-    const timesPerWeek = chore.type === '3x' ? 3
-        : (chore.type === '4x' || chore.type === 'recycling') ? (Number(chore.slots) || 4)
-        : chore.type === 'weekly' ? 1 : undefined;
-    const q = {
-        id: slug(chore.name, taken),
-        name: chore.name,
-        kind: chore.quantity ? 'count' : 'simple',
-        xp: 0, coins: chore.quantity ? 0 : nt, screenMinutes: 0,
-        activeDays: [],                                   // every day
-        cadence: chore.type === 'daily' ? 'daily' : 'weekly',
-        powerUps: [],
-        requiresParentConfirm: false,
-        requiredForStreak: false,                         // chores don't gate the streak
-        enabled: true,
-        legacy: { id: chore.id, type: chore.type, nt },
-    };
-    if (timesPerWeek) q.timesPerWeek = timesPerWeek;
-    if (chore.quantity) {
-        q.perUnit = { xp: 0, coins: nt, screenMinutes: 0 };
-        q.unitLabel = chore.name.toLowerCase();
-    }
-    return q;
-}
-
-function plan(state) {
-    const weeks = Array.isArray(state.weeks) ? state.weeks : [];
-    const chores = Array.isArray(state.chores) ? state.chores : [];
-    const earned = weeks.reduce((a, w) => a + (Number(w.earned) || 0), 0);
-    const saved = weeks.reduce((a, w) => a + (w.saved != null ? Number(w.saved) : Math.floor((Number(w.earned) || 0) / 2)), 0);
-    const taken = new Set();
-    return {
-        quests: chores.map(c => mapChore(c, taken)),
-        summary: {
-            weeks: weeks.length,
-            weeksWithChecks: weeks.filter(w => Object.keys(w.checks || {}).length).length,
-            anchorMonday: state.anchorMonday || null,
-            chores: chores.length,
-            lifetimeEarnedNT: earned,
-            openingBank: saved,
-            openingCoins: 0,
-            rule: 'opening bank = sum of weekly saved halves (real savings); spend halves were paid out in cash; 1 coin = 1 TWD',
-        },
-    };
-}
-
-async function main() {
-    let state;
-    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-    const store = makeStore(pool);
-
-    if (INPUT) {
-        state = JSON.parse(fs.readFileSync(path.resolve(INPUT), 'utf8'));
-        console.log(`source: ${INPUT}`);
-    } else {
-        if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is not set (or pass --input <file>)');
-        const { rows } = await pool.query(`SELECT data FROM chores.state WHERE id = 'singleton'`);
-        if (!rows.length) throw new Error('chores.state has no singleton row — nothing to import');
-        state = rows[0].data;
-        console.log('source: chores.state (singleton)');
-    }
-
-    const p = plan(state);
-    console.log('\nsummary:', JSON.stringify(p.summary, null, 2));
-    console.log('\nquests to add:');
-    for (const q of p.quests) {
-        const pay = q.kind === 'count' ? `${q.perUnit.coins} coin/${q.unitLabel}` : `${q.coins} coins`;
-        console.log(`  ${q.id.padEnd(24)} ${q.kind.padEnd(7)} ${q.cadence}${q.timesPerWeek ? ' x' + q.timesPerWeek : ''}  ${pay}`);
-    }
-    console.log(`\nopening balance: +${p.summary.openingBank} bank, 0 coins (adjust entry)`);
-
-    if (DRY || !process.env.DATABASE_URL) {
-        console.log('\n--dry-run: nothing written.');
-        await pool.end();
-        return;
-    }
-
-    await store.bootstrap();
-    const existing = await pool.query(`SELECT imported_at FROM loadout.legacy WHERE id = 'chores'`);
-    if (existing.rows.length) {
-        throw new Error(`already imported at ${existing.rows[0].imported_at} — refusing to run twice`);
-    }
-
-    const before = await store.balances();
-    const client = await pool.connect();
+const dry = args.includes('--dry-run');
+const input = args.includes('--input') ? args[args.indexOf('--input') + 1] : null;
+(async () => {
+    if (input && !dry) throw new Error('--input is for --dry-run only; the live upgrade reads the database source.');
+    if (!input && !process.env.DATABASE_URL) throw new Error('Set DATABASE_URL or use --input file.json --dry-run.');
+    const pool = input ? null : new Pool({ connectionString: process.env.DATABASE_URL });
     try {
-        await client.query('BEGIN');
-        const cfg = await store.getConfig(client);
-        const have = new Set(cfg.quests.map(q => q.id));
-        const added = p.quests.filter(q => !have.has(q.id));
-        cfg.quests.push(...added);
-        cfg.coinValue = cfg.coinValue || { currency: 'TWD', perCoin: 1 };
-        await client.query(
-            `UPDATE loadout.config SET data = $1, updated_at = NOW() WHERE id = 'singleton'`, [JSON.stringify(cfg)]);
-        const txn = await store.appendLedger({
-            kind: 'adjust', xp: 0, coins: 0, bank: p.summary.openingBank, screenMinutes: 0,
-            source: { type: 'legacy-import', from: 'chores.state' },
-            note: `Opening bank balance from Mission Control: ${p.summary.weeks} weeks, ${p.summary.lifetimeEarnedNT} NT earned, saved half carried over; spend half was paid in cash`,
-        }, client);
-        await client.query(
-            `INSERT INTO loadout.legacy (id, source, summary) VALUES ('chores', $1, $2)`,
-            [JSON.stringify(state), JSON.stringify({ ...p.summary, ledgerId: txn.id, questIds: added.map(q => q.id), importedAt: tz.nowISO() })]);
-        await client.query('COMMIT');
-        console.log(`\nwrote ${added.length} quests, ledger ${txn.id}, legacy blob`);
-    } catch (err) {
-        await client.query('ROLLBACK').catch(() => {});
-        throw err;
-    } finally {
-        client.release();
-    }
-
-    // Verify against the source before declaring victory.
-    const after = await store.balances();
-    const delta = after.bank - before.bank;
-    if (delta !== p.summary.openingBank || after.coins !== before.coins) {
-        throw new Error(`VERIFY FAILED: bank moved by ${delta} (expected ${p.summary.openingBank}), coins moved by ${after.coins - before.coins} (expected 0)`);
-    }
-    const cfg = await store.getConfig();
-    const missing = p.quests.filter(q => !cfg.quests.some(c => c.id === q.id));
-    if (missing.length) throw new Error(`VERIFY FAILED: quests missing after write: ${missing.map(q => q.id)}`);
-    console.log(`verified: bank ${before.bank} → ${after.bank}, coins unchanged at ${after.coins}, ${cfg.quests.length} quests in config`);
-    await pool.end();
-}
-
-main().catch(err => { console.error('\nmigration failed:', err.message); process.exit(1); });
+        if (dry) {
+            const source = input ? JSON.parse(fs.readFileSync(input, 'utf8'))
+                : (await pool.query("SELECT data FROM chores.state WHERE id='singleton'")).rows[0]?.data;
+            if (!source) throw new Error('No old chores source found.');
+            const weeks = source.weeks || [];
+            const earned = weeks.reduce((n,w) => n + (Number(w.earned) || 0), 0);
+            const savings = weeks.reduce((n,w) => n + (w.saved != null ? Number(w.saved) : Math.floor((Number(w.earned) || 0)/2)), 0);
+            console.log(JSON.stringify({ dryRun: true, weeks: weeks.length, chores: source.chores,
+                oldChoreEarned: earned, oldChoreSavings: savings, oldChoreCashPaid: earned-savings,
+                oldChoreUnpaid: 0, note: 'Source review only. Startup also reconciles existing Loadout balances and retains its XP.' }, null, 2));
+        } else {
+            const store = makeStore(pool);
+            await store.bootstrap();
+            const e = await store.earnings();
+            console.log(JSON.stringify({ economyVersion: 2, lifetimeEarned: e.lifetimeEarned,
+                cashPaid: e.cashPaid, savingsPaid: e.savingsPaid, unpaid: e.unpaid }, null, 2));
+        }
+    } finally { if (pool) await pool.end(); }
+})().catch(err => { console.error(err.message); process.exitCode = 1; });

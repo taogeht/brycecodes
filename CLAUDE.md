@@ -1,5 +1,14 @@
 # CLAUDE.md
 
+## Loadout currency update
+
+The current earning, migration, and payout rules are in `loadout/README.md`.
+Older coin/redemption descriptions below are historical. Activities now earn
+XP per minute, rewards spend XP, and chores accrue gross unpaid NT until a
+parent records a weekly 50/50 cash/savings payout. Startup migrates old state
+once, retaining historical earnings as already paid. See `loadout/lib/economy.js`.
+
+
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Repo shape

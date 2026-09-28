@@ -1,5 +1,10 @@
 # Loadout — build spec
 
+> Currency rules below describe the original September 19 release. The
+> September 2026 update in [loadout/README.md](../loadout/README.md) supersedes
+> them: time-based spendable XP, separate chore money, weekly 50/50 payouts,
+> historical earnings already paid, and lifetime earnings retained.
+
 Working document for Claude Code. Originally written against an assumed
 "Express + JSON file" chore tracker; reconciled against the real repo on
 2026-09-19. Decisions Bryce made that day are recorded in §0 and folded into

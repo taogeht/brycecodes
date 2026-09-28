@@ -231,6 +231,8 @@ app.post('/api/chores', async (req, res) => {
         return res.status(400).json({ error: 'Invalid payload' });
     }
     try {
+        const migrated = await pool.query("SELECT 1 FROM loadout.legacy WHERE id='chores'");
+        if (migrated.rows.length) return res.status(409).json({ error: 'Chores moved to Loadout. Open /loadout/ to log new earnings.' });
         await pool.query(
             `INSERT INTO chores.state (id, data, updated_at)
              VALUES ('singleton', $1, NOW())

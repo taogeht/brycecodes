@@ -1,163 +1,96 @@
 # Loadout
 
-Edward's daily quest tracker — successor to the `/chores` Mission Control app.
-Spec: [`docs/loadout-spec.md`](../docs/loadout-spec.md). The pack check is the
-primary feature; everything else is supporting structure.
+Edward's pack check, activities, chores, XP rewards, and weekly payouts. Served
+at `/loadout/`; parent controls at `/loadout/hq` (PIN through `HQ_PIN`).
 
+## Earning rules (September 2026 update)
+
+- Reading, Math Academy, piano, and sports/outdoor time earn **1 XP per minute**
+  by default. Each activity's whole-number rate is editable in HQ → Quests.
+  Minutes below or above the daily target still earn XP. The target only
+  controls completion/streak status. Math Academy now logs minutes, not its
+  external XP score.
+- The eight household chores keep their original NT rates, including NT$1
+  per pushup and NT$10 for flossing. Chores earn money only; activities earn
+  XP only. Pack checks continue tracking without currency awards. Power-up
+  bonuses and new screen-minute awards are retired.
+- Rewards have an **XP price**, editable in HQ → Rewards & payouts. A request
+  reserves XP; parent approval spends it. Denial/cancellation releases it.
+  Levels still use lifetime XP and do not drop when XP is spent.
+- Chore money accrues as gross unpaid earnings. After each Monday–Sunday
+  Taipei week, the parent records a payout: half savings (rounded down to
+  whole NT), remainder cash. This records a real-world payout; it does not
+  transfer money. Duplicate clicks cannot pay twice. A late chore can create
+  an additional payout for that week, preserving the weekly rounding.
+- Both surfaces show lifetime earnings, unpaid earnings, cash paid, savings
+  contributions, and weekly history. Savings balance is separate from total
+  savings contributions, so a parent balance correction does not erase history.
+
+## Migration and deployment
+
+**The first startup of this version migrates the existing database automatically
+in one transaction.** `economyVersion: 2` makes subsequent startups no-ops.
+
+1. Retain a database backup before deploying, as for any schema/data migration.
+2. Startup reads `loadout.legacy` if already imported, otherwise `chores.state`.
+   The original source is preserved verbatim in `loadout.legacy`. Its `economy-v1`
+   archive also keeps the previous config, day records, and open requests.
+3. All historical earnings are treated as paid, per the parent's instruction.
+   Original weekly saved amounts are preserved; cash is the remainder. Previous
+   Loadout earnings also contribute to the opening lifetime total and are settled.
+   Existing XP and savings remain. Existing ledger rows are never rewritten.
+4. All eight legacy chore definitions are carried forward. Activity rates start
+   at 1 XP/min. Existing reward prices become XP prices using the old numeric
+   coin + screen-minute cost; parents can edit these. The old pocket-money
+   reward is disabled because cash is now paid weekly.
+5. Open old reward requests are cancelled with an explanatory note so they can
+   be requested at XP prices. Historical check-ins are retained and marked
+   settled; they cannot be re-logged or adjusted under the new rules.
+6. `/chores` redirects to Loadout after import. Its GET API remains readable;
+   its POST API refuses new writes after cutover, including from stale tabs.
+
+The read-only snapshot examined on September 26 had 39 weeks, NT$10,890 earned,
+NT$5,434 saved and NT$5,456 cash, with zero owed after migration. These are audit
+reference figures, not hard-coded production balances.
+
+## Storage
+
+Postgres on `DATABASE_URL`, schema `loadout`:
+
+- `config`: singleton JSON; includes earning rules and immutable opening summary.
+- `days`: daily pack check and activity/chore check-ins.
+- `ledger`: append-only XP, unpaid NT (`coins` column), savings (`bank` column),
+  and retained historical screen-minute entries. V2 earning rows identify their
+  activity date and `source.economy: 2`.
+- `payouts`: dated weekly cash/savings receipts. Payouts reduce unpaid NT and
+  add savings through a ledger row, without reducing lifetime earned.
+- `requests`: XP reward requests and suggestions.
+- `legacy`: original chore data and import summary.
+
+All balance-affecting transactions share a household advisory lock. This covers
+first writes to a day, reward reservations/approvals, and weekly payouts. A
+correction cannot reduce a week's earnings below money already paid out.
+
+## APIs
+
+- `GET /api/loadout/earnings`: totals, current weekly balances, historical weeks.
+- `POST /api/loadout/earnings/:monday/pay`: parent records a completed week's
+  outstanding cash/savings payout, returns 409 if nothing can be paid.
+- Reward costs and suggestions use `{ xp: N }`.
+- Existing check-in, pack, history and parent config routes remain.
+
+## Development and tests
+
+```sh
+npm ci
+DATABASE_URL=postgres://… HQ_PIN=1234 PORT=3097 npm start
+npm test
+# Disposable database only: tests TRUNCATE loadout tables.
+TEST_DATABASE_URL=postgres://…/scratch npm test
 ```
-loadout/
-├── api.js               Express router factory, mounted at /api/loadout by server.js
-├── lib/
-│   ├── tz.js            Asia/Taipei day boundaries — every "what day is it" goes here
-│   ├── scoring.js       Pure scoring rules (spec §5): awards, levels, streak
-│   ├── store.js         Postgres layer: loadout.* schema, row-locked day writes, ledger
-│   ├── auth.js          Parent HQ PIN gate (HQ_PIN env → HttpOnly cookie)
-│   └── default-config.js  Seed config (quests, power-ups, rewards)
-├── public/
-│   ├── index.html       Edward's HUD (dark, phone-first): Today, Pack, Quest check-in, Vault, Log
-│   ├── hq.html          Parent HQ (light, desktop): Daily log (+approvals), Pack list, Quests, Rewards, History (week grid, 2×2, trouble items), Settings
-│   └── common.js        Shared API client, date helpers, router, SVG icons
-└── test/                node:test — unit (tz, scoring) + API integration
-```
 
-## Running
-
-```bash
-DATABASE_URL=postgres://… HQ_PIN=1234 npm start     # root server, port 80
-open http://localhost/loadout/        # Edward
-open http://localhost/loadout/hq      # parent (PIN)
-```
-
-`HQ_PIN` unset = HQ is open (dev only; the server warns). Set `HQ_SECRET` too
-if you want to rotate the PIN without invalidating cookies… or don't, and
-changing the PIN signs everyone out, which is usually what you want.
-
-## Tests
-
-```bash
-npm test                                             # unit tests only
-TEST_DATABASE_URL=postgres://…/scratch npm test      # + API integration (TRUNCATES loadout.*)
-```
-
-## Phase 0 — migrating from /chores
-
-`scripts/migrate-chores-to-loadout.js` reads the `chores.state` singleton and:
-
-- appends the 8 household chores to `loadout.config` as quests (`simple` /
-  `count`, coins = old NT value, `requiredForStreak: false`, enabled — prune
-  from HQ later);
-- writes one `adjust` ledger entry for the opening **bank** balance: the sum of
-  every week's *saved* half (5,330 as of 2026-09-19). The spend half was paid
-  out in cash under the old chart, so spendable coins start at 0; 1 coin = 1 TWD;
-- stores the original blob verbatim in `loadout.legacy` and refuses to run twice.
-
-```bash
-DATABASE_URL=… node scripts/migrate-chores-to-loadout.js --dry-run
-DATABASE_URL=… node scripts/migrate-chores-to-loadout.js
-```
-
-It never touches `chores.state`. Once the `loadout.legacy` row exists,
-`server.js` starts 301-ing `/chores` → `/loadout/` (checked at most once a
-minute), so the cutover is the script run itself — no second deploy.
-
-### Cutover runbook (production)
-
-1. Deploy a build that includes phase 2 (this README's commit or later).
-2. Set `HQ_PIN` if it isn't already.
-3. Dry-run against prod, read the summary, then run for real:
-   ```bash
-   # inside the container (scripts/ is copied into the image) …
-   node scripts/migrate-chores-to-loadout.js --dry-run
-   node scripts/migrate-chores-to-loadout.js
-   # … or from your machine with the production DATABASE_URL exported.
-   ```
-4. Within a minute `/chores` redirects, Edward's coin balance shows the opening
-   amount, and the 8 chores appear as quests. Prune them in `/loadout/hq/quests`.
-
-## Data model (Postgres, schema `loadout`)
-
-| table      | shape                                   | notes |
-|------------|-----------------------------------------|-------|
-| `config`   | singleton JSONB                         | quests, power-ups, rewards, `pack.recurringItems` |
-| `days`     | `date` PK → JSONB day record            | `packCheck` + `checkins`; written under `SELECT … FOR UPDATE` |
-| `ledger`   | append-only rows (`earn`/`spend`/`adjust`) with `xp`, `coins`, `bank`, `screen_minutes` | balances are `SUM()`s, never stored |
-| `requests` | reward requests (phase 3)               | |
-| `legacy`   | verbatim chores blob + import summary   | audit trail for the opening balance |
-
-## Check-ins (phase 2)
-
-One check-in per quest per day. `POST /day/:date/checkin` creates or
-**re-logs** it: the award is recomputed from `value` + `powerUps` and only the
-delta over `paid` is written to the ledger. Deltas must be ≥ 0 for Edward (add
-minutes or a power-up, never remove; `409` otherwise) — lowering is a parent
-`adjust`. Rule 2 falls out of this naturally: power-ups pay on the first log
-even below target, and the base pays later when the target is reached.
-
-- `requiresParentConfirm` quests sit at `status: pending` with nothing paid
-  until `POST /checkin/:id/confirm`; afterwards Edward can't edit them.
-- `POST /checkin/:id/adjust { awarded, note }` sets the award outright; the
-  difference is an `adjust` ledger row carrying the note (required).
-- Weekly-cadence quests (`cadence: 'weekly'`, `timesPerWeek`) can be logged
-  on any active day, capped per Mon–Sun week.
-- Edward may log today or yesterday; HQ may log any past day.
-- Check-in ids embed the date (`chk_YYYYMMDD_xxxxxxxx`) so `/checkin/:id`
-  routes can find the day row without a lookup table.
-
-## Vault (phase 3)
-
-Rewards live in `config.rewards` (`cost: { coins?, screenMinutes? }`,
-`enabled`, `savingsGoal`, `note`). Redemption is a request, then an approval:
-
-- `POST /rewards/:id/request` creates an **open** request. Open requests
-  *reserve* their cost — Edward can't request past `balance − reserved` — but
-  nothing is written to the ledger.
-- `POST /requests/:id/approve` (HQ) locks the row, re-checks the live balance
-  inside the transaction, writes one `spend` row (negative coins / minutes) and
-  marks it approved. Approving twice is a 409.
-- `deny` (HQ, optional note Edward sees) and `cancel` (Edward, open only)
-  write nothing.
-- `POST /requests/suggest { name, coins?, why? }` is a request of kind
-  `suggest`; approving it (with a cost the parent sets, optionally as a
-  savings goal) appends a reward to config. No ledger row.
-- `GET /vault` is the one call Edward's Vault screen needs: balances,
-  reserved/available, rewards with `affordable`/`pending`, open + recent
-  requests, coin value.
-
-`/hq/rewards` edits rewards and shows every request; `/hq/settings` holds the
-child's name, XP per level, coin value and the pack-check mode (paper slip vs
-phone at the locker — only the copy on `/pack` changes).
-
-## History (phase 4)
-
-`GET /history/pack?weeks=` returns per-day pack stats (with per-item
-`checked` / `arrived`) plus `byWeekday` aggregates; `GET /history/quests?weeks=`
-returns done-vs-active days per quest per week. Everything else on
-`/hq/history` — the 2×2, the weakest-weekday headline, the items-that-go-missing
-table — is derived client-side from those two payloads.
-
-## Bank vs coins
-
-The old chart paid half of everything as cash and put half in the bank. Loadout
-keeps that: `lib/scoring.splitCoins(award, share)` runs at every pay site
-(pack submit, check-in delta, confirm, adjust) and writes `coins` (spendable)
-and `bank` on the ledger row. `config.bank.share` defaults to 0.5 and is
-editable in `/hq/settings`; it only affects future awards. Spends (`reward`
-approvals) touch `coins` only. The bank moves only through
-`POST /ledger/adjust` (HQ → Rewards → Adjust balances), which takes explicit
-per-bucket amounts and a required note. Savings goals in the vault track
-spendable coins.
-
-## Rules the code enforces (don't get these subtly wrong)
-
-- Pack check pays on **submit with ≥1 tick**, full award regardless of score,
-  exactly once — reopen + resubmit does not pay again. Verification records what
-  arrived and never touches the award.
-- Awards and the day record commit in the **same transaction**.
-- Day keys come from `lib/tz.js` (Taipei). Never `new Date().toISOString().slice(0,10)`.
-- Coins leave the ledger on **approval** only; requests reserve, never spend.
-- Check-in payouts are monotonic deltas over `checkin.paid`; re-logging never
-  pays twice for the same thing. `lifetimeXp` only sums positive rows, so a
-  negative adjust lowers the balance but never the level.
-- Streak: consecutive days where every *required* quest active that weekday is
-  logged. Weekends with nothing required are exempt, as is a school day where no
-  list was written (a parent's miss shouldn't break the kid's streak).
+Tests run serially because integration files share the scratch schema. Coverage
+includes legacy scoring regression, V2 duration scoring, migration/idempotency,
+concurrent first check-ins, weekly rounding and repeated payouts, and concurrent
+XP reservations. `fixtures/legacy-config.js` keeps original rules available to
+exercise historical behavior independently of the V2 defaults.

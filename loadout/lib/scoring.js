@@ -35,6 +35,7 @@ function questsActiveOn(config, dateKey) {
 // ticked → full award. Verification never touches this.
 function packAward(config, packCheck) {
     const quest = questById(config, 'pack-check');
+    if (config.economyVersion === 2) return (packCheck?.items || []).some(i => i.checked) ? award(0, 0, 0) : null;
     if (!quest) return null;
     const ticked = (packCheck && packCheck.items || []).filter(i => i.checked).length;
     if (ticked === 0) return null;
@@ -45,6 +46,14 @@ function packAward(config, packCheck) {
 //  - base pays only when the target is met (externalXp / duration / simple / count).
 //  - power-ups pay additively and independently of the outcome.
 function checkinAward(config, quest, { value = null, powerUps = [] } = {}) {
+    if (config.economyVersion === 2) {
+        const n = Math.max(0, Math.floor(Number(value) || 0));
+        const base = quest.kind === 'duration' ? award(n * quest.xpPerMinute, 0, 0)
+            : quest.kind === 'count' ? award(0, n * (quest.perUnit?.coins || 0), 0)
+            : award(0, quest.coins, 0);
+        return { targetMet: quest.kind === 'duration' ? n > 0 && n >= (quest.target || 0) : quest.kind === 'simple' || n > 0,
+            base, powerUps: ZERO, applied: [], total: base };
+    }
     let targetMet;
     let base = ZERO;
     switch (quest.kind) {

@@ -7,7 +7,7 @@
     "start": "node server.js",
     "alphabet:start": "bun alphabet-help/server.ts",
     "alphabet:test": "cd alphabet-help && bun test",
-    "test": "node --test loadout/test/*.test.js",
+    "test": "node --test --test-concurrency=1 loadout/test/*.test.js",
     "loadout:migrate": "node scripts/migrate-chores-to-loadout.js"
   },
   "dependencies": {

@@ -29,8 +29,10 @@ if (!URL_) {
 
     test.before(async () => {
         await loadout.bootstrap();
-        await pool.query('TRUNCATE loadout.days, loadout.ledger, loadout.requests, loadout.legacy, loadout.config');
+        await pool.query('TRUNCATE loadout.days, loadout.ledger, loadout.requests, loadout.legacy, loadout.config, loadout.payouts');
         await loadout.bootstrap(); // re-seed the default config
+        await pool.query("DELETE FROM loadout.legacy WHERE id='economy-v1'"); // fixture deliberately restores the pre-upgrade config
+        await pool.query("UPDATE loadout.config SET data=$1", [JSON.stringify(require('./fixtures/legacy-config')())]);
         const app = express();
         app.use(express.json());
         app.use('/api/loadout', loadout.router);

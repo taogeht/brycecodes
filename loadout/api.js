@@ -6,6 +6,7 @@ const express = require('express');
 const crypto = require('crypto');
 const tz = require('./lib/tz');
 const S = require('./lib/scoring');
+const E = require('./lib/economy');
 const makeStore = require('./lib/store');
 const makeAuth = require('./lib/auth');
 
@@ -29,6 +30,7 @@ function toInt(v, { min = 0, max = 100000 } = {}) {
     return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : null;
 }
 function bankShare(config) {
+    if (config.economyVersion === 2) return null; // hold gross earnings until weekly payout
     const s = Number(config.bank && config.bank.share);
     return Number.isFinite(s) ? Math.min(1, Math.max(0, s)) : 0.5;
 }
@@ -60,9 +62,20 @@ module.exports = function loadout(pool, opts = {}) {
     const auth = makeAuth(opts.auth);
     const router = express.Router();
 
+    let bootPromise, bootError;
     function bootstrap() {
-        return store.bootstrap().catch(err => console.error('[loadout] schema bootstrap failed:', err.message));
+        bootError = null;
+        bootPromise = store.bootstrap().catch(err => {
+            bootError = err;
+            console.error('[loadout] schema bootstrap failed:', err.message);
+        });
+        return bootPromise;
     }
+    router.use(wrap(async (req, res, next) => {
+        if (bootPromise) await bootPromise;
+        if (bootError) return bad(res, 'Loadout is unavailable until its database upgrade succeeds.', 503);
+        next();
+    }));
 
     // Validate the :date param once for every /day route.
     router.param('date', (req, res, next, date) => {
@@ -89,6 +102,12 @@ module.exports = function loadout(pool, opts = {}) {
         if (!cfg.quests.some(q => q.id === 'pack-check' && q.kind === 'packCheck')) {
             return bad(res, 'config must keep the pack-check quest');
         }
+        const current = await store.getConfig();
+        const error = current.economyVersion === 2 ? E.validateConfig(cfg) : null;
+        if (error) return bad(res, error);
+        cfg.earningsOpening = current.earningsOpening;
+        cfg.bank = { share: 0.5 };
+        cfg.coinValue = { currency: 'TWD', perCoin: 1 };
         res.json(await store.saveConfig(cfg));
     }));
 
@@ -106,14 +125,23 @@ module.exports = function loadout(pool, opts = {}) {
         return {
             date: today, weekday: tz.weekday(today), now: tz.nowISO(),
             isSchoolDay: quests.some(q => q.kind === 'packCheck'),
-            day, quests, weekCounts, powerUps: config.powerUps || [], balances: bal,
+            economyVersion: config.economyVersion, day, quests, weekCounts, powerUps: config.powerUps || [], balances: bal,
             packMode: (config.pack && config.pack.mode) || 'paper',
             level: S.levelFor(config, bal.lifetimeXp),
             streak: S.streak(config, days, today),
-            child: config.child,
+            child: config.child, earnings: await store.earnings(),
         };
     }
     router.get('/today', wrap(async (req, res) => res.json(await todayPayload())));
+
+    router.get('/earnings', wrap(async (req, res) => res.json(await store.earnings())));
+    router.post('/earnings/:week/pay', auth.requireHq, wrap(async (req, res) => {
+        const week = req.params.week;
+        if (!tz.isDateKey(week) || tz.mondayOf(week) !== week) return bad(res, 'Use the Monday date of the week.');
+        const out = await store.payWeek(week);
+        if (out.conflict) return bad(res, out.conflict, 409);
+        res.json(out);
+    }));
 
     router.get('/balances', wrap(async (req, res) => {
         const [config, bal] = await Promise.all([store.getConfig(), store.balances()]);
@@ -129,7 +157,8 @@ module.exports = function loadout(pool, opts = {}) {
         const note = cleanLabel(b.note).slice(0, 300);
         if (!note) return bad(res, 'A note is required for adjustments.');
         if (!entry.xp && !entry.coins && !entry.bank && !entry.screenMinutes) return bad(res, 'Nothing to adjust.');
-        const txn = await store.appendLedger({ kind: 'adjust', ...entry, source: { type: 'balance-adjust' }, note });
+        if ((await store.getConfig()).economyVersion === 2 && (entry.coins || entry.screenMinutes)) return bad(res, 'Correct chore earnings through their check-in; rewards use XP.');
+        const txn = await store.transaction(client => store.appendLedger({ kind: 'adjust', ...entry, source: { type: 'balance-adjust' }, note }, client));
         res.json({ txn, balances: await store.balances() });
     }));
 
@@ -271,7 +300,7 @@ module.exports = function loadout(pool, opts = {}) {
         if (isZero(delta)) return null;
         const txn = await store.appendLedger({
             kind, ...S.splitCoins(delta, share),
-            source: { type: kind === 'adjust' ? 'checkin-adjust' : 'checkin', date, checkinId: checkin.id, questId: checkin.questId },
+            source: { ...(share === null ? { economy: 2 } : {}), type: kind === 'adjust' ? 'checkin-adjust' : 'checkin', date, checkinId: checkin.id, questId: checkin.questId },
             note,
         }, client);
         checkin.paid = S.addAwards(checkin.paid || S.ZERO, delta);
@@ -290,23 +319,28 @@ module.exports = function loadout(pool, opts = {}) {
         if (!quest || quest.enabled === false || quest.kind === 'packCheck') return bad(res, 'Unknown quest.');
         if (!S.questsActiveOn(config, date).some(q => q.id === quest.id)) return bad(res, quest.name + ' is not on the board that day.');
 
-        const value = quest.kind === 'simple' ? 1 : toInt(req.body.value);
+        const rawValue = req.body.value;
+        if (quest.kind !== 'simple' && (!Number.isInteger(Number(rawValue)) || Number(rawValue) < 0 || Number(rawValue) > (quest.kind === 'duration' ? 1440 : 100000))) return bad(res, 'Enter whole minutes (0–1440) or a non-negative whole count.');
+        const value = quest.kind === 'simple' ? 1 : toInt(rawValue);
+        if (quest.kind === 'count' && value * (quest.perUnit?.coins || 0) > 1000000) return bad(res, 'That chore amount is too large.');
         if (value === null) return bad(res, 'value must be a whole number ≥ 0');
         const focusMinutes = toInt(req.body.focusMinutes || 0, { max: 24 * 60 });
         const powerUps = Array.isArray(req.body.powerUps) ? req.body.powerUps.map(String) : [];
         const computed = S.checkinAward(config, quest, { value, powerUps });
 
         const weekly = (quest.cadence || 'daily') === 'weekly';
-        const daysThisWeek = weekly ? await store.daysBetween(tz.mondayOf(date), tz.addDays(tz.mondayOf(date), 6)) : null;
+
 
         const { day, result } = await store.withDay(date, async (day, client) => {
             day.checkins = day.checkins || [];
             let c = day.checkins.find(x => x.questId === quest.id);
             const now = tz.nowISO();
+            if (c?.settledBeforeEconomy) return { conflict: 'This historical check-in is already settled.' };
             if (c && !hq && (c.status === 'adjusted' || (quest.requiresParentConfirm && c.status === 'confirmed'))) {
                 return { conflict: 'A parent has already confirmed this one. Ask them to adjust it.' };
             }
-            if (weekly && !c && computed.targetMet && weekCount(daysThisWeek, date, quest.id, date) >= (quest.timesPerWeek || 1)) {
+            const daysThisWeek = weekly ? await store.daysBetween(tz.mondayOf(date), tz.addDays(tz.mondayOf(date), 6), client) : null;
+            if (weekly && !c?.targetMet && computed.targetMet && weekCount(daysThisWeek, date, quest.id, date) >= (quest.timesPerWeek || 1)) {
                 return { conflict: `Already done ${quest.timesPerWeek || 1}× this week.` };
             }
             if (!c) {
@@ -315,6 +349,10 @@ module.exports = function loadout(pool, opts = {}) {
                 day.checkins.push(c);
             }
             const delta = awardDelta(computed.total, c.paid);
+            if (config.economyVersion === 2 && delta.coins < 0) {
+                const w = (await store.earnings(client)).weeks.find(w => w.week === tz.mondayOf(date));
+                if (w && w.due + delta.coins < 0) return { conflict: 'This would reduce earnings below money already paid out.' };
+            }
             if (isNegative(delta) && !hq) return { conflict: 'You can add to a check-in but not take away. Ask a parent to adjust it.' };
             Object.assign(c, { value, focusMinutes, powerUps: computed.applied, targetMet: computed.targetMet,
                 awarded: computed.total, base: computed.base, updatedAt: now });
@@ -380,6 +418,14 @@ module.exports = function loadout(pool, opts = {}) {
             const c = (day.checkins || []).find(x => x.id === req.checkinId);
             if (!c) return { missing: true };
             const q = S.questById(config, c.questId);
+            if (c.settledBeforeEconomy) return { conflict: 'This historical check-in is already settled.' };
+            if (config.economyVersion === 2) {
+                if (awarded.xp < 0 || awarded.coins < 0 || awarded.screenMinutes ||
+                    (q?.kind === 'duration' ? awarded.coins : awarded.xp)) return { conflict: 'Activities earn XP; chores earn NT. Awards cannot be negative.' };
+                const delta = awardDelta(awarded, c.paid);
+                const w = (await store.earnings(client)).weeks.find(w => w.week === tz.mondayOf(req.checkinDate));
+                if (delta.coins < 0 && w && w.due + delta.coins < 0) return { conflict: 'This would reduce earnings below money already paid out.' };
+            }
             c.awarded = awarded;
             c.status = 'adjusted';
             c.note = note;
@@ -388,6 +434,7 @@ module.exports = function loadout(pool, opts = {}) {
             return { checkin: c };
         });
         if (result.missing) return bad(res, 'no such check-in', 404);
+        if (result.conflict) return bad(res, result.conflict, 409);
         res.json({ day, checkin: result.checkin });
     }));
 
@@ -395,12 +442,12 @@ module.exports = function loadout(pool, opts = {}) {
     // A request reserves coins (Edward can't request past balance − open
     // requests); nothing leaves the ledger until a parent approves, which
     // re-checks the live balance inside the transaction.
-    function costOf(r) { const c = r && r.cost || {}; return { coins: c.coins | 0, screenMinutes: c.screenMinutes | 0 }; }
+    function costOf(r) { const c = r && r.cost || {}; return { xp: c.xp | 0, coins: c.coins | 0, screenMinutes: c.screenMinutes | 0 }; }
     function reservedFrom(open) {
-        return open.filter(r => r.kind === 'redeem').reduce((a, r) => { const c = costOf(r); return { coins: a.coins + c.coins, screenMinutes: a.screenMinutes + c.screenMinutes }; }, { coins: 0, screenMinutes: 0 });
+        return open.filter(r => r.kind === 'redeem').reduce((a, r) => { const c = costOf(r); return { xp: a.xp + c.xp, coins: a.coins + c.coins, screenMinutes: a.screenMinutes + c.screenMinutes }; }, { xp: 0, coins: 0, screenMinutes: 0 });
     }
     function canAfford(bal, reserved, cost) {
-        return bal.coins - reserved.coins >= cost.coins && bal.screenMinutes - reserved.screenMinutes >= cost.screenMinutes;
+        return bal.xp - reserved.xp >= cost.xp && bal.coins - reserved.coins >= cost.coins && bal.screenMinutes - reserved.screenMinutes >= cost.screenMinutes;
     }
 
     async function vaultPayload() {
@@ -413,9 +460,9 @@ module.exports = function loadout(pool, opts = {}) {
             return { ...r, cost, affordable: canAfford(bal, reserved, cost), pending: open.some(o => o.kind === 'redeem' && o.rewardId === r.id) };
         });
         return {
-            balances: bal, reserved, available: { coins: bal.coins - reserved.coins, screenMinutes: bal.screenMinutes - reserved.screenMinutes },
+            balances: bal, reserved, available: { xp: bal.xp - reserved.xp, coins: bal.coins - reserved.coins, screenMinutes: bal.screenMinutes - reserved.screenMinutes },
             level: S.levelFor(config, bal.lifetimeXp), coinValue: config.coinValue || { currency: 'TWD', perCoin: 0 },
-            rewards, open, recent: recent.filter(r => r.status !== 'open').slice(0, 12), child: config.child,
+            rewards, open, recent: recent.filter(r => r.status !== 'open').slice(0, 12), child: config.child, earnings: await store.earnings(),
         };
     }
     router.get('/vault', wrap(async (req, res) => res.json(await vaultPayload())));
@@ -430,17 +477,23 @@ module.exports = function loadout(pool, opts = {}) {
         const reward = (config.rewards || []).find(r => r.id === req.params.id && r.enabled !== false);
         if (!reward) return bad(res, 'That reward is not available.', 404);
         const cost = costOf(reward);
-        const [bal, open] = await Promise.all([store.balances(), store.requests({ status: 'open' })]);
-        if (open.some(o => o.kind === 'redeem' && o.rewardId === reward.id)) return res.status(409).json({ error: 'duplicate', message: 'Already requested — waiting for a parent.' });
-        if (!canAfford(bal, reservedFrom(open), cost)) return res.status(409).json({ error: 'insufficient', message: 'Not enough saved up yet.' });
-        const request = await store.createRequest({ kind: 'redeem', rewardId: reward.id, name: reward.name, cost });
+        const result = await store.transaction(async client => {
+            const bal = await store.balances(client), open = await store.requests({ status: 'open', limit: 100000 }, client);
+            if (config.economyVersion === 2 && (!cost.xp || cost.coins || cost.screenMinutes)) return { error: 'Set an XP price for this reward first.' };
+            if (open.some(o => o.kind === 'redeem' && o.rewardId === reward.id)) return { error: 'Already requested; waiting for a parent.' };
+            if (!canAfford(bal, reservedFrom(open), cost)) return { error: 'Not enough available XP yet.' };
+            return { request: await store.createRequest({ kind: 'redeem', rewardId: reward.id, name: reward.name, cost }, client) };
+        });
+        if (result.error) return bad(res, result.error, 409);
+        const request = result.request;
         res.json({ request, vault: await vaultPayload() });
     }));
 
     router.post('/requests/suggest', wrap(async (req, res) => {
         const name = cleanLabel(req.body && req.body.name);
         if (!name) return bad(res, 'Give the reward a name.');
-        const cost = { coins: toInt(req.body && req.body.coins || 0) || 0, screenMinutes: 0 };
+        const config = await store.getConfig();
+        const cost = config.economyVersion === 2 ? { xp: toInt(req.body?.xp || 0) || 0 } : { coins: toInt(req.body?.coins || 0) || 0, screenMinutes: 0 };
         const note = cleanLabel(req.body && req.body.why).slice(0, 300);
         const request = await store.createRequest({ kind: 'suggest', name, cost, note });
         res.json({ request, vault: await vaultPayload() });
@@ -455,27 +508,28 @@ module.exports = function loadout(pool, opts = {}) {
 
     router.post('/requests/:id/approve', auth.requireHq, wrap(async (req, res) => {
         const note = cleanLabel(req.body && req.body.note).slice(0, 300);
-        const config = await store.getConfig();
         const out = await store.resolveRequest(req.params.id, async (r, client) => {
+            const config = await store.getConfig(client);
             if (r.status !== 'open') return { refuse: 'Already ' + r.status + '.' };
             if (r.kind === 'redeem') {
                 const cost = costOf(r);
                 const bal = await store.balances(client);
-                if (bal.coins < cost.coins || bal.screenMinutes < cost.screenMinutes) return { refuse: 'Not enough in the balance right now.' };
+                if (bal.xp < cost.xp || bal.coins < cost.coins || bal.screenMinutes < cost.screenMinutes) return { refuse: 'Not enough in the balance right now.' };
                 const txn = await store.appendLedger({
-                    kind: 'spend', xp: 0, coins: -cost.coins, screenMinutes: -cost.screenMinutes,
+                    kind: 'spend', xp: -cost.xp, coins: -cost.coins, screenMinutes: -cost.screenMinutes,
                     source: { type: 'reward', requestId: r.id, rewardId: r.rewardId, name: r.name }, note: note || r.name,
                 }, client);
                 return { status: 'approved', note, txn };
             }
             // suggestion → becomes a reward with the cost the parent sets
-            const coins = toInt(req.body && req.body.coins != null ? req.body.coins : (r.cost && r.cost.coins) || 0) || 0;
-            const screenMinutes = toInt(req.body && req.body.screenMinutes || 0) || 0;
-            if (!coins && !screenMinutes) return { refuse: 'Set a cost (coins or screen minutes) to approve a suggestion.' };
+            const xp = toInt(req.body?.xp ?? r.cost?.xp ?? 0) || 0;
+            const coins = config.economyVersion === 2 ? 0 : toInt(req.body && req.body.coins != null ? req.body.coins : (r.cost && r.cost.coins) || 0) || 0;
+            const screenMinutes = config.economyVersion === 2 ? 0 : toInt(req.body && req.body.screenMinutes || 0) || 0;
+            if (!xp && !coins && !screenMinutes) return { refuse: 'Set a positive XP cost to approve a suggestion.' };
             let base = r.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'reward', id = base, n = 2;
             config.rewards = config.rewards || [];
             while (config.rewards.some(x => x.id === id)) id = base + '-' + n++;
-            const reward = { id, name: r.name, cost: { ...(coins ? { coins } : {}), ...(screenMinutes ? { screenMinutes } : {}) }, enabled: true, savingsGoal: !!(req.body && req.body.savingsGoal), suggested: true };
+            const reward = { id, name: r.name, cost: { ...(xp ? { xp } : {}), ...(coins ? { coins } : {}), ...(screenMinutes ? { screenMinutes } : {}) }, enabled: true, savingsGoal: !!(req.body && req.body.savingsGoal), suggested: true };
             config.rewards.push(reward);
             await client.query(`UPDATE loadout.config SET data = $1, updated_at = NOW() WHERE id = 'singleton'`, [JSON.stringify(config)]);
             return { status: 'approved', note, reward };

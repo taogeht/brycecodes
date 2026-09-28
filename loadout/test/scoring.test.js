@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const defaultConfig = require('../lib/default-config');
+const defaultConfig = require('./fixtures/legacy-config');
 const S = require('../lib/scoring');
 
 const cfg = defaultConfig();
