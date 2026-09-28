@@ -106,6 +106,23 @@ if (!process.env.TEST_DATABASE_URL) {
         assert.equal(after.xp, before.xp - 40); assert.equal(after.lifetimeXp, before.lifetimeXp);
         assert.equal(after.coins, before.coins); assert.equal(after.bank, before.bank);
     });
+    test('fixed completion and simple XP tasks award once without chore money', async () => {
+        const cfg = await store.getConfig();
+        cfg.quests.push({ id: 'reading-fixed', name: 'Reading fixed', kind: 'duration', target: 20, xpMode: 'completion', xp: 10, coins: 0, enabled: true },
+            { id: 'xp-task', name: 'XP task', kind: 'simple', rewardCurrency: 'xp', xp: 15, coins: 0, enabled: true });
+        await store.saveConfig(cfg);
+        const before = await store.balances();
+        for (const [value, xp] of [[19,0],[20,10],[60,0],[60,0]]) {
+            const r = await call(`/day/${today}/checkin`, { questId: 'reading-fixed', value });
+            assert.equal(r.status, 200); assert.equal(r.body.paid.xp, xp); assert.equal(r.body.paid.coins, 0);
+        }
+        for (const xp of [15,0]) {
+            const r = await call(`/day/${today}/checkin`, { questId: 'xp-task', value: 1 });
+            assert.equal(r.status, 200); assert.equal(r.body.paid.xp, xp); assert.equal(r.body.paid.coins, 0);
+        }
+        const after = await store.balances();
+        assert.equal(after.xp - before.xp, 25); assert.equal(after.coins, before.coins); assert.equal(after.bank, before.bank);
+    });
     test('parent can add an XP-priced suggestion and cannot overwrite opening earnings', async () => {
         const sug = await call('/requests/suggest', { name: 'Climbing', xp: 75 });
         const approved = await call(`/requests/${sug.body.request.id}/approve`, { xp: 80 }, true);

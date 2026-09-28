@@ -48,10 +48,11 @@ function packAward(config, packCheck) {
 function checkinAward(config, quest, { value = null, powerUps = [] } = {}) {
     if (config.economyVersion === 2) {
         const n = Math.max(0, Math.floor(Number(value) || 0));
-        const base = quest.kind === 'duration' ? award(n * quest.xpPerMinute, 0, 0)
+        const targetMet = quest.kind === 'duration' ? n > 0 && n >= (quest.target || 0) : quest.kind === 'simple' || n > 0;
+        const base = quest.kind === 'duration' ? award(quest.xpMode === 'completion' ? (targetMet ? quest.xp : 0) : n * quest.xpPerMinute, 0, 0)
             : quest.kind === 'count' ? award(0, n * (quest.perUnit?.coins || 0), 0)
-            : award(0, quest.coins, 0);
-        return { targetMet: quest.kind === 'duration' ? n > 0 && n >= (quest.target || 0) : quest.kind === 'simple' || n > 0,
+            : quest.rewardCurrency === 'xp' ? award(quest.xp, 0, 0) : award(0, quest.coins, 0);
+        return { targetMet,
             base, powerUps: ZERO, applied: [], total: base };
     }
     let targetMet;

@@ -257,7 +257,7 @@
   // Pure mirror of lib/scoring.checkinAward for the running total on the check-in screen.
   function computeAward(q, powerUpDefs, value, powerUps) {
     let targetMet, base = ZERO;
-    if (q.kind === 'duration' && q.xpPerMinute != null) { targetMet = value > 0 && value >= (q.target || 0); base = { xp: Math.floor(value * q.xpPerMinute), coins: 0, screenMinutes: 0 }; }
+    if (q.kind === 'duration' && q.xpMode !== 'completion' && q.xpPerMinute != null) { targetMet = value > 0 && value >= (q.target || 0); base = { xp: Math.floor(value * q.xpPerMinute), coins: 0, screenMinutes: 0 }; }
     else if (q.kind === 'externalXp' || q.kind === 'duration') { targetMet = value >= (q.target || 0) && value > 0; if (targetMet) base = { xp: q.xp | 0, coins: q.coins | 0, screenMinutes: q.screenMinutes | 0 }; }
     else if (q.kind === 'count') { const n = Math.max(0, value | 0); targetMet = n > 0; const p = q.perUnit || ZERO; base = { xp: (p.xp | 0) * n, coins: (p.coins | 0) * n, screenMinutes: (p.screenMinutes | 0) * n }; }
     else { targetMet = value > 0; base = targetMet ? { xp: q.xp | 0, coins: q.coins | 0, screenMinutes: q.screenMinutes | 0 } : ZERO; }
@@ -321,7 +321,7 @@
       else { state = '<div class="qstate wait">' + (weekly ? wc + ' of ' + (q.timesPerWeek || 1) + ' this week' : 'Not logged') + '</div>'; }
       const a = c && c.awarded && (c.awarded.xp || c.awarded.coins) ? c.awarded : (q.kind === 'count' ? q.perUnit : q);
       return '<a class="qrow ' + cls + '" href="' + href('/quest/' + encodeURIComponent(q.id)) + '" data-link><div class="qicon">' + icon(ic, 18) + '</div><div><div class="qname">' + esc(q.name) + '</div><div class="qsub">' + esc(questTargetLabel(q)) + '</div></div>' +
-        '<div class="qmeta">' + (q.xpPerMinute != null && !c ? q.xpPerMinute + ' XP/min' : awardHtml(a)) + state + '</div></a>';
+        '<div class="qmeta">' + (q.kind === 'duration' && q.xpMode !== 'completion' && q.xpPerMinute != null && !c ? q.xpPerMinute + ' XP/min' : awardHtml(a)) + state + '</div></a>';
     }).join('') : '<div class="muted" style="font-size:14px">Nothing else on the board today.</div>';
 
     app.innerHTML =
@@ -536,9 +536,9 @@
       const paid = existing && existing.status !== 'pending' ? existing.paid : ZERO;
       const delta = addA(a.total, { xp: -paid.xp, coins: -paid.coins, screenMinutes: -paid.screenMinutes });
       const changed = !existing || st.value !== existing.value || [...st.powerUps].sort().join() !== [...existing.powerUps].sort().join() || st.focus !== (existing.focusMinutes || 0);
-      const rateNote = q.xpPerMinute != null ? '<p class="note">' + q.xpPerMinute + ' XP per minute. Every minute counts, including below your target.</p>' : '';
+      const rateNote = q.kind === 'duration' && q.xpMode === 'completion' ? '<p class="note">Complete ' + q.target + ' minutes to earn ' + q.xp + ' XP. Extra minutes do not increase this award.</p>' : q.kind === 'duration' && q.xpPerMinute != null ? '<p class="note">' + q.xpPerMinute + ' XP per minute. Every minute counts, including below your target.</p>' : '';
       const totals = locked ? '' : rateNote + '<div class="totals">' +
-        '<div class="line' + (a.targetMet ? '' : ' dim') + '"><span>' + esc(q.name) + (a.targetMet ? '' : (q.kind === 'simple' ? ' (not done)' : ' (below target)')) + '</span><b>' + (a.targetMet || q.kind === 'count' || q.xpPerMinute != null ? awardHtml(a.base, { dash: true }) : '—') + '</b></div>' +
+        '<div class="line' + (a.targetMet ? '' : ' dim') + '"><span>' + esc(q.name) + (a.targetMet ? '' : (q.kind === 'simple' ? ' (not done)' : ' (below target)')) + '</span><b>' + (a.targetMet || q.kind === 'count' || (q.kind === 'duration' && q.xpMode !== 'completion') ? awardHtml(a.base, { dash: true }) : '—') + '</b></div>' +
         (pus.length ? '<div class="line"><span>Power-ups</span><b>' + awardHtml(a.pu, { dash: true }) + '</b></div>' : '') +
         '<div class="sum"><span>' + (existing ? 'New since last log' : 'Total') + '</span>' + awardHtml(existing ? delta : a.total, { dash: true }) + '</div>' +
         '<button class="btn primary full" type="button" data-log' + (st.saving || !changed || (q.kind !== 'count' && q.kind !== 'simple' && st.value === 0 && !st.powerUps.size) || (q.kind === 'simple' && !st.value) ? ' disabled' : '') + '>' +
@@ -549,7 +549,7 @@
       app.innerHTML =
         '<div class="top"><a class="back" href="' + href('/') + '" data-link>' + icon('left', 20) + 'Today</a><span class="date">' + fmtDate(date) + '</span></div>' +
         '<div class="eyebrow gold">Quest</div><h1>' + esc(q.name) + '</h1>' +
-        '<p class="muted" style="margin:4px 0 12px;font-size:14px">' + esc(questTargetLabel(q)) + (q.kind === 'duration' ? ' · ' + q.xpPerMinute + ' XP/min' : q.kind !== 'count' ? ' · ' + awardHtml(q) : '') + (q.requiresParentConfirm ? ' · parent confirms' : '') + '</p>' +
+        '<p class="muted" style="margin:4px 0 12px;font-size:14px">' + esc(questTargetLabel(q)) + (q.kind === 'duration' ? ' · ' + (q.xpMode === 'completion' ? q.xp + ' XP on completion' : q.xpPerMinute + ' XP/min') : q.kind !== 'count' ? ' · ' + awardHtml(q) : '') + (q.requiresParentConfirm ? ' · parent confirms' : '') + '</p>' +
         '<div class="card">' + entry + '</div>' + status + puHtml + totals;
       clearInterval(timerTick);
       if (tm.startedAt) timerTick = setInterval(() => { const el = app.querySelector('[data-tval]'); if (el) el.textContent = fmtMs(timerMs(readTimer(q.id, date))); else clearInterval(timerTick); }, 1000);

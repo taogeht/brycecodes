@@ -421,7 +421,7 @@ module.exports = function loadout(pool, opts = {}) {
             if (c.settledBeforeEconomy) return { conflict: 'This historical check-in is already settled.' };
             if (config.economyVersion === 2) {
                 if (awarded.xp < 0 || awarded.coins < 0 || awarded.screenMinutes ||
-                    (q?.kind === 'duration' ? awarded.coins : awarded.xp)) return { conflict: 'Activities earn XP; chores earn NT. Awards cannot be negative.' };
+                    (q?.kind === 'duration' || (q?.kind === 'simple' && q?.rewardCurrency === 'xp') ? awarded.coins : awarded.xp)) return { conflict: 'Activities earn XP; chores earn NT. Awards cannot be negative.' };
                 const delta = awardDelta(awarded, c.paid);
                 const w = (await store.earnings(client)).weeks.find(w => w.week === tz.mondayOf(req.checkinDate));
                 if (delta.coins < 0 && w && w.due + delta.coins < 0) return { conflict: 'This would reduce earnings below money already paid out.' };

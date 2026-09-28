@@ -32,3 +32,26 @@ test('configuration rejects bad rates and monetary reward prices', () => {
     invalid.rewards[0].cost = { coins: 10 };
     assert.ok(E.validateConfig(invalid));
 });
+
+test('completion XP pays at the minute target and stays fixed beyond it', () => {
+    const q = { id: 'reading-fixed', kind: 'duration', target: 20, xpMode: 'completion', xp: 10 };
+    for (const [value, xp] of [[0,0],[19,0],[20,10],[60,10]]) {
+        const r = S.checkinAward(cfg, q, { value });
+        assert.equal(r.total.xp, xp);
+        assert.equal(r.targetMet, value >= 20);
+        assert.equal(r.total.coins, 0);
+    }
+});
+test('done/not-done tasks can pay XP while existing chores still pay NT', () => {
+    assert.deepEqual(S.checkinAward(cfg, { kind: 'simple', rewardCurrency: 'xp', xp: 15, coins: 999 }, { value: 1 }).total,
+        { xp: 15, coins: 0, screenMinutes: 0 });
+    assert.deepEqual(S.checkinAward(cfg, { kind: 'simple', coins: 10, xp: 999 }, { value: 1 }).total,
+        { xp: 0, coins: 10, screenMinutes: 0 });
+});
+test('completion config validates XP and minute targets independently of per-minute rates', () => {
+    const c = structuredClone(cfg), q = c.quests.find(q => q.id === 'reading');
+    Object.assign(q, { xpMode: 'completion', xp: 10, target: 20 }); delete q.xpPerMinute;
+    assert.equal(E.validateConfig(c), null);
+    q.target = 0; assert.ok(E.validateConfig(c));
+    q.target = 20; q.xp = -1; assert.ok(E.validateConfig(c));
+});

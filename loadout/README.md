@@ -5,6 +5,12 @@ at `/loadout/`; parent controls at `/loadout/hq` (PIN through `HQ_PIN`).
 
 ## Earning rules (September 2026 update)
 
+- Activities can use **fixed XP on completion**: for example, 20 minutes of
+  reading earns 10 XP. Below target pays zero, reaching target pays once, and
+  extra minutes or repeated submissions do not increase the award. HQ → Quests
+  lets parents choose the mode, target, and XP amount for each activity.
+- Simple done/not-done tasks can pay XP as well: choose **XP for completing
+  task** in their Task reward field and set the fixed amount.
 - Reading, Math Academy, piano, and sports/outdoor time earn **1 XP per minute**
   by default. Each activity's whole-number rate is editable in HQ → Quests.
   Minutes below or above the daily target still earn XP. The target only

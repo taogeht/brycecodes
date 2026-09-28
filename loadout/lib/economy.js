@@ -31,9 +31,9 @@ function upgradeConfig(original, chores = CHORES) {
     cfg.quests = cfg.quests.map(q => {
         if (q.kind === 'packCheck') return { ...q, xp: 0, coins: 0, screenMinutes: 0, powerUps: [] };
         if (q.kind === 'duration' || q.kind === 'externalXp') return {
-            ...q, kind: 'duration', xpPerMinute: 1, unitLabel: 'minutes',
+            ...q, kind: 'duration', xpPerMinute: q.xpPerMinute || 1, unitLabel: 'minutes',
             name: q.id === 'power-moves' ? 'Sports / outdoors' : q.name,
-            xp: 0, coins: 0, screenMinutes: 0, powerUps: [],
+            xp: q.xpMode === 'completion' ? q.xp : 0, coins: 0, screenMinutes: 0, powerUps: [],
         };
         return { ...q, xp: 0, screenMinutes: 0, powerUps: [],
             ...(q.perUnit ? { perUnit: { ...q.perUnit, xp: 0, screenMinutes: 0 } } : {}) };
@@ -54,8 +54,12 @@ function validateConfig(cfg) {
     for (const q of cfg.quests) {
         if (!['packCheck', 'duration', 'simple', 'count'].includes(q.kind)) return 'Use minutes for activities, or simple/count for chores.';
         const n = v => Number.isSafeInteger(v) && v >= 0 && v <= 100000;
-        if (q.kind === 'duration' && (!n(q.xpPerMinute) || q.xpPerMinute < 1 || q.xpPerMinute > 100)) return 'Activity XP per minute must be a whole number from 1 to 100.';
-        if (q.kind === 'simple' && !n(q.coins)) return 'Chore pay must be a non-negative whole NT amount.';
+        if (q.kind === 'duration' && q.xpMode != null && !['perMinute', 'completion'].includes(q.xpMode)) return 'Choose XP per minute or XP on completion.';
+        if (q.kind === 'duration' && q.xpMode === 'completion' && (!n(q.xp) || q.xp < 1 || !n(q.target) || q.target < 1 || q.target > 1440)) return 'Completion activities need a positive XP award and a minute target from 1 to 1440.';
+        if (q.kind === 'duration' && q.xpMode !== 'completion' && (!n(q.xpPerMinute) || q.xpPerMinute < 1 || q.xpPerMinute > 100)) return 'Activity XP per minute must be a whole number from 1 to 100.';
+        if (q.kind === 'simple' && q.rewardCurrency != null && !['coins', 'xp'].includes(q.rewardCurrency)) return 'Choose NT or XP for a done/not-done task.';
+        if (q.kind === 'simple' && q.rewardCurrency === 'xp' && (!n(q.xp) || q.xp < 1)) return 'Completed tasks need a positive whole XP award.';
+        if (q.kind === 'simple' && q.rewardCurrency !== 'xp' && !n(q.coins)) return 'Chore pay must be a non-negative whole NT amount.';
         if (q.kind === 'count' && !n(q.perUnit?.coins)) return 'Per-unit pay must be a non-negative whole NT amount.';
     }
     for (const r of cfg.rewards) {

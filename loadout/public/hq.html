@@ -726,7 +726,7 @@
     const m = main();
 
     function questSummary(q) {
-      const award = q.kind === 'duration' ? q.xpPerMinute + ' XP/min' : q.kind === 'count' ? awardText(q.perUnit) + ' per ' + esc(q.unitLabel || 'unit') : awardText(q);
+      const award = q.kind === 'duration' ? (q.xpMode === 'completion' ? q.xp + ' XP on completion' : q.xpPerMinute + ' XP/min') : q.kind === 'count' ? awardText(q.perUnit) + ' per ' + esc(q.unitLabel || 'unit') : awardText(q);
       const when = (q.cadence || 'daily') === 'weekly' ? (q.timesPerWeek || 1) + '× a week' : (!q.activeDays || !q.activeDays.length || q.activeDays.length === 7 ? 'every day' : q.activeDays.map(d => DAY_LABEL[d]).join(' '));
       const target = q.kind === 'duration' || q.kind === 'externalXp' ? ' · target ' + q.target + ' ' + esc(q.unitLabel || '') : '';
       return '<div class="qn">' + esc(q.name) + (q.requiresParentConfirm ? ' <span class="chip">parent confirms</span>' : '') + (q.requiredForStreak === false ? '' : ' <span class="chip ok">streak</span>') + '</div>' +
@@ -739,6 +739,9 @@
         f('Name', 'name', q.name, 'text', 'span2') +
         '<div class="f"><label>Kind</label><select name="kind"' + (isPack ? ' disabled' : '') + '>' + Object.keys(KINDS).filter(k => k !== 'packCheck' || isPack).map(k => '<option value="' + k + '"' + (q.kind === k ? ' selected' : '') + '>' + KINDS[k] + '</option>').join('') + '</select></div>' +
         f('Target', 'target', q.target) + f('Unit label', 'unitLabel', q.unitLabel, 'text', 'span2') +
+        '<div class="f duration-mode"><label for="xp-mode">Activity XP</label><select id="xp-mode" name="xpMode"><option value="completion"' + (q.xpMode === 'completion' ? ' selected' : '') + '>Fixed XP when target is met</option><option value="perMinute"' + (q.xpMode !== 'completion' ? ' selected' : '') + '>XP per minute</option></select></div>' +
+        '<div class="f simple-currency"><label for="reward-currency">Task reward</label><select id="reward-currency" name="rewardCurrency"><option value="coins"' + (q.rewardCurrency !== 'xp' ? ' selected' : '') + '>NT for completing task</option><option value="xp"' + (q.rewardCurrency === 'xp' ? ' selected' : '') + '>XP for completing task</option></select></div>' +
+        f('XP when completed', 'xp', q.xp || 10, 'number', 'completion-pay') +
         f('XP / minute', 'xpPerMinute', q.xpPerMinute || 1, 'number', 'activity-pay') + f('NT per chore', 'coins', q.coins || 0, 'number', 'chore-pay') +
         f('NT per unit', 'perCoins', q.perUnit ? q.perUnit.coins : 0, 'number', 'count-pay') +
         '<div class="f"><label>Cadence</label><select name="cadence"><option value="daily"' + ((q.cadence || 'daily') === 'daily' ? ' selected' : '') + '>Daily</option><option value="weekly"' + (q.cadence === 'weekly' ? ' selected' : '') + '>Weekly</option></select></div>' +
@@ -758,7 +761,7 @@
         '<button class="btn sm icon" type="button" data-move="' + i + ':1" aria-label="Move down"' + (i === quests.length - 1 ? ' disabled' : '') + '>' + icon('right', 14) + '</button>' +
         '<button class="btn sm" type="button" data-edit="' + esc(q.id) + '">' + (editing === q.id ? 'Editing' : 'Edit') + '</button></div></div>' +
         (editing === q.id ? questForm(q, false) : '') + '</div>').join('');
-      const newCard = editing === 'new' ? '<div class="qcard" data-q="new"><div class="qhead"><div class="qn">New quest</div></div>' + questForm({ id: 'new', name: '', kind: 'duration', target: 20, unitLabel: 'minutes', xpPerMinute: 1, xp: 0, coins: 0, screenMinutes: 0, activeDays: [], powerUps: [], requiresParentConfirm: false, requiredForStreak: true, enabled: true }, true) + '</div>' : '';
+      const newCard = editing === 'new' ? '<div class="qcard" data-q="new"><div class="qhead"><div class="qn">New quest</div></div>' + questForm({ id: 'new', name: '', kind: 'duration', target: 20, unitLabel: 'minutes', xpMode: 'completion', xpPerMinute: 1, xp: 10, coins: 0, screenMinutes: 0, activeDays: [], powerUps: [], requiresParentConfirm: false, requiredForStreak: true, enabled: true }, true) + '</div>' : '';
       m.innerHTML =
         '<div class="head"><div><h1>Quests</h1><div class="sub">What\'s on Edward\'s board, what it pays, and which days.</div></div><button class="btn primary" type="button" data-new>' + icon('plus', 16) + ' New quest</button></div>' +
         newCard + cards;
@@ -766,11 +769,11 @@
     }
     function updatePayFields(form) {
       const kind = form.kind.value;
-      for (const [cls, visible] of [['activity-pay',kind === 'duration'], ['chore-pay',kind === 'simple'], ['count-pay',kind === 'count']]) {
+      for (const [cls, visible] of [['duration-mode',kind === 'duration'], ['simple-currency',kind === 'simple'], ['completion-pay',(kind === 'duration' && form.xpMode.value === 'completion') || (kind === 'simple' && form.rewardCurrency.value === 'xp')], ['activity-pay',kind === 'duration' && form.xpMode.value !== 'completion'], ['chore-pay',kind === 'simple' && form.rewardCurrency.value !== 'xp'], ['count-pay',kind === 'count']]) {
         const field = form.querySelector('.' + cls); if (field) field.hidden = !visible;
       }
     }
-    L.on(m, 'change', 'select[name=kind]', (e, select) => updatePayFields(select.form));
+    L.on(m, 'change', 'select[name=kind], select[name=xpMode], select[name=rewardCurrency]', (e, select) => updatePayFields(select.form));
     async function save(msg) {
       try { config = await api('/config', { method: 'PUT', body: config }); toast(msg || 'Saved'); editing = null; paint(); }
       catch (e) { toast(e.message, true); }
@@ -778,14 +781,17 @@
     function readForm(f, q) {
       const num = n => Number(f[n] && f[n].value) || 0;
       const kind = f.kind.disabled ? q.kind : f.kind.value;
+      const xpMode = f.xpMode.value, rewardCurrency = f.rewardCurrency.value;
+      const xpReward = (kind === 'duration' && xpMode === 'completion') || (kind === 'simple' && rewardCurrency === 'xp');
       const days = [...f.querySelectorAll('[data-day].on')].map(b => b.dataset.day);
       const out = { ...q, name: f.name.value.trim(), kind, target: num('target'), unitLabel: f.unitLabel.value.trim(),
-        xp: 0, xpPerMinute: Math.max(1, num('xpPerMinute')), coins: kind === 'simple' ? num('coins') : 0, screenMinutes: 0,
+        xp: xpReward ? num('xp') : 0, xpMode, rewardCurrency, xpPerMinute: Math.max(1, num('xpPerMinute')), coins: kind === 'simple' && rewardCurrency !== 'xp' ? num('coins') : 0, screenMinutes: 0,
         cadence: f.cadence.value, timesPerWeek: Math.max(1, num('timesPerWeek')),
         activeDays: days.length === 7 ? [] : days,
         requiresParentConfirm: f.requiresParentConfirm.checked, requiredForStreak: f.requiredForStreak.checked,
         powerUps: [...f.querySelectorAll('[data-pu].on')].map(b => b.dataset.pu) };
-      if (kind !== 'duration') delete out.xpPerMinute;
+      if (kind !== 'simple') delete out.rewardCurrency;
+      if (kind !== 'duration') { delete out.xpPerMinute; delete out.xpMode; }
       else out.unitLabel = 'minutes';
       if (kind === 'count') out.perUnit = { xp: 0, coins: num('perCoins'), screenMinutes: 0 }; else delete out.perUnit;
       if (out.cadence === 'daily') delete out.timesPerWeek;
