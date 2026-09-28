@@ -51,7 +51,16 @@ function upgradeConfig(original, chores = CHORES) {
 }
 function validateConfig(cfg) {
     if (cfg.economyVersion !== 2) return 'Reload this page before saving the new earning rules.';
+    const bonusIds = new Set();
+    for (const p of cfg.powerUps || []) {
+        if (!p.id || bonusIds.has(p.id) || !p.label?.trim() || !Number.isSafeInteger(p.xp) || p.xp < 0 || p.xp > 100000 || p.coins || p.screenMinutes) return 'Side quests need a unique ID, a label, and whole XP from 0 to 100,000; they only award XP.';
+        bonusIds.add(p.id);
+    }
     for (const q of cfg.quests) {
+        if ((q.powerUps || []).some(id => !bonusIds.has(id))) return 'Choose an existing side quest.';
+        for (const [id, xp] of Object.entries(q.powerUpXp || {})) {
+            if (!bonusIds.has(id) || !Number.isSafeInteger(xp) || xp < 0 || xp > 100000) return 'Side quest XP must be a whole number from 0 to 100,000.';
+        }
         if (!['packCheck', 'duration', 'simple', 'count'].includes(q.kind)) return 'Use minutes for activities, or simple/count for chores.';
         const n = v => Number.isSafeInteger(v) && v >= 0 && v <= 100000;
         if (q.kind === 'duration' && q.xpMode != null && !['perMinute', 'completion'].includes(q.xpMode)) return 'Choose XP per minute or XP on completion.';

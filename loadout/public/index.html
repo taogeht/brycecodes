@@ -262,7 +262,7 @@
     else if (q.kind === 'count') { const n = Math.max(0, value | 0); targetMet = n > 0; const p = q.perUnit || ZERO; base = { xp: (p.xp | 0) * n, coins: (p.coins | 0) * n, screenMinutes: (p.screenMinutes | 0) * n }; }
     else { targetMet = value > 0; base = targetMet ? { xp: q.xp | 0, coins: q.coins | 0, screenMinutes: q.screenMinutes | 0 } : ZERO; }
     let pu = ZERO;
-    for (const id of new Set(powerUps)) { if (!(q.powerUps || []).includes(id)) continue; const d = powerUpDefs.find(p => p.id === id); if (d) pu = addA(pu, { xp: d.xp | 0, coins: d.coins | 0, screenMinutes: d.screenMinutes | 0 }); }
+    for (const id of new Set(powerUps)) { if (!(q.powerUps || []).includes(id)) continue; const d = powerUpDefs.find(p => p.id === id); if (d) pu = addA(pu, { xp: (q.powerUpXp?.[id] ?? d.xp) | 0, coins: 0, screenMinutes: 0 }); }
     return { targetMet, base, pu, total: addA(base, pu) };
   }
 
@@ -522,8 +522,8 @@
             '</div></div>';
         }
       }
-      const pus = (q.xpPerMinute != null ? [] : q.powerUps || []).map(id => t.powerUps.find(p => p.id === id)).filter(Boolean);
-      const puHtml = pus.length ? '<div class="section"><div class="eyebrow">Power-ups</div><p class="note" style="margin:4px 0 6px">These pay for how you worked, even if you didn\'t hit the target.</p>' +
+      const pus = (q.powerUps || []).map(id => t.powerUps.find(p => p.id === id)).filter(Boolean).map(p => ({ ...p, xp: q.powerUpXp?.[p.id] ?? p.xp, coins: 0, screenMinutes: 0 }));
+      const puHtml = pus.length ? '<div class="section"><div class="eyebrow">Side quests</div><p class="note" style="margin:4px 0 6px">These pay for how you worked, even if you didn\'t hit the target.</p>' +
         pus.map(p => { const on = st.powerUps.has(p.id); const lk = locked || st.paidPowerUps.has(p.id);
           return '<div class="pu' + (on ? ' on' : '') + (lk ? ' locked' : '') + '" role="checkbox" aria-checked="' + on + '" tabindex="0" data-pu="' + esc(p.id) + '"><span class="box">' + icon('check', 18) + '</span><div><div class="pl">' + esc(p.label) + '</div><div class="ps">' + esc(p.sub || '') + '</div></div><div class="pa">' + awardHtml(p) + '</div></div>'; }).join('') + '</div>' : '';
 
@@ -539,7 +539,7 @@
       const rateNote = q.kind === 'duration' && q.xpMode === 'completion' ? '<p class="note">Complete ' + q.target + ' minutes to earn ' + q.xp + ' XP. Extra minutes do not increase this award.</p>' : q.kind === 'duration' && q.xpPerMinute != null ? '<p class="note">' + q.xpPerMinute + ' XP per minute. Every minute counts, including below your target.</p>' : '';
       const totals = locked ? '' : rateNote + '<div class="totals">' +
         '<div class="line' + (a.targetMet ? '' : ' dim') + '"><span>' + esc(q.name) + (a.targetMet ? '' : (q.kind === 'simple' ? ' (not done)' : ' (below target)')) + '</span><b>' + (a.targetMet || q.kind === 'count' || (q.kind === 'duration' && q.xpMode !== 'completion') ? awardHtml(a.base, { dash: true }) : '—') + '</b></div>' +
-        (pus.length ? '<div class="line"><span>Power-ups</span><b>' + awardHtml(a.pu, { dash: true }) + '</b></div>' : '') +
+        (pus.length ? '<div class="line"><span>Side quests</span><b>' + awardHtml(a.pu, { dash: true }) + '</b></div>' : '') +
         '<div class="sum"><span>' + (existing ? 'New since last log' : 'Total') + '</span>' + awardHtml(existing ? delta : a.total, { dash: true }) + '</div>' +
         '<button class="btn primary full" type="button" data-log' + (st.saving || !changed || (q.kind !== 'count' && q.kind !== 'simple' && st.value === 0 && !st.powerUps.size) || (q.kind === 'simple' && !st.value) ? ' disabled' : '') + '>' +
           (q.requiresParentConfirm ? icon('lock', 18) + ' Log for a parent to confirm' : icon('bolt', 18) + ' Log it') + '</button>' +

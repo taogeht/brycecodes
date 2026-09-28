@@ -9,7 +9,7 @@ test('minutes earn XP below target and beyond target; activities never pay money
     for (const id of ['reading', 'math-academy', 'power-moves', 'piano']) {
         const q = cfg.quests.find(q => q.id === id);
         for (const value of [0, 5, 20, 60]) {
-            assert.deepEqual(S.checkinAward(cfg, q, { value, powerUps: ['started-promptly'] }).total,
+            assert.deepEqual(S.checkinAward(cfg, q, { value }).total,
                 { xp: value, coins: 0, screenMinutes: 0 });
         }
         assert.equal(S.checkinAward(cfg, { ...q, xpPerMinute: 3 }, { value: 7 }).total.xp, 21);
@@ -54,4 +54,31 @@ test('completion config validates XP and minute targets independently of per-min
     assert.equal(E.validateConfig(c), null);
     q.target = 0; assert.ok(E.validateConfig(c));
     q.target = 20; q.xp = -1; assert.ok(E.validateConfig(c));
+});
+
+
+test('side quests award only XP independently of the target, using per-quest XP and distinct allowed IDs', () => {
+    const q = { kind: 'duration', xpMode: 'completion', xp: 10, target: 20,
+        powerUps: ['started-promptly', 'wrote-it-down'], powerUpXp: { 'wrote-it-down': 4 } };
+    const c = { ...cfg, powerUps: cfg.powerUps.map(p => ({ ...p, coins: 100, screenMinutes: 100 })) };
+    const r = S.checkinAward(c, q, { value: 5, powerUps: ['started-promptly', 'wrote-it-down', 'wrote-it-down', 'asked-for-help', 'unknown'] });
+    assert.equal(r.targetMet, false);
+    assert.deepEqual(r.total, { xp: 7, coins: 0, screenMinutes: 0 });
+    assert.deepEqual(r.applied, ['started-promptly', 'wrote-it-down']);
+    assert.equal(S.checkinAward(c, q, { value: 20, powerUps: r.applied }).total.xp, 17);
+});
+test('side quest restoration retains archived definitions and assignments without altering later parent edits', () => {
+    const { restore } = require('../lib/side-quests');
+    const old = require('./fixtures/legacy-config')();
+    old.powerUps[0].xp = 5;
+    const c = E.upgradeConfig(old), restored = restore(c, old);
+    assert.equal(restored.powerUps[0].xp, 5);
+    assert.equal(restored.powerUps[0].coins, 0);
+    assert.deepEqual(restored.quests.find(q => q.id === 'math-academy').powerUps, old.quests[1].powerUps);
+    restored.quests.find(q => q.id === 'reading').powerUps = [];
+    assert.deepEqual(restore(restored, old), restored);
+    const invalid = structuredClone(restored); invalid.quests[1].powerUpXp = { 'started-promptly': -1 };
+    assert.ok(E.validateConfig(invalid));
+    invalid.quests[1].powerUpXp = {}; invalid.powerUps[0].coins = 1;
+    assert.ok(E.validateConfig(invalid));
 });

@@ -131,4 +131,36 @@ if (!process.env.TEST_DATABASE_URL) {
         cfg.earningsOpening = { earned: 999999 };
         const saved = await call('/config', cfg, true, 'PUT'); assert.equal(saved.status, 200); assert.deepEqual(saved.body.earningsOpening, opening);
     });
+    test('restored side quests pay once, add incrementally, and wait for parent confirmation', async () => {
+        const cfg = (await call('/config')).body;
+        assert.deepEqual(cfg.quests.find(q => q.id === 'math-academy').powerUps,
+            ['started-promptly', 'stayed-with-hard', 'wrote-it-down', 'asked-for-help']);
+        cfg.quests.push({ id: 'bonus-test', name: 'Bonus test', kind: 'duration', target: 20, xpMode: 'completion', xp: 10,
+            coins: 0, powerUps: ['started-promptly', 'wrote-it-down'], powerUpXp: { 'wrote-it-down': 4 } },
+            { id: 'bonus-confirm', name: 'Bonus confirm', kind: 'duration', target: 20, xpMode: 'completion', xp: 10,
+                coins: 0, powerUps: ['started-promptly'], requiresParentConfirm: true });
+        assert.equal((await call('/config', cfg, true, 'PUT')).status, 200);
+        const before = await store.balances();
+        for (const [value, powerUps, xp] of [[5,['started-promptly','started-promptly','unknown'],3],
+            [5,['started-promptly'],0], [5,['started-promptly','wrote-it-down'],4], [20,['started-promptly','wrote-it-down'],10]]) {
+            const r = await call(`/day/${today}/checkin`, { questId: 'bonus-test', value, powerUps });
+            assert.equal(r.status, 200); assert.equal(r.body.paid.xp, xp); assert.equal(r.body.paid.coins, 0);
+        }
+        assert.equal((await call(`/day/${today}/checkin`, { questId: 'bonus-test', value: 20, powerUps: [] })).status, 409);
+        const pending = await call(`/day/${today}/checkin`, { questId: 'bonus-confirm', value: 5, powerUps: ['started-promptly'] });
+        assert.equal(pending.body.paid.xp, 0); assert.equal(pending.body.checkin.awarded.xp, 3);
+        assert.equal((await call(`/checkin/${pending.body.checkin.id}/confirm`, {}, true)).status, 200);
+        const after = await store.balances();
+        assert.equal(after.xp - before.xp, 20); assert.equal(after.coins, before.coins); assert.equal(after.bank, before.bank);
+        cfg.quests.find(q => q.id === 'floss').powerUps = ['started-promptly'];
+        await store.saveConfig(cfg);
+        const chore = await call(`/day/${today}/checkin`, { questId: 'floss', value: 1, powerUps: ['started-promptly'] });
+        assert.deepEqual(chore.body.paid, { xp: 3, coins: 10, screenMinutes: 0 });
+        assert.equal((await call(`/checkin/${chore.body.checkin.id}/adjust`,
+            { awarded: { xp: 2, coins: 10 }, note: 'Correct side quest XP' }, true)).status, 200);
+        cfg.quests.find(q => q.id === 'reading').powerUps = [];
+        await store.saveConfig(cfg); await store.bootstrap();
+        assert.deepEqual((await store.getConfig()).quests.find(q => q.id === 'reading').powerUps, []);
+    });
+
 }

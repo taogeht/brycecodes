@@ -109,6 +109,12 @@ module.exports = function makeStore(pool) {
         await transaction(async client => {
             const cfg = await getConfig(client);
             await economy.migrate(client, cfg);
+            const current = await getConfig(client);
+            if (current.economyVersion === 2 && current.sideQuestsVersion !== 1) {
+                const archive = await client.query("SELECT source FROM loadout.legacy WHERE id='economy-v1'");
+                const restored = require('./side-quests').restore(current, archive.rows[0]?.source?.config);
+                await client.query("UPDATE loadout.config SET data=$1,updated_at=NOW() WHERE id='singleton'", [JSON.stringify(restored)]);
+            }
         });
     }
 

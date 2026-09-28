@@ -749,6 +749,8 @@
         '<div class="f span3"><label>Active days</label><div class="dayseg">' + DAYS7.map(d => '<button type="button" data-day="' + d + '" class="' + ((!q.activeDays || !q.activeDays.length || q.activeDays.includes(d)) ? 'on' : '') + '">' + DAY_LABEL[d] + '</button>').join('') + '</div></div>' +
         '<div class="f span2"><label>&nbsp;</label><div class="checkrow"><input type="checkbox" name="requiresParentConfirm" id="rpc_' + esc(q.id) + '"' + (q.requiresParentConfirm ? ' checked' : '') + '><label for="rpc_' + esc(q.id) + '" style="text-transform:none;letter-spacing:0;font-size:13px;color:var(--text);font-weight:500">Parent confirms</label>' +
         '<input type="checkbox" name="requiredForStreak" id="rfs_' + esc(q.id) + '"' + (q.requiredForStreak !== false ? ' checked' : '') + ' style="margin-left:12px"><label for="rfs_' + esc(q.id) + '" style="text-transform:none;letter-spacing:0;font-size:13px;color:var(--text);font-weight:500">Counts for streak</label></div></div>' +
+        '<div class="f span3"' + (isPack ? ' hidden' : '') + '><label>Side quests · bonus XP</label><p class="muted small">Choose bonuses for this quest. They can be earned even below the main target.</p>' + (config.powerUps || []).map(p =>
+          '<div class="checkrow" style="margin-bottom:8px"><input type="checkbox" id="bonus-' + esc(p.id) + '" data-bonus="' + esc(p.id) + '"' + ((q.powerUps || []).includes(p.id) ? ' checked' : '') + '><label for="bonus-' + esc(p.id) + '" style="text-transform:none;letter-spacing:0;flex:1">' + esc(p.label) + '</label><input type="number" min="0" max="100000" step="1" data-bonus-xp="' + esc(p.id) + '" aria-label="' + esc(p.label) + ' XP" value="' + (q.powerUpXp?.[p.id] ?? p.xp) + '" style="width:76px"><span>XP</span></div>').join('') + '</div>' +
         '<div class="actions"><button class="btn primary sm" type="submit">' + (isNew ? 'Add quest' : 'Save') + '</button><button class="btn sm" type="button" data-cancel>Cancel</button>' +
         '<div class="right">' + (isNew || isPack ? '' : '<button class="btn sm danger" type="button" data-del="' + esc(q.id) + '">Delete</button>') + '</div></div></form>';
     }
@@ -789,7 +791,8 @@
         cadence: f.cadence.value, timesPerWeek: Math.max(1, num('timesPerWeek')),
         activeDays: days.length === 7 ? [] : days,
         requiresParentConfirm: f.requiresParentConfirm.checked, requiredForStreak: f.requiredForStreak.checked,
-        powerUps: [...f.querySelectorAll('[data-pu].on')].map(b => b.dataset.pu) };
+        powerUps: [...f.querySelectorAll('[data-bonus]:checked')].map(b => b.dataset.bonus),
+        powerUpXp: Object.fromEntries([...f.querySelectorAll('[data-bonus-xp]')].map(input => [input.dataset.bonusXp, Number(input.value)])) };
       if (kind !== 'simple') delete out.rewardCurrency;
       if (kind !== 'duration') { delete out.xpPerMinute; delete out.xpMode; }
       else out.unitLabel = 'minutes';

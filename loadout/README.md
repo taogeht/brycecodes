@@ -5,6 +5,7 @@ at `/loadout/`; parent controls at `/loadout/hq` (PIN through `HQ_PIN`).
 
 ## Earning rules (September 2026 update)
 
+- Side quests award bonus XP even below the main target. Original definitions and assignments are restored once from the archived config. In HQ → Quests → Edit, choose side quests and set their XP per quest. Repeat logs pay only additional XP; parent confirmation also applies to bonuses.
 - Activities can use **fixed XP on completion**: for example, 20 minutes of
   reading earns 10 XP. Below target pays zero, reaching target pays once, and
   extra minutes or repeated submissions do not increase the award. HQ → Quests

@@ -52,8 +52,16 @@ function checkinAward(config, quest, { value = null, powerUps = [] } = {}) {
         const base = quest.kind === 'duration' ? award(quest.xpMode === 'completion' ? (targetMet ? quest.xp : 0) : n * quest.xpPerMinute, 0, 0)
             : quest.kind === 'count' ? award(0, n * (quest.perUnit?.coins || 0), 0)
             : quest.rewardCurrency === 'xp' ? award(quest.xp, 0, 0) : award(0, quest.coins, 0);
-        return { targetMet,
-            base, powerUps: ZERO, applied: [], total: base };
+        let bonus = ZERO;
+        const applied = [];
+        for (const id of new Set(powerUps || [])) {
+            if (!(quest.powerUps || []).includes(id)) continue;
+            const p = powerUpById(config, id);
+            if (!p) continue;
+            applied.push(id);
+            bonus = addAwards(bonus, award(quest.powerUpXp?.[id] ?? p.xp, 0, 0));
+        }
+        return { targetMet, base, powerUps: bonus, applied, total: addAwards(base, bonus) };
     }
     let targetMet;
     let base = ZERO;
