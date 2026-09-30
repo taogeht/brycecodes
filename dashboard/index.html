@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ground: #F5F4F0; --surface: #FFFFFF; --surface-alt: #FAF9F6; --border: #E2DFD8; --border-strong: #CFCBC2;
+    --text: #1A1D24; --muted: #5C6270; --gold: #A9701A; --green: #2F7A5C; --red: #B4433A;
+    --gold-bg: #FBF3E4; --green-bg: #E9F4EE; --red-bg: #F9E9E7;
+    --display: 'Space Grotesk', system-ui, sans-serif; --body: 'IBM Plex Sans', system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #14161B; --surface: #1C1F26; --surface-alt: #22262E; --border: #2C303A; --border-strong: #3A3F4B;
+      --text: #ECEDEF; --muted: #9AA0AD; --gold: #E0A64E; --green: #6CC4A0; --red: #EF8A80;
+      --gold-bg: #2E2616; --green-bg: #182A22; --red-bg: #33201E;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--ground); color: var(--text); font-family: var(--body); font-size: 15px; line-height: 1.45; }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+  h1, h2 { font-family: var(--display); margin: 0; letter-spacing: -.01em; }
+  h1 { font-size: 28px; }
+  h2 { font-size: 17px; }
+  .eyebrow { font-family: var(--display); font-weight: 700; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+  .muted { color: var(--muted); }
+  .num { font-family: var(--display); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  main { max-width: 1120px; margin: 0 auto; padding: 28px 16px 60px; }
+  header { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 22px; }
+  header .sub { color: var(--muted); margin-top: 2px; }
+  .section-label { margin: 26px 0 10px; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 12px; min-height: 150px; }
+  .card.wide { grid-column: span 2; }
+  @media (max-width: 620px) { .card.wide { grid-column: auto; } }
+  .card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  a.card:hover, .card .open:hover { border-color: var(--border-strong); }
+  .open { font-size: 13px; font-weight: 600; color: var(--muted); display: inline-flex; align-items: center; gap: 4px; min-height: 32px; }
+  .open:hover { color: var(--text); }
+  .soon { opacity: .7; border-style: dashed; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 10px; }
+  .stat .lbl { font-size: 12px; color: var(--muted); font-weight: 500; }
+  .stat .val { font-size: 24px; line-height: 1.1; margin-top: 2px; }
+  .stat.gold .val { color: var(--gold); }
+  .stat.warn .val { color: var(--red); }
+  .row-chips { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .bar { height: 8px; border-radius: 99px; background: var(--ground); overflow: hidden; }
+  .bar > i { display: block; height: 100%; background: var(--gold); border-radius: 99px; }
+  .chip { display: inline-flex; padding: 3px 9px; border-radius: 99px; font-size: 12px; font-weight: 600; background: var(--surface-alt); color: var(--muted); border: 1px solid var(--border); }
+  .chip.warn { color: var(--red); background: var(--red-bg); border-color: transparent; }
+  .chip.ok { color: var(--green); background: var(--green-bg); border-color: transparent; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 0 16px; border-radius: 10px; font-weight: 600; border: 1px solid var(--text); background: var(--text); color: var(--ground); }
+  input[type=password] { min-height: 40px; padding: 6px 10px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface); color: var(--text); font: inherit; width: 100%; }
+  .gate { max-width: 340px; margin: 18vh auto 0; display: flex; flex-direction: column; gap: 12px; }
+  .err { color: var(--red); font-size: 13px; min-height: 18px; }
+  .links a { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-top: 1px solid var(--border); font-weight: 500; }
+  .links a:first-child { border-top: 0; }
+  .links a span { color: var(--muted); font-weight: 400; font-size: 13px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <div id="gate" class="gate" hidden>
+    <h1>Dashboard</h1>
+    <p class="muted" style="margin:0">Enter the parent PIN.</p>
+    <input id="pin" type="password" inputmode="numeric" autocomplete="current-password" placeholder="PIN" aria-label="PIN">
+    <div id="err" class="err" role="alert"></div>
+    <button class="btn" id="go">Unlock</button>
+  </div>
+
+  <div id="app" hidden>
+    <header>
+      <div>
+        <div class="eyebrow" id="today"></div>
+        <h1>Dashboard</h1>
+      </div>
+      <button class="open" id="logout">Lock</button>
+    </header>
+
+    <div class="eyebrow section-label">At a glance</div>
+    <div class="grid" id="widgets"></div>
+
+    <div class="eyebrow section-label">Tools</div>
+    <div class="grid" id="tools"></div>
+  </div>
+</main>
+
+<script>
+// Each app registers one widget: { id, title, href, wide?, load() -> html | null }.
+// Add blood pressure / 4x4 by replacing their `soon` entries with a load().
+const API = '/api/loadout';
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const fmt = n => Number(n || 0).toLocaleString();
+
+async function api(path, opts = {}) {
+  const r = await fetch((path.startsWith('/api/') ? '' : API) + path, {
+    method: opts.method || 'GET', credentials: 'same-origin',
+    headers: opts.body ? { 'Content-Type': 'application/json' } : undefined,
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error(j.message || 'Request failed'), { status: r.status });
+  return j;
+}
+
+const stat = (lbl, val, cls = '') => `<div class="stat ${cls}"><div class="lbl">${lbl}</div><div class="val num">${val}</div></div>`;
+
+const WIDGETS = [
+  {
+    id: 'loadout', title: 'Loadout', href: '/loadout/hq/', wide: true,
+    async load() {
+      const [o, e] = await Promise.all([api('/hq/overview'), api('/earnings')]);
+      const lv = o.level, pending = o.pendingCheckins.length, reqs = o.openRequests.length;
+      return `
+        <div class="stats">
+          ${stat('Level', lv.level)}
+          ${stat('XP', fmt(o.balances.xp), 'gold')}
+          ${stat('Unpaid NT', fmt(e.unpaid), e.unpaid > 0 ? 'gold' : '')}
+          ${stat('Check-ins to review', pending, pending ? 'warn' : '')}
+          ${stat('Reward requests', reqs, reqs ? 'warn' : '')}
+        </div>
+        <div>
+          <div class="bar" role="progressbar" aria-valuenow="${lv.into}" aria-valuemax="${lv.perLevel}"><i style="width:${Math.round(lv.into / lv.perLevel * 100)}%"></i></div>
+          <div class="muted" style="font-size:12px;margin-top:4px">${fmt(lv.into)} / ${fmt(lv.perLevel)} XP to level ${lv.level + 1}</div>
+        </div>`;
+    },
+  },
+  {
+    id: 'bp', title: 'Blood pressure', href: '/bp/',
+    async load() {
+      const s = await api('/api/bp/summary');
+      if (!s.latest) return `<span class="muted">No readings yet.</span>`;
+      const chip = c => `<span class="chip ${c === 'normal' ? 'ok' : c === 'elevated' ? '' : 'warn'}">${esc(s.labels[c])}</span>`;
+      const l = s.latest, stale = s.today !== l.date;
+      return `
+        <div class="stats">
+          ${stat('Latest', `${l.sys}/${l.dia}`)}
+          ${stat('7-day avg', `${s.avg7.sys}/${s.avg7.dia}`)}
+        </div>
+        <div class="row-chips">${chip(l.category)} <span class="muted" style="font-size:13px">${stale ? `last logged ${esc(l.date)}` : 'logged today'}</span></div>
+        ${s.alerts.map(a => `<div class="chip ${a.level === 'high' ? 'warn' : ''}" style="white-space:normal;border-radius:10px">${esc(a.text)}</div>`).join('')}`;
+    },
+  },
+  {
+    id: 'stairs', title: '4×4 training', href: '/4x4/',
+    async load() {
+      const s = await api('/api/4x4/summary');
+      if (!s.sessions) return `<span class="muted">No sessions yet. Log your first to start the 12-week clock.</span>`;
+      const T = s.tiles, z = T.lastZonePct;
+      const zc = z == null ? '' : z < 85 ? 'chip warn' : z > 95 ? 'chip warn' : 'chip ok';
+      const dots = [1, 2].map(i => `<span style="display:inline-block;width:12px;height:12px;border-radius:50%;border:2px solid var(--gold);${s.thisWeek >= i ? 'background:var(--gold);' : ''}"></span>`).join(' ');
+      return `
+        <div class="stats">
+          ${stat('Week', s.week)}
+          ${stat('Sessions', s.sessions)}
+          ${s.cardio ? stat('VO₂', s.cardio.latest.toFixed(1)) : stat('Avg level', T.level ? T.level.last.toFixed(1) : '—')}
+        </div>
+        <div class="row-chips">${dots} <span class="muted" style="font-size:13px">${s.thisWeek} of 2 this week</span>
+          ${z == null ? '' : `<span class="${zc}">${Math.round(z)}% of max HR</span>`}</div>
+        <div class="muted" style="font-size:12px">${esc(s.phase.name)}${s.cardio && s.cardio.count > 1 ? ` · VO₂ ${s.cardio.pctChange >= 0 ? '+' : ''}${s.cardio.pctChange}% since first` : ''}</div>`;
+    },
+  },
+];
+
+const TOOLS = [
+  { title: 'Loadout HQ', note: 'Edward’s quests, rewards, payouts', href: '/loadout/hq/' },
+  { title: 'Monthly schedule maker', note: 'Timesheet signature sheets', href: '/timesheet/' },
+  { title: 'English Angel', note: 'Student selector', href: '/EnglishAngel/' },
+  { title: '12×12', note: 'Flashcards', href: '/12x12/' },
+  { title: 'Alphabet Time', note: 'Phonics & sight words', href: '/alphabet-help/' },
+];
+
+function shell(w) {
+  return `<section class="card ${w.wide ? 'wide' : ''} ${w.soon ? 'soon' : ''}" id="w-${w.id}">
+    <div class="card-head"><h2>${esc(w.title)}</h2>
+      ${w.href ? `<a class="open" href="${w.href}">Open →</a>` : `<span class="chip">${esc(w.soon || '')}</span>`}
+    </div>
+    <div class="body">${w.soon ? '' : '<span class="muted">Loading…</span>'}</div>
+  </section>`;
+}
+
+async function renderWidgets() {
+  $('widgets').innerHTML = WIDGETS.map(shell).join('');
+  await Promise.all(WIDGETS.filter(w => w.load).map(async w => {
+    const body = document.querySelector(`#w-${w.id} .body`);
+    try { body.innerHTML = await w.load(); }
+    catch (err) {
+      if (err.status === 401) return showGate();
+      body.innerHTML = `<span class="chip warn">Couldn’t load</span>`;
+    }
+  }));
+}
+
+function renderTools() {
+  $('tools').innerHTML = `<nav class="card links" style="grid-column:1/-1;min-height:0" aria-label="Apps">` +
+    TOOLS.map(t => `<a href="${t.href}"><b style="font-weight:600">${esc(t.title)}</b><span>${esc(t.note)}</span></a>`).join('') + `</nav>`;
+}
+
+function showGate() { $('app').hidden = true; $('gate').hidden = false; $('pin').focus(); }
+
+async function start() {
+  let s;
+  try { s = await api('/hq/session'); } catch { s = { hq: false }; }
+  if (!s.hq) return showGate();
+  $('gate').hidden = true; $('app').hidden = false;
+  $('today').textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'Asia/Taipei' });
+  renderTools();
+  renderWidgets();
+}
+
+async function unlock() {
+  $('err').textContent = '';
+  try { await api('/hq/login', { method: 'POST', body: { pin: $('pin').value } }); $('pin').value = ''; start(); }
+  catch (err) { $('err').textContent = err.message; }
+}
+$('go').onclick = unlock;
+$('pin').onkeydown = e => { if (e.key === 'Enter') unlock(); };
+$('logout').onclick = async () => { await api('/hq/logout', { method: 'POST' }).catch(() => {}); showGate(); };
+start();
+</script>
+</body>
+</html>

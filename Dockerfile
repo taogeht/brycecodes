@@ -19,6 +19,9 @@ COPY invoice/ ./invoice/
 COPY mainpage/ ./mainpage/
 COPY englishangel/ ./englishangel/
 COPY timesheet/ ./timesheet/
+COPY dashboard/ ./dashboard/
+COPY bp/ ./bp/
+COPY fourx4/ ./fourx4/
 COPY chores/public/ ./chores/public/
 
 # ── Loadout (Edward's quest tracker; API module + two SPAs + one-off migration) ──

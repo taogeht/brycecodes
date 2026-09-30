@@ -119,11 +119,23 @@ app.use('/invoice', express.static(path.join(__dirname, 'invoice')));
 app.use('/mainpage', express.static(path.join(__dirname, 'mainpage')));
 app.use('/EnglishAngel', express.static(path.join(__dirname, 'englishangel')));
 app.use('/timesheet', express.static(path.join(__dirname, 'timesheet')));
+// Dashboard — PIN-gated client-side via the Loadout HQ cookie (see dashboard/index.html).
+app.use('/dashboard', express.static(path.join(__dirname, 'dashboard')));
 // Loadout — see loadout/api.js. Schema lives in loadout.* and is bootstrapped
 // here alongside the chores/invoice block above. The router itself is mounted
 // after bodyParser, below.
 const loadout = require('./loadout/api')(pool);
 loadout.bootstrap();
+
+// Blood pressure log — health data, gated by the Loadout HQ cookie (see bp/api.js).
+const bp = require('./bp/api')(pool, loadout.auth);
+bp.bootstrap();
+app.use('/bp', express.static(path.join(__dirname, 'bp', 'public')));
+
+// 4×4 training log — same HQ gate; screenshots go to FOURX4_UPLOAD_DIR (see fourx4/api.js).
+const fourx4 = require('./fourx4/api')(pool, loadout.auth);
+fourx4.bootstrap();
+app.use('/4x4', express.static(path.join(__dirname, 'fourx4', 'public')));
 
 // /chores is retired once the Loadout migration has run (it checks for the
 // loadout.legacy row), so the cutover is one script run, not a redeploy.
@@ -210,6 +222,8 @@ app.post('/api/timesheet', (req, res) => {
 
 // Loadout API — see loadout/api.js (module is created above the static mounts).
 app.use('/api/loadout', loadout.router);
+app.use('/api/bp', bp.router);
+app.use('/api/4x4', fourx4.router);
 
 // API for Chores persistence — single JSONB row in chores.state
 app.get('/api/chores', async (req, res) => {

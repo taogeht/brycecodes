@@ -12,3 +12,5 @@ venv/
 # SQLite WAL sidecars
 *.db-shm
 *.db-wal
+# 4x4 local screenshot uploads (prod uses /data)
+fourx4/uploads/
