@@ -1,6 +1,6 @@
 'use strict';
 // Blood-pressure log. Router factory mounted at /api/bp (see server.js).
-// One reading per calendar day (date is the key); saving a date replaces it.
+// One saved reading per morning/evening session; saving the same session replaces it.
 // Health data: every route needs the parent HQ cookie, except that writes also
 // accept the BP_API_KEY header so a phone shortcut can log a reading.
 const express = require('express');
@@ -28,13 +28,23 @@ module.exports = function makeBp(pool, auth) {
             await pool.query(`
                 CREATE SCHEMA IF NOT EXISTS bp;
                 CREATE TABLE IF NOT EXISTS bp.readings (
-                    date DATE PRIMARY KEY,
+                    date DATE NOT NULL,
+                    session TEXT NOT NULL DEFAULT 'morning' CHECK (session IN ('morning', 'evening')),
+                    PRIMARY KEY (date, session),
                     sys SMALLINT NOT NULL CHECK (sys BETWEEN 60 AND 260),
                     dia SMALLINT NOT NULL CHECK (dia BETWEEN 30 AND 160 AND dia < sys),
                     pulse SMALLINT CHECK (pulse BETWEEN 30 AND 220),
                     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
                 )`);
+            // Serialize upgrades so concurrent server starts cannot race the key change.
+            await pool.query(`DO $$ BEGIN
+                LOCK TABLE bp.readings IN ACCESS EXCLUSIVE MODE;
+                ALTER TABLE bp.readings ADD COLUMN IF NOT EXISTS session TEXT NOT NULL DEFAULT 'morning'
+                    CHECK (session IN ('morning', 'evening'));
+                ALTER TABLE bp.readings DROP CONSTRAINT IF EXISTS readings_pkey;
+                ALTER TABLE bp.readings ADD PRIMARY KEY (date, session);
+                END; $$`);
             const { rows } = await pool.query('SELECT 1 FROM bp.readings LIMIT 1');
             if (!rows.length) {
                 for (const r of SEED) {
@@ -62,7 +72,7 @@ module.exports = function makeBp(pool, auth) {
 
     async function load() {
         const { rows } = await pool.query(
-            `SELECT to_char(date,'YYYY-MM-DD') AS date, sys, dia, pulse FROM bp.readings ORDER BY date ASC`);
+            `SELECT to_char(date,'YYYY-MM-DD') AS date, session, sys, dia, pulse FROM bp.readings ORDER BY date ASC, CASE session WHEN 'morning' THEN 0 ELSE 1 END ASC`);
         return rows;
     }
 
@@ -83,7 +93,7 @@ module.exports = function makeBp(pool, auth) {
     router.get('/export.csv', auth.requireHq, wrap(async (req, res) => {
         const rows = await load();
         res.type('text/csv').set('Content-Disposition', 'attachment; filename="bp-readings.csv"');
-        res.send('date,sys,dia,pulse\n' + rows.map(r => `${r.date},${r.sys},${r.dia},${r.pulse ?? ''}`).join('\n') + '\n');
+        res.send('date,session,sys,dia,pulse\n' + rows.map(r => `${r.date},${r.session},${r.sys},${r.dia},${r.pulse ?? ''}`).join('\n') + '\n');
     }));
 
     router.post('/', requireWriter, wrap(async (req, res) => {
@@ -91,16 +101,18 @@ module.exports = function makeBp(pool, auth) {
         if (v.error) return res.status(400).json({ error: 'bad-request', message: v.error });
         const r = v.value;
         await pool.query(
-            `INSERT INTO bp.readings (date, sys, dia, pulse) VALUES ($1,$2,$3,$4)
-             ON CONFLICT (date) DO UPDATE SET sys = EXCLUDED.sys, dia = EXCLUDED.dia,
+            `INSERT INTO bp.readings (date, session, sys, dia, pulse) VALUES ($1,$2,$3,$4,$5)
+             ON CONFLICT (date, session) DO UPDATE SET sys = EXCLUDED.sys, dia = EXCLUDED.dia,
                 pulse = EXCLUDED.pulse, updated_at = NOW()`,
-            [r.date, r.sys, r.dia, r.pulse]);
+            [r.date, r.session, r.sys, r.dia, r.pulse]);
         res.json({ ...r, category: B.category(r.sys, r.dia) });
     }));
 
     router.delete('/:date', auth.requireHq, wrap(async (req, res) => {
         if (!B.isDateKey(req.params.date)) return res.status(400).json({ error: 'bad-request', message: 'date must be YYYY-MM-DD' });
-        const { rowCount } = await pool.query('DELETE FROM bp.readings WHERE date = $1', [req.params.date]);
+        const session = req.query.session || 'morning';
+        if (!['morning', 'evening'].includes(session)) return res.status(400).json({ error: 'bad-request', message: 'Session must be morning or evening.' });
+        const { rowCount } = await pool.query('DELETE FROM bp.readings WHERE date = $1 AND session = $2', [req.params.date, session]);
         if (!rowCount) return res.status(404).json({ error: 'not-found', message: 'No reading for that date.' });
         res.json({ success: true });
     }));

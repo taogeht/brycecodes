@@ -16,10 +16,12 @@ const isDateKey = s => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s) &&
 const time = key => Date.parse(key + 'T00:00:00Z');
 const whole = v => typeof v === 'number' && Number.isInteger(v);
 
-// Returns { error } or { value: { date, sys, dia, pulse } } from loosely-typed input.
+// Returns { error } or { value: { date, session, sys, dia, pulse } } from loosely-typed input.
 function validate(input, todayKey) {
     const b = input || {};
     const date = b.date == null || b.date === '' ? todayKey : b.date;
+    const session = b.session == null ? 'morning' : b.session;
+    if (!['morning', 'evening'].includes(session)) return { error: 'Session must be morning or evening.' };
     const sys = Number(b.sys), dia = Number(b.dia);
     const pulse = b.pulse == null || b.pulse === '' ? null : Number(b.pulse);
     if (!isDateKey(date)) return { error: 'date must be YYYY-MM-DD' };
@@ -27,14 +29,15 @@ function validate(input, todayKey) {
     if (!whole(dia) || dia < 30 || dia > 160) return { error: 'Diastolic must be a whole number from 30 to 160.' };
     if (dia >= sys) return { error: 'Diastolic should be lower than systolic. Check the order.' };
     if (pulse !== null && (!whole(pulse) || pulse < 30 || pulse > 220)) return { error: 'Pulse must be a whole number from 30 to 220.' };
-    return { value: { date, sys, dia, pulse } };
+    return { value: { date, session, sys, dia, pulse } };
 }
 
 // Average window ends at the latest reading's date, not today.
-function average(readings, days) {
+function average(readings, days, excludeFirstDay = false) {
     if (!readings.length) return null;
     const end = time(readings[readings.length - 1].date);
-    const w = readings.filter(r => end - time(r.date) < days * DAY);
+    let w = readings.filter(r => end - time(r.date) >= 0 && end - time(r.date) < days * DAY);
+    if (excludeFirstDay && w.length) w = w.filter(r => r.date !== w[0].date);
     if (!w.length) return null;
     const sys = Math.round(w.reduce((a, r) => a + r.sys, 0) / w.length);
     const dia = Math.round(w.reduce((a, r) => a + r.dia, 0) / w.length);
@@ -43,7 +46,7 @@ function average(readings, days) {
 
 // `readings` must be sorted oldest → newest.
 function summarize(readings) {
-    if (!readings.length) return { latest: null, avg7: null, avg30: null, alerts: [] };
+    if (!readings.length) return { latest: null, avg7: null, avg30: null, visitAverage: null, alerts: [] };
     const latest = readings[readings.length - 1];
     const end = time(latest.date);
     const avg7 = average(readings, 7), avg30 = average(readings, 30);
@@ -54,7 +57,7 @@ function summarize(readings) {
     if (avg7.n >= 5 && (avg7.sys >= 130 || avg7.dia >= 80)) {
         alerts.push({ level: 'note', text: `Your 7-day average is ${avg7.sys}/${avg7.dia}, in the stage 1 range or above. If averages stay there over a few weeks, it's worth bringing this log to a doctor.` });
     }
-    return { latest: { ...latest, category: category(latest.sys, latest.dia) }, avg7, avg30, alerts };
+    return { latest: { ...latest, category: category(latest.sys, latest.dia) }, avg7, avg30, visitAverage: average(readings, 7, true), alerts };
 }
 
 module.exports = { category, LABELS, validate, average, summarize, isDateKey };

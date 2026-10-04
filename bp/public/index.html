@@ -74,6 +74,7 @@
 
   form { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
   .field { display: grid; gap: 4px; }
+  .field select { font: inherit; color: var(--text); background: var(--ground); border: 1px solid var(--border-strong); border-radius: 8px; padding: 7px 9px; min-height: 40px; }
   .field input { font: 500 16px var(--mono); color: var(--text); background: var(--ground); border: 1px solid var(--border-strong); border-radius: 8px; padding: 7px 9px; width: 92px; min-height: 40px; }
   .field input[type="date"] { width: 150px; font-family: var(--body); font-size: 15px; }
   .btn { font-weight: 600; font-size: 14px; background: var(--accent); color: var(--ground); border-radius: 8px; padding: 0 16px; min-height: 40px; }
@@ -112,7 +113,7 @@
     <div>
       <a href="/dashboard/">← Dashboard</a>
       <h1>Blood Pressure Log</h1>
-      <p class="small" style="margin:4px 0 0">Morning home readings, mmHg. Categories follow the AHA/ACC home-reading bands.</p>
+      <p class="small" style="margin:4px 0 0">Morning and bedtime home readings, mmHg. Categories follow the AHA/ACC home-reading bands.</p>
     </div>
     <a href="/api/bp/export.csv" download>Export CSV</a>
   </header>
@@ -123,6 +124,7 @@
     <div><span class="label">30-day avg</span><span class="mid num" id="s-30">—</span><span id="s-30-meta" class="small"></span></div>
   </div>
   <div id="flags" hidden></div>
+  <p class="small" id="visit-average" style="margin:0"></p>
 
   <section>
     <div class="head">
@@ -139,17 +141,20 @@
       <span><i style="background:var(--dia)"></i>Diastolic</span>
       <span><i style="background:var(--muted);height:1px"></i>Dashed: 130 / 80 threshold</span>
     </div>
+    <p class="small" style="margin:0">Morning points appear before evening points each day. Hover a point for the date, session and reading.</p>
   </section>
 
   <section>
     <h2>Add a reading</h2>
+    <p class="small" style="margin:0">Sit quietly for five minutes, with your arm supported at heart level. Take two measurements one minute apart; save their average as your session reading. Log once in the morning and once before bed. <a href="https://www.heart.org/en/health-topics/high-blood-pressure/understanding-blood-pressure-readings/monitoring-your-blood-pressure-at-home" style="text-decoration:underline">AHA guidance</a></p>
     <form id="add">
       <div class="field"><label class="label" for="f-date">Date</label><input type="date" id="f-date" required></div>
+      <div class="field"><label class="label" for="f-session">Session</label><select id="f-session"><option value="morning">Morning</option><option value="evening">Evening · before bed</option></select></div>
       <div class="field"><label class="label" for="f-sys">Systolic</label><input type="number" id="f-sys" min="60" max="260" inputmode="numeric" required placeholder="120"></div>
       <div class="field"><label class="label" for="f-dia">Diastolic</label><input type="number" id="f-dia" min="30" max="160" inputmode="numeric" required placeholder="80"></div>
       <div class="field"><label class="label" for="f-pulse">Pulse</label><input type="number" id="f-pulse" min="30" max="220" inputmode="numeric" placeholder="opt."></div>
       <button class="btn" id="f-save" type="submit">Save reading</button>
-      <div class="formmsg" id="f-msg" aria-live="polite">One reading per day. Saving a date that already has one replaces it.</div>
+      <div class="formmsg" id="f-msg" aria-live="polite">One entry per morning or evening session. Saving the same date and session replaces it.</div>
     </form>
   </section>
 
@@ -157,7 +162,7 @@
     <h2>All readings</h2>
     <div class="tablewrap">
       <table>
-        <thead><tr><th>Date</th><th class="r">Sys</th><th class="r">Dia</th><th class="r">Pulse</th><th>Category</th><th></th></tr></thead>
+        <thead><tr><th>Date</th><th>Session</th><th class="r">Sys</th><th class="r">Dia</th><th class="r">Pulse</th><th>Category</th><th></th></tr></thead>
         <tbody id="rows"></tbody>
       </table>
     </div>
@@ -202,6 +207,9 @@
   const time = iso => Date.parse(iso + 'T00:00:00Z');
   const fmtDate = iso => new Date(time(iso)).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
   const fmtShort = iso => new Date(time(iso)).toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  const sessionLabel = r => r.session === 'evening' ? 'Evening' : 'Morning';
+  const readingTime = r => time(r.date) + (r.session === 'evening' ? 18 : 6) * 3600000;
+  const readingKey = r => r.date + '/' + (r.session || 'morning');
   const pill = c => `<span class="pill c-${c}">${esc(state.labels[c] || c)}</span>`;
 
   function renderSummary() {
@@ -209,11 +217,13 @@
     if (!s || !s.latest) {
       $('s-latest').textContent = '—'; $('s-latest-meta').textContent = 'No readings yet';
       for (const id of ['s-7', 's-30']) { $(id).textContent = '—'; $(id + '-meta').textContent = ''; }
-      $('flags').hidden = true; return;
+      $('flags').hidden = true; $('visit-average').textContent = ''; return;
     }
+    const v = s.visitAverage;
+    $('visit-average').textContent = v ? `Weekly average excluding the first logged day in the latest 7-day window: ${v.sys}/${v.dia} mmHg from ${v.n} session entries. Aim for morning and evening sessions for a full week before your visit.` : 'Before a doctor’s visit, aim for a full week of morning and evening sessions. The weekly average excluding day one appears after readings on a second day.';
     const l = s.latest;
     $('s-latest').innerHTML = `${l.sys}<span class="slash">/</span>${l.dia}`;
-    $('s-latest-meta').innerHTML = `${pill(l.category)} &nbsp;${fmtDate(l.date)}${l.pulse ? ` · pulse ${l.pulse}` : ''}`;
+    $('s-latest-meta').innerHTML = `${pill(l.category)} &nbsp;${fmtDate(l.date)} · ${sessionLabel(l)}${l.pulse ? ` · pulse ${l.pulse}` : ''}`;
     for (const [id, a] of [['s-7', s.avg7], ['s-30', s.avg30]]) {
       $(id).textContent = `${a.sys}/${a.dia}`;
       $(id + '-meta').innerHTML = `${pill(a.category)} &nbsp;${a.n} reading${a.n === 1 ? '' : 's'}`;
@@ -224,11 +234,11 @@
 
   function renderTable() {
     const tb = $('rows');
-    if (!state.readings.length) { tb.innerHTML = `<tr><td colspan="6" class="empty">Your readings will appear here. Add one above.</td></tr>`; return; }
+    if (!state.readings.length) { tb.innerHTML = `<tr><td colspan="7" class="empty">Your readings will appear here. Add one above.</td></tr>`; return; }
     tb.innerHTML = state.readings.slice().reverse().map(r => `
-      <tr><td>${fmtDate(r.date)}</td><td class="r num">${r.sys}</td><td class="r num">${r.dia}</td>
+      <tr><td>${fmtDate(r.date)}</td><td>${sessionLabel(r)}</td><td class="r num">${r.sys}</td><td class="r num">${r.dia}</td>
       <td class="r num">${r.pulse ?? '–'}</td><td>${pill(r.category)}</td>
-      <td class="r"><button type="button" class="del${pendingDelete === r.date ? ' confirm' : ''}" data-date="${r.date}">${pendingDelete === r.date ? 'Confirm delete' : 'Delete'}</button></td></tr>`).join('');
+      <td class="r"><button type="button" class="del${pendingDelete === readingKey(r) ? ' confirm' : ''}" data-date="${r.date}" data-session="${r.session || 'morning'}">${pendingDelete === readingKey(r) ? 'Confirm delete' : 'Delete'}</button></td></tr>`).join('');
   }
 
   function renderChart() {
@@ -243,8 +253,8 @@
       svg.innerHTML = `<text x="${W / 2}" y="${H / 2}" text-anchor="middle" fill="var(--muted)" font-size="14" font-family="var(--body)">The chart fills in as readings are added.</text>`;
       return;
     }
-    const t1 = time(data[data.length - 1].date);
-    const span = Math.max(t1 - time(data[0].date), 6 * DAY), start = t1 - span;
+    const t1 = readingTime(data[data.length - 1]);
+    const span = Math.max(t1 - readingTime(data[0]), 6 * DAY), start = t1 - span;
     const yMin = Math.min(50, Math.floor((Math.min(...data.map(r => r.dia)) - 5) / 10) * 10);
     const yMax = Math.max(160, Math.ceil((Math.max(...data.map(r => r.sys)) + 5) / 10) * 10);
     const x = t => L + ((t - start) / span) * (W - L - R);
@@ -261,11 +271,11 @@
       g += `<text x="${x(t)}" y="${H - 10}" text-anchor="${i === 0 ? 'start' : i === nT - 1 ? 'end' : 'middle'}" font-size="11" fill="var(--muted)" font-family="var(--mono)">${fmtShort(new Date(t).toISOString().slice(0, 10))}</text>`;
     }
     const series = (key, color) => {
-      const pts = data.map(r => [x(time(r.date)), y(r[key])]);
+      const pts = data.map(r => [x(readingTime(r)), y(r[key])]);
       let out = pts.length > 1 ? `<polyline fill="none" stroke="${color}" stroke-width="2.25" stroke-linejoin="round" stroke-linecap="round" points="${pts.map(p => p.join(',')).join(' ')}"/>` : '';
       pts.forEach((p, i) => {
         const last = i === pts.length - 1;
-        if (data.length <= 45 || last) out += `<circle cx="${p[0]}" cy="${p[1]}" r="${last ? 4.5 : 3}" fill="${last ? color : 'var(--surface)'}" stroke="${color}" stroke-width="2"><title>${fmtDate(data[i].date)}: ${data[i].sys}/${data[i].dia}</title></circle>`;
+        if (data.length <= 45 || last) out += `<circle cx="${p[0]}" cy="${p[1]}" r="${last ? 4.5 : 3}" fill="${last ? color : 'var(--surface)'}" stroke="${color}" stroke-width="2"><title>${fmtDate(data[i].date)} · ${sessionLabel(data[i])}: ${data[i].sys}/${data[i].dia}</title></circle>`;
       });
       const lp = pts[pts.length - 1];
       return out + `<text x="${Math.min(lp[0] - 8, W - R - 8)}" y="${lp[1] - 9}" text-anchor="end" font-size="12" font-weight="500" fill="${color}" font-family="var(--mono)">${data[data.length - 1][key]}</text>`;
@@ -277,7 +287,10 @@
 
   async function refresh() {
     state = await api('/');
-    if (!$('f-date').value) $('f-date').value = state.today;
+    if (!$('f-date').value) {
+      $('f-date').value = state.today;
+      $('f-session').value = new Date().getHours() >= 12 ? 'evening' : 'morning';
+    }
     renderAll();
   }
 
@@ -290,11 +303,11 @@
   const msg = (text, bad) => { $('f-msg').textContent = text; $('f-msg').classList.toggle('bad', !!bad); };
   $('add').addEventListener('submit', async e => {
     e.preventDefault();
-    const body = { date: $('f-date').value, sys: Number($('f-sys').value), dia: Number($('f-dia').value), pulse: $('f-pulse').value };
+    const body = { date: $('f-date').value, session: $('f-session').value, sys: Number($('f-sys').value), dia: Number($('f-dia').value), pulse: $('f-pulse').value };
     $('f-save').disabled = true;
     try {
       await api('/', { method: 'POST', body });
-      msg(`Saved ${body.sys}/${body.dia} for ${fmtDate(body.date)}.`);
+      msg(`Saved ${body.sys}/${body.dia} for ${fmtDate(body.date)} · ${sessionLabel(body)}.`);
       for (const id of ['f-sys', 'f-dia', 'f-pulse']) $(id).value = '';
       await refresh();
     } catch (err) {
@@ -305,10 +318,10 @@
 
   $('rows').addEventListener('click', async e => {
     const b = e.target.closest('.del'); if (!b) return;
-    const d = b.dataset.date;
-    if (pendingDelete !== d) { pendingDelete = d; renderTable(); return; }
+    const d = b.dataset.date, key = d + '/' + b.dataset.session;
+    if (pendingDelete !== key) { pendingDelete = key; renderTable(); return; }
     pendingDelete = null;
-    try { await api('/' + d, { method: 'DELETE' }); await refresh(); }
+    try { await api('/' + d + '?session=' + b.dataset.session, { method: 'DELETE' }); await refresh(); }
     catch (err) { if (err.status === 401) return showGate(); renderTable(); msg(err.message, true); }
   });
 

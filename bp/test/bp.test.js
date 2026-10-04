@@ -18,7 +18,7 @@ test('category bands: first match wins, top down', () => {
 
 test('validate: defaults date, rejects bad ranges and dia >= sys', () => {
     assert.deepEqual(B.validate({ sys: 121, dia: 74, pulse: 59 }, '2026-09-30').value,
-        { date: '2026-09-30', sys: 121, dia: 74, pulse: 59 });
+        { date: '2026-09-30', session: 'morning', sys: 121, dia: 74, pulse: 59 });
     assert.equal(B.validate({ sys: '130', dia: '80', pulse: '' }, '2026-09-30').value.pulse, null);
     assert.match(B.validate({ sys: 80, dia: 80 }, '2026-09-30').error, /lower than systolic/);
     assert.ok(B.validate({ sys: 261, dia: 80 }, '2026-09-30').error);
@@ -60,4 +60,28 @@ test('summary: empty log, latest, and alerts', () => {
     assert.equal(note[0].level, 'note');
     // 4 readings is not enough for the doctor note
     assert.deepEqual(B.summarize(high.slice(1)).alerts, []);
+});
+
+
+test('morning and evening are separate validated sessions, legacy writes default to morning', () => {
+    const input = { date: '2026-10-05', sys: 120, dia: 75 };
+    assert.equal(B.validate(input, input.date).value.session, 'morning');
+    assert.equal(B.validate({ ...input, session: 'evening' }, input.date).value.session, 'evening');
+    assert.ok(B.validate({ ...input, session: 'noon' }, input.date).error);
+    const readings = [{ ...input, session: 'morning', sys: 140 }, { ...input, session: 'evening', sys: 120 }];
+    assert.equal(B.summarize(readings).latest.session, 'evening');
+    assert.deepEqual(B.average(readings, 7), { sys: 130, dia: 75, n: 2, category: 'stage1' });
+});
+
+
+test('visit average excludes both sessions on the first logged day, keeps raw averages intact', () => {
+    const readings = [
+        { date: '2026-10-01', sys: 160, dia: 90 },
+        { date: '2026-10-01', sys: 150, dia: 85 },
+        { date: '2026-10-02', sys: 120, dia: 70 },
+        { date: '2026-10-02', sys: 130, dia: 80 },
+    ];
+    assert.deepEqual(B.summarize(readings).visitAverage, { sys: 125, dia: 75, n: 2, category: 'elevated' });
+    assert.equal(B.summarize(readings).avg7.n, 4);
+    assert.equal(B.average(readings.slice(0, 2), 7, true), null);
 });

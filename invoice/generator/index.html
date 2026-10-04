@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex"><title>Invoice generator</title>
+<link rel="stylesheet" href="styles.css">
+<script defer src="vendor/jspdf.umd.min.js"></script><script defer src="model.js"></script><script defer src="pdf.js"></script><script defer src="app.js"></script>
+</head>
+<body>
+<header class="top"><div><a href="/dashboard/">← Dashboard</a><h1>Invoice generator</h1><p>From hours worked to a ready-to-send PDF.</p></div><div class="top-actions"><button type="button" id="new-invoice">New invoice</button><a href="/invoice/">Classroom scheduler →</a></div></header>
+<main>
+<form id="editor">
+<section><h2>Recipient</h2>
+<label>Saved recipients<select id="saved"><option value="">New recipient</option></select></label>
+<div class="pair"><label>Name or company<input id="recipient-name" maxlength="120" required placeholder="Growth Consulting Ltd."></label><label>Contact person<input id="recipient-contact" maxlength="120" placeholder="Joel Courchaine"></label></div>
+<label>Email<input id="recipient-email" type="email" maxlength="180" placeholder="Optional"></label>
+<label>Address<textarea id="recipient-address" rows="2" maxlength="300" placeholder="Optional"></textarea></label>
+<div class="actions"><button type="button" id="save-recipient">Save recipient</button><button type="button" id="delete-recipient" class="quiet" hidden>Delete saved recipient</button></div>
+<p class="help">Saved recipients stay in this browser for future invoices.</p>
+</section>
+<section><h2>Invoice details</h2><div class="pair"><label>Issue date<input type="date" id="date" required></label><label>Invoice number<input id="number" maxlength="40" placeholder="Optional"></label></div>
+<label>Currency<select id="currency"><option value="CAD">CAD · Canadian dollar</option><option value="USD">USD · US dollar</option><option value="TWD">TWD · Taiwan dollar</option><option value="EUR">EUR · Euro</option><option value="GBP">GBP · British pound</option></select></label>
+</section>
+<section><div class="section-head"><h2>Services</h2><button type="button" id="add-line">+ Add service</button></div><div id="items"></div><div class="editor-total"><span>Total</span><strong id="total">$0.00</strong></div></section>
+<section><h2>Payment details</h2><label>Your name<input id="sender" maxlength="120" required></label><label>Payment instructions<textarea id="payment" rows="2" maxlength="500"></textarea></label><label>Phone<input id="phone" type="tel" maxlength="60"></label><label>Notes<textarea id="notes" rows="2" maxlength="500" placeholder="Payment terms or a message (optional)"></textarea></label></section>
+<div class="download"><button type="submit" class="primary" id="download">Generate & download PDF</button><p id="status" role="status" aria-live="polite"></p></div>
+</form>
+<aside aria-label="Invoice preview"><div class="preview-head"><span>Live preview</span><span>A4 · PDF</span></div><article id="preview" class="paper"></article></aside>
+</main>
+</body></html>
