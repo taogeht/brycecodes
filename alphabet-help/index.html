@@ -2443,6 +2443,8 @@ let canUndo = false;
 let busy = false;
 let dueRefreshTimer = null;
 let readAnim = null;
+let studentLoadController = null;
+let needsLoadController = null;
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({
@@ -2494,6 +2496,7 @@ async function api(path, opts = {}) {
   const init = {
     method: opts.method || 'GET',
     headers: { 'Content-Type': 'application/json' },
+    signal: opts.signal,
   };
   if (opts.body !== undefined) init.body = JSON.stringify(opts.body);
   const res = await fetch(API_BASE + path, init);
@@ -4113,10 +4116,37 @@ async function setMode(mode) {
   } catch (e) { toast('Could not save'); }
 }
 
+function setStudentLoading(loading) {
+  busy = loading;
+  stage.setAttribute('aria-busy', String(loading));
+  $('#btn-yes').disabled = loading || !student;
+  $('#btn-no').disabled = loading || !student;
+  $('#manage-btn').disabled = loading || !student;
+  $('#undo-btn').disabled = loading || !canUndo;
+  document.querySelectorAll('.mode-toggle button, .case-toggle button').forEach(btn => {
+    btn.disabled = loading || !student;
+  });
+}
+
 async function selectStudent(id) {
   if (!id) return;
+  if (studentLoadController) studentLoadController.abort();
+  const controller = new AbortController();
+  studentLoadController = controller;
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  student = null;
+  canUndo = false;
+  if (dueRefreshTimer) { clearTimeout(dueRefreshTimer); dueRefreshTimer = null; }
+  stopReadingAnimation();
+  renderEmpty();
+  delete stage.dataset.currentKey;
+  delete stage.dataset.currentType;
+  stage.innerHTML = '<div class="empty" role="status"><div class="big">Loading student…</div><div>Getting their practice ready.</div></div>';
+  setStudentLoading(true);
   try {
-    student = await api('/api/students/' + id);
+    const loaded = await api('/api/students/' + id, { signal: controller.signal });
+    if (studentLoadController !== controller || controller.signal.aborted) return;
+    student = loaded;
     activeId = id;
     localStorage.setItem('alphabet:lastActiveId', id);
     syncFilterToActive();
@@ -4125,7 +4155,16 @@ async function selectStudent(id) {
     lastStreak = currentSession(student).streak;
     renderAll(true);
   } catch (e) {
-    toast('Could not load student');
+    if (studentLoadController !== controller) return;
+    student = null;
+    stage.innerHTML = '<div class="empty" role="alert"><div class="big">Could not load student</div><div>Check your connection and try again.</div><button class="btn primary" id="retry-student">Try again</button></div>';
+    $('#retry-student').addEventListener('click', () => selectStudent(id));
+  } finally {
+    clearTimeout(timeout);
+    if (studentLoadController === controller) {
+      studentLoadController = null;
+      setStudentLoading(false);
+    }
   }
 }
 
@@ -4211,7 +4250,7 @@ $('#create-student').addEventListener('click', async () => {
     localStorage.setItem('alphabet:lastActiveId', created.id);
     student = created;
     canUndo = false;
-    $('#undo-btn').disabled = true;
+    setStudentLoading(false);
     lastStreak = 0;
     closeModal('add-modal');
     toast('Welcome, ' + name);
@@ -4719,6 +4758,12 @@ let viewClassId = null;   // 'all' | 'unassigned' | <classId> currently opened
 let rosterCache = [];     // last /api/roster, powers the status badges on the pickers
 
 function setView(v) {
+  if (needsLoadController) { needsLoadController.abort(); needsLoadController = null; }
+  if (v !== 'practice' && studentLoadController) {
+    studentLoadController.abort();
+    studentLoadController = null;
+    setStudentLoading(false);
+  }
   view = v;
   document.body.dataset.view = v;
   const main = document.querySelector('main');
@@ -4852,14 +4897,31 @@ function renderClassScreen() {
  * (low mastery + big review pile + low accuracy). Pulls full snapshots, so it
  * runs async and fills the panel once the student grid is already up. */
 async function renderNeedsList(list, forClassId) {
+  if (needsLoadController) needsLoadController.abort();
+  const controller = new AbortController();
+  needsLoadController = controller;
   const panel = $('#needs-panel');
   const ul = $('#needs-list');
-  if (!list.length) { panel.hidden = true; return; }
-  let snaps;
-  try { snaps = await Promise.all(list.map(s => api('/api/students/' + s.id))); }
-  catch (e) { panel.hidden = true; return; }
+  if (!list.length) { panel.hidden = true; needsLoadController = null; return; }
+  const snaps = [];
+  let next = 0;
+  // Leave connections available for opening a student. Cancel these optional
+  // reads on navigation instead of queueing the whole class ahead of practice.
+  const worker = async () => {
+    while (!controller.signal.aborted && next < list.length) {
+      const s = list[next++];
+      snaps.push(await api('/api/students/' + s.id, { signal: controller.signal }));
+    }
+  };
+  try { await Promise.all(Array.from({ length: Math.min(2, list.length) }, worker)); }
+  catch (e) {
+    controller.abort();
+    if (needsLoadController === controller) { needsLoadController = null; panel.hidden = true; }
+    return;
+  }
   /* Bail if the teacher navigated away while we were fetching. */
-  if (view !== 'class' || viewClassId !== forClassId) return;
+  if (controller.signal.aborted || view !== 'class' || viewClassId !== forClassId) return;
+  if (needsLoadController === controller) needsLoadController = null;
 
   const worst = snaps.map(summarizeStudent)
     .filter(r => r.total > 0 && r.score > 0.05)
