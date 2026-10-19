@@ -12,6 +12,12 @@ active days, with boxes for done/not-done tasks, writing space for minutes and
 counts, weekly frequencies, and numbered side quest bonuses. Pack checks keep
 their separate daily slip.
 
+Open **Choose what to print** to include or remove individual tasks, hide side
+quest bonus tracking, or add extra tasks for the paper sheet. Choices are saved
+on that device and do not change the quest configuration or existing records.
+Extra paper tasks do not earn rewards or appear in the entry form; add a quest
+in HQ when it should earn rewards. Printing requests A4 portrait explicitly.
+
 At the end of the week, choose **Enter from paper**, select each original day,
 and save its results. Existing entries are shown; repeat saves only pay the
 difference. Parent confirmation, weekly caps, and reviewed-entry locks still
