@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Weekly checklist · Loadout</title>
+<link rel="stylesheet" href="/loadout/weekly.css">
+</head>
+<body>
+<main>
+  <header class="no-print">
+    <a href="/loadout/" class="back">← Loadout</a>
+    <a href="/loadout/hq">Parent HQ</a>
+  </header>
+  <div class="heading no-print">
+    <div><p class="eyebrow">Loadout / On paper</p><h1>One week at a time.</h1>
+      <p class="intro">Keep this sheet where you’ll see it. Fill it in each day, then bring your week back to Loadout.</p></div>
+    <button id="print" type="button" disabled>Print weekly checklist</button>
+  </div>
+  <nav class="week-nav no-print" aria-label="Choose week">
+    <button id="previous" type="button" aria-label="Previous week">←</button>
+    <label>Week containing <input id="week-date" type="date" required></label>
+    <button id="next" type="button" aria-label="Next week">→</button>
+    <button id="current" type="button">This week</button>
+  </nav>
+  <div class="modes no-print" aria-label="Checklist view">
+    <button id="paper-mode" type="button" aria-pressed="true">Paper preview</button>
+    <button id="entry-mode" type="button" aria-pressed="false">Enter from paper</button>
+  </div>
+  <p id="status" class="no-print" role="status" aria-live="polite">Loading your week…</p>
+  <section id="paper" aria-label="Printable weekly checklist"></section>
+  <section id="entry" class="no-print" aria-label="Enter results from paper" hidden></section>
+</main>
+<script src="/loadout/common.js"></script>
+<script src="/loadout/weekly.js"></script>
+</body>
+</html>

@@ -351,7 +351,7 @@
     const nav = [['/hq', 'calendar', 'Daily log'], ['/hq/list', 'list', 'Pack list'], ['/hq/quests', 'sword', 'Quests'], ['/hq/rewards', 'vault', 'Rewards & payouts'], ['/hq/history', 'history', 'History'], ['/hq/settings', 'settings', 'Settings']];
     root.innerHTML = '<div class="shell"><aside class="side"><div class="brand">Loadout <span>HQ</span></div><nav class="nav">' +
       nav.map(([p, ic, l]) => '<a href="' + href(p) + '" data-link class="' + (active === p ? 'active' : '') + '">' + icon(ic, 18) + l + '</a>').join('') +
-      '</nav>' +
+      '<a href="/loadout/weekly">' + icon('print', 18) + ' Weekly checklist</a></nav>' +
       '<div class="foot"><a href="' + href('/') + '" class="btn sm" style="width:100%;justify-content:flex-start">' + icon('eye', 16) + ' Edward\'s view</a>' +
       '<button class="btn sm" data-logout style="width:100%;justify-content:flex-start;margin-top:6px">' + icon('logout', 16) + ' Sign out</button></div></aside>' +
       '<main id="main">' + body + '</main></div>';

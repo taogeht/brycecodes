@@ -149,6 +149,9 @@ app.use('/chores', express.static(path.join(__dirname, 'chores', 'public')));
 // routing, so anything under /loadout that isn't a real file falls back to
 // the right page.
 app.use('/loadout', express.static(path.join(__dirname, 'loadout', 'public')));
+app.get('/loadout/weekly', (req, res) => {
+    res.sendFile(path.join(__dirname, 'loadout', 'public', 'weekly.html'));
+});
 app.get(['/loadout/hq', '/loadout/hq/*'], (req, res) => {
     res.sendFile(path.join(__dirname, 'loadout', 'public', 'hq.html'));
 });

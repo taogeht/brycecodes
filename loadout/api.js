@@ -135,6 +135,19 @@ module.exports = function loadout(pool, opts = {}) {
     }
     router.get('/today', wrap(async (req, res) => res.json(await todayPayload())));
 
+    // Read-only paper planner. Dates and the catch-up window use Taipei weeks.
+    router.get('/week', wrap(async (req, res) => {
+        const today = tz.dateKey();
+        const date = req.query.date || today;
+        if (!tz.isDateKey(date)) return bad(res, 'date must be YYYY-MM-DD');
+        const week = tz.mondayOf(date);
+        const dates = Array.from({ length: 7 }, (_, i) => tz.addDays(week, i));
+        const [config, days] = await Promise.all([store.getConfig(), store.daysBetween(week, dates[6])]);
+        res.json({ week, dates, today, earliestEntryDate: tz.addDays(tz.mondayOf(today), -7),
+            child: config.child, quests: config.quests.filter(q => q.enabled !== false && q.kind !== 'packCheck'),
+            powerUps: config.powerUps || [], days, hq: auth.isHq(req) });
+    }));
+
     router.get('/earnings', wrap(async (req, res) => res.json(await store.earnings())));
     router.post('/earnings/:week/pay', auth.requireHq, wrap(async (req, res) => {
         const week = req.params.week;
@@ -314,7 +327,7 @@ module.exports = function loadout(pool, opts = {}) {
         const today = tz.dateKey();
         const hq = auth.isHq(req);
         if (date > today) return bad(res, 'That day has not happened yet.');
-        if (!hq && date < tz.addDays(today, -1)) return bad(res, 'Only today or yesterday can be logged. Ask a parent for older days.');
+        if (!hq && date < tz.addDays(tz.mondayOf(today), -7)) return bad(res, 'You can log this week or last week. Ask a parent for older days.');
         const config = await store.getConfig();
         const quest = S.questById(config, req.body && req.body.questId);
         if (!quest || quest.enabled === false || quest.kind === 'packCheck') return bad(res, 'Unknown quest.');

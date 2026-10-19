@@ -3,6 +3,22 @@
 Edward's pack check, activities, chores, XP rewards, and weekly payouts. Served
 at `/loadout/`; parent controls at `/loadout/hq` (PIN through `HQ_PIN`).
 
+## Weekly paper checklist
+
+Choose **Weekly paper checklist** on Today or **Weekly checklist** in HQ to open
+`/loadout/weekly`. Pick a Monday–Sunday week and print the blank sheet (or save
+it as a PDF in the browser). It uses the current enabled task definitions and
+active days, with boxes for done/not-done tasks, writing space for minutes and
+counts, weekly frequencies, and numbered side quest bonuses. Pack checks keep
+their separate daily slip.
+
+At the end of the week, choose **Enter from paper**, select each original day,
+and save its results. Existing entries are shown; repeat saves only pay the
+difference. Parent confirmation, weekly caps, and reviewed-entry locks still
+apply. Edward can enter the current and previous Taipei week; older entries
+require a parent HQ session. Future days can be printed but cannot be logged.
+Printing never creates check-ins or awards earnings.
+
 ## Earning rules (September 2026 update)
 
 - Side quests award bonus XP even below the main target. Original definitions and assignments are restored once from the archived config. In HQ → Quests → Edit, choose side quests and set their XP per quest. Repeat logs pay only additional XP; parent confirmation also applies to bonuses.
@@ -81,6 +97,8 @@ correction cannot reduce a week's earnings below money already paid out.
 ## APIs
 
 - `GET /api/loadout/earnings`: totals, current weekly balances, historical weeks.
+- `GET /api/loadout/week?date=YYYY-MM-DD`: Monday–Sunday dates, current task
+  definitions, saved day records, and the child catch-up date boundary.
 - `POST /api/loadout/earnings/:monday/pay`: parent records a completed week's
   outstanding cash/savings payout, returns 409 if nothing can be paid.
 - Reward costs and suggestions use `{ xp: N }`.

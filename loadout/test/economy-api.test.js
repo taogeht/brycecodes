@@ -163,4 +163,54 @@ if (!process.env.TEST_DATABASE_URL) {
         assert.deepEqual((await store.getConfig()).quests.find(q => q.id === 'reading').powerUps, []);
     });
 
+    test('weekly paper planner normalizes calendar weeks and never writes data', async () => {
+        const cfg = await store.getConfig();
+        cfg.quests.push({ id: 'paper-disabled', name: 'Disabled', kind: 'simple', enabled: false });
+        await store.saveConfig(cfg);
+        const before = await store.ledger();
+        const r = await call('/week?date=2026-12-31');
+        assert.equal(r.status, 200);
+        assert.equal(r.body.week, '2026-12-28');
+        assert.deepEqual(r.body.dates, ['2026-12-28','2026-12-29','2026-12-30','2026-12-31','2027-01-01','2027-01-02','2027-01-03']);
+        assert.equal(r.body.earliestEntryDate, week);
+        assert.ok(r.body.quests.length > 0);
+        assert.ok(r.body.quests.every(q => q.enabled !== false && q.kind !== 'packCheck'));
+        assert.deepEqual(r.body.powerUps, cfg.powerUps);
+        assert.equal(r.body.hq, false);
+        assert.equal((await call('/week', undefined, true)).body.hq, true);
+        for (const date of ['bad', '2026-02-30']) assert.equal((await call('/week?date=' + date)).status, 400);
+        assert.deepEqual(await store.ledger(), before);
+    });
+    test('paper catch-up accepts last Monday through today, pays once, and protects older and future dates', async () => {
+        const cfg = await store.getConfig();
+        cfg.quests.push({ id: 'paper-minutes', name: 'Paper minutes', kind: 'duration', target: 20, xpPerMinute: 1, coins: 0 });
+        await store.saveConfig(cfg);
+        for (const date of [week, tz.addDays(week, 6), today]) {
+            const path = `/day/${date}/checkin`;
+            for (const xp of [12, 0]) {
+                const r = await call(path, { questId: 'paper-minutes', value: 12 });
+                assert.equal(r.status, 200); assert.equal(r.body.paid.xp, xp);
+                assert.equal(r.body.day.date, date);
+            }
+        }
+        const old = `/day/${tz.addDays(week, -1)}/checkin`;
+        assert.equal((await call(old, { questId: 'paper-minutes', value: 12 })).status, 400);
+        assert.equal((await call(old, { questId: 'paper-minutes', value: 12 }, true)).status, 200);
+        assert.equal((await call(`/day/${tz.addDays(today, 1)}/checkin`, { questId: 'paper-minutes', value: 12 }, true)).status, 400);
+        const result = (await call('/week?date=' + week)).body;
+        assert.equal(result.days[week].checkins.find(c => c.questId === 'paper-minutes').value, 12);
+    });
+    test('paper catch-up preserves weekly caps and parent confirmation locks', async () => {
+        const cfg = await store.getConfig();
+        cfg.quests.push({ id: 'paper-weekly', name: 'Paper weekly', kind: 'simple', coins: 5, cadence: 'weekly', timesPerWeek: 1 },
+            { id: 'paper-confirm', name: 'Paper confirm', kind: 'duration', target: 10, xpPerMinute: 1, requiresParentConfirm: true });
+        await store.saveConfig(cfg);
+        const first = await call(`/day/${week}/checkin`, { questId: 'paper-weekly', value: 1 });
+        assert.equal(first.status, 200); assert.equal(first.body.paid.coins, 5);
+        assert.equal((await call(`/day/${tz.addDays(week, 1)}/checkin`, { questId: 'paper-weekly', value: 1 })).status, 409);
+        const pending = await call(`/day/${week}/checkin`, { questId: 'paper-confirm', value: 10 });
+        assert.equal(pending.status, 200); assert.equal(pending.body.pending, true); assert.equal(pending.body.paid.xp, 0);
+        assert.equal((await call(`/checkin/${pending.body.checkin.id}/confirm`, {}, true)).status, 200);
+        assert.equal((await call(`/day/${week}/checkin`, { questId: 'paper-confirm', value: 20 })).status, 409);
+    });
 }

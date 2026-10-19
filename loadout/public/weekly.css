@@ -1,0 +1,103 @@
+:root {
+  color-scheme: light;
+  --ink: oklch(24% .012 85); --muted: oklch(46% .012 85);
+  --line: oklch(81% .012 85); --paper: oklch(99% .004 85);
+  --ground: oklch(96% .01 85); --accent: oklch(43% .075 155);
+  font-family: system-ui, sans-serif; color: var(--ink); background: var(--ground);
+}
+* { box-sizing: border-box; }
+body { margin: 0; line-height: 1.5; }
+main { max-width: 1100px; padding: 24px 32px 64px; margin: auto; }
+header, .heading, .week-nav, .modes, .entry-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+header { justify-content: space-between; font-size: 14px; margin-bottom: 36px; }
+a { color: inherit; text-underline-offset: 4px; }
+.heading { justify-content: space-between; align-items: end; gap: 24px; }
+.heading > div { max-width: 620px; }
+.eyebrow { text-transform: uppercase; letter-spacing: .12em; font-size: 11px; font-weight: 700; margin: 0 0 8px; }
+h1 { font-size: 32px; line-height: 1.15; margin: 0; letter-spacing: -.03em; }
+h2 { font-size: 23px; line-height: 1.25; margin: 0; }
+h3 { margin: 24px 0 10px; font-size: 17px; }
+p { margin: 8px 0; }
+.intro { color: var(--muted); max-width: 65ch; }
+button, input, select { font: inherit; }
+button { min-height: 44px; border: 1px solid var(--line); border-radius: 8px; padding: 8px 16px; background: var(--paper); color: var(--ink); cursor: pointer; font-weight: 600; }
+button:hover:not(:disabled) { border-color: var(--ink); }
+button:disabled { opacity: .5; cursor: default; }
+button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+#print, button[type=submit] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.week-nav { margin: 28px 0 20px; }
+.week-nav label { font-size: 13px; color: var(--muted); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+input[type=date], select { padding: 8px; min-height: 44px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--ink); }
+.modes { border-bottom: 1px solid var(--line); gap: 24px; }
+.modes button { border: 0; border-radius: 0; padding: 10px 0; background: none; color: var(--muted); }
+.modes button[aria-pressed=true] { color: var(--ink); box-shadow: 0 2px var(--ink); }
+#status { font-size: 14px; min-height: 24px; margin: 14px 0; }
+#status.error { color: oklch(43% .15 28); }
+#paper { background: var(--paper); padding: 30px; border: 1px solid var(--line); overflow-x: auto; }
+.sheet { min-width: 660px; }
+.sheet-head { display: flex; justify-content: space-between; align-items: end; gap: 20px; padding-bottom: 16px; border-bottom: 2px solid var(--ink); }
+.sheet-head .name { font-size: 18px; font-weight: 600; }
+.sheet-instructions { font-size: 13px; margin: 14px 0; }
+table { border-collapse: collapse; table-layout: fixed; width: 100%; }
+caption { text-align: left; font-weight: 700; margin-bottom: 8px; }
+th, td { border: 1px solid var(--line); padding: 7px 5px; text-align: center; vertical-align: middle; }
+thead th { font-size: 12px; }
+thead th:first-child { width: 32%; text-align: left; }
+thead span { display: block; font-size: 11px; font-weight: 400; }
+tbody th { font-size: 13px; text-align: left; font-weight: 600; overflow-wrap: anywhere; }
+tbody th small { display: block; font-size: 10px; font-weight: 400; margin-top: 2px; }
+td { height: 47px; }
+.write-box { display: inline-block; width: 17px; height: 17px; border: 1px solid var(--ink); vertical-align: middle; }
+.write-line { display: block; border-bottom: 1px solid var(--line); width: 75%; height: 17px; margin: auto; }
+.bonus-line { font-size: 9px; margin-top: 5px; white-space: nowrap; }
+.off { font-size: 15px; color: var(--muted); }
+.bonus-key { margin-top: 16px; font-size: 11px; }
+.bonus-key ul { padding-left: 16px; margin: 5px 0 0; columns: 2; column-gap: 24px; }
+.bonus-key li { break-inside: avoid; margin-bottom: 3px; }
+.sheet-footer { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 10px; font-size: 12px; }
+.review-line { margin-top: 14px; }
+.entry-day { margin: 18px 0 8px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; font-weight: 600; }
+.entry-row { border-bottom: 1px solid var(--line); padding: 18px 0; }
+.entry-main { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+.task-name { font-weight: 600; }
+.task-detail, .task-status { font-size: 13px; color: var(--muted); }
+input[type=number] { width: 100px; min-height: 44px; padding: 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--ink); }
+input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--accent); flex: none; }
+.done-field, .bonus-field { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px; }
+.bonus-fields { display: flex; gap: 4px 24px; flex-wrap: wrap; margin-top: 8px; }
+.entry-actions { margin-top: 24px; }
+[hidden] { display: none !important; }
+fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+@media (max-width: 600px) {
+  main { padding: 18px 16px 40px; }
+  header { margin-bottom: 26px; }
+  h1 { font-size: 28px; }
+  .week-nav { gap: 8px; }
+  .week-nav label { flex: 1; }
+  .week-nav label input { width: 100%; }
+  #paper { padding: 18px; }
+}
+@media print {
+  @page { size: auto; margin: 12mm; }
+  :root, body { background: var(--paper); }
+  .no-print { display: none !important; }
+  main { max-width: none; padding: 0; }
+  #paper, #paper[hidden] { display: block !important; border: 0; padding: 0; overflow: visible; }
+  .sheet { min-width: 0; }
+  .sheet-head { padding-bottom: 3mm; }
+  h2 { font-size: 17pt; }
+  .sheet-head .name { font-size: 12pt; }
+  .sheet-instructions { font-size: 9pt; margin: 3mm 0; }
+  thead { display: table-header-group; }
+  th, td { border-color: var(--muted); padding: 1.5mm 1mm; }
+  tbody th { font-size: 9pt; }
+  tbody th small { font-size: 7.5pt; }
+  td { height: 10mm; }
+  .write-line { height: 14px; }
+  .bonus-line { margin-top: 3px; }
+  tr, .sheet-head, .bonus-key, .sheet-footer { break-inside: avoid; }
+  .bonus-key { font-size: 8pt; margin-top: 3mm; }
+  .sheet-footer { font-size: 8.5pt; margin-top: 3mm; padding-top: 2mm; }
+  .review-line { margin-top: 3mm; }
+}
