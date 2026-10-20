@@ -290,6 +290,8 @@
 
   .letter-frame {
     position: relative;
+    min-width: 0;
+    max-width: 100%;
     padding: 24px 40px;
     border-radius: 40px;
     background: var(--surface-2);
@@ -308,7 +310,11 @@
     font-family: 'Comic Sans MS', 'Comic Sans', 'Chalkboard SE', cursive;
     font-weight: 700;
     font-size: max(180px, min(40vw, 46vh, 520px));
-    line-height: 0.88;
+    /* Leave room for ascenders/descenders and keep word segments together. */
+    line-height: 1.4;
+    white-space: nowrap;
+    /* Font fitting must be immediate, including under reduced-motion rules. */
+    transition-property: color, transform;
     letter-spacing: -0.02em;
     color: var(--ink);
     user-select: none;
@@ -1174,6 +1180,7 @@
      (with .blend) for the blended sound. */
   .letter .glyph {
     display: inline-block;
+    vertical-align: top;
     transition: color 150ms var(--ease-out),
                 transform 240ms var(--ease-spring);
   }
@@ -2906,6 +2913,25 @@ function playReadingAnimation() {
   });
 }
 
+/* Viewport-based type sizes are only an upper bound: the sidebar, card
+ * padding and the actual font/word decide how much room is available. */
+function fitPracticeLetter() {
+  const letter = stage.querySelector('#letter-el');
+  if (!letter) return;
+  letter.style.removeProperty('font-size');
+  const preferredSize = parseFloat(getComputedStyle(letter).fontSize);
+  const available = letter.clientWidth;
+  const needed = letter.scrollWidth;
+  if (available > 0 && needed > available) {
+    letter.style.setProperty('font-size', (preferredSize * available / needed) + 'px');
+  }
+}
+if (typeof ResizeObserver !== 'undefined') {
+  new ResizeObserver(fitPracticeLetter).observe(stage);
+}
+// A late font swap can change widths even when the card itself hasn't resized.
+document.fonts?.addEventListener('loadingdone', fitPracticeLetter);
+
 function renderLetter() {
   if (dueRefreshTimer) { clearTimeout(dueRefreshTimer); dueRefreshTimer = null; }
   stopReadingAnimation();
@@ -3040,6 +3066,7 @@ function renderLetter() {
   `;
   stage.dataset.currentType = item.type;
   stage.dataset.currentKey = item.key;
+  fitPracticeLetter();
   renderPanels(false);
   playReadingAnimation();
 
